@@ -1,28 +1,5 @@
-/*
- * (C) Copyright 2007
- *     Theobroma Systems <www.theobroma-systems.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- */
-
-#ifndef __ASM_LM32_SIGNAL_H
-#define __ASM_LM32_SIGNAL_H
+#ifndef _LM32_SIGNAL_H
+#define _LM32_SIGNAL_H
 
 #include <linux/types.h>
 
@@ -37,7 +14,7 @@ struct siginfo;
 #define _NSIG_BPW	32
 #define _NSIG_WORDS	(_NSIG / _NSIG_BPW)
 
-typedef unsigned long old_sigset_t;	/* at least 32 bits */
+typedef unsigned long old_sigset_t;		/* at least 32 bits */
 
 typedef struct {
 	unsigned long sig[_NSIG_WORDS];
@@ -49,7 +26,7 @@ typedef struct {
 #define NSIG		32
 typedef unsigned long sigset_t;
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
 #define SIGHUP		 1
 #define SIGINT		 2
@@ -97,7 +74,6 @@ typedef unsigned long sigset_t;
  * SA_FLAGS values:
  *
  * SA_ONSTACK indicates that a registered stack_t will be used.
- * SA_INTERRUPT is a no-op, but left due to historical reasons. Use the
  * SA_RESTART flag to get restarting signals (which were the default long ago)
  * SA_NOCLDSTOP flag to turn off SIGCHLD when children stop.
  * SA_RESETHAND clears the handler when the signal is delivered.
@@ -108,7 +84,7 @@ typedef unsigned long sigset_t;
  * Unix names RESETHAND and NODEFER respectively.
  */
 #define SA_NOCLDSTOP	0x00000001
-#define SA_NOCLDWAIT	0x00000002	/* not supported yet */
+#define SA_NOCLDWAIT	0x00000002 /* not supported yet */
 #define SA_SIGINFO	0x00000004
 #define SA_ONSTACK	0x08000000
 #define SA_RESTART	0x10000000
@@ -118,7 +94,9 @@ typedef unsigned long sigset_t;
 #define SA_NOMASK	SA_NODEFER
 #define SA_ONESHOT	SA_RESETHAND
 
-/*
+#define SA_RESTORER	0x04000000
+
+/* 
  * sigaltstack controls
  */
 #define SS_ONSTACK	1
@@ -127,21 +105,21 @@ typedef unsigned long sigset_t;
 #define MINSIGSTKSZ	2048
 #define SIGSTKSZ	8192
 
-#include <asm-generic/signal.h>
+#include <asm-generic/signal-defs.h>
 
 #ifdef __KERNEL__
 struct old_sigaction {
 	__sighandler_t sa_handler;
 	old_sigset_t sa_mask;
 	unsigned long sa_flags;
-	void (*sa_restorer) (void);
+	void (*sa_restorer)(void);
 };
 
 struct sigaction {
 	__sighandler_t sa_handler;
 	unsigned long sa_flags;
-	void (*sa_restorer) (void);
-	sigset_t sa_mask;	/* mask last for extensibility */
+	void (*sa_restorer)(void);
+	sigset_t sa_mask;		/* mask last for extensibility */
 };
 
 struct k_sigaction {
@@ -152,18 +130,18 @@ struct k_sigaction {
 
 struct sigaction {
 	union {
-		__sighandler_t _sa_handler;
-		void (*_sa_sigaction) (int, struct siginfo *, void *);
+	  __sighandler_t _sa_handler;
+	  void (*_sa_sigaction)(int, struct siginfo *, void *);
 	} _u;
 	sigset_t sa_mask;
 	unsigned long sa_flags;
-	void (*sa_restorer) (void);
+	void (*sa_restorer)(void);
 };
 
 #define sa_handler	_u._sa_handler
 #define sa_sigaction	_u._sa_sigaction
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
 typedef struct sigaltstack {
 	void *ss_sp;
@@ -178,6 +156,6 @@ typedef struct sigaltstack {
 
 #define ptrace_signal_deliver(regs, cookie) do { } while (0)
 
-#endif				/* __KERNEL__ */
+#endif /* __KERNEL__ */
 
-#endif
+#endif /* _LM32_SIGNAL_H */

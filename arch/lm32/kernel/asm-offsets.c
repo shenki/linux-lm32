@@ -69,8 +69,10 @@ int main(void)
 	DEFINE(TASK_USP, offsetof(struct task_struct, thread.usp));
 	DEFINE(TASK_WHICH_STACK, offsetof(struct task_struct, thread.which_stack));
 
+#ifndef	CONFIG_GENERIC_HARDIRQS
 	/* offsets into the kernel_stat struct */
 	DEFINE(STAT_IRQ, offsetof(struct kernel_stat, irqs));
+#endif
 
 	/* offsets into the irq_cpustat_t struct */
 	DEFINE(CPUSTAT_SOFTIRQ_PENDING, offsetof(irq_cpustat_t, __softirq_pending));
@@ -114,8 +116,10 @@ int main(void)
 	DEFINE(PT_EA, offsetof(struct pt_regs, ea));
 	DEFINE(PT_BA, offsetof(struct pt_regs, ba));
 
+#ifndef	CONFIG_GENERIC_HARDIRQS
 	/* offsets into the kernel_stat struct */
 	DEFINE(STAT_IRQ, offsetof(struct kernel_stat, irqs));
+#endif
 
 	/* signal defines */
 	DEFINE(SIGSEGV, SIGSEGV);

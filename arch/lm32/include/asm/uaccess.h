@@ -33,8 +33,8 @@
 
 #include <asm/thread_info.h>
 #include <asm/segment.h>
-#include <asm-generic/uaccess.h>
-#include <asm-generic/sections.h>
+//#include <asm-generic/uaccess.h>
+//#include <asm-generic/sections.h>
 
 #define VERIFY_READ	0
 #define VERIFY_WRITE	1

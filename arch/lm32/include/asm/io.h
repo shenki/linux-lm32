@@ -213,8 +213,8 @@ extern void iounmap(void *addr);
  */
 #define mm_ptov(vaddr)		((void *) (vaddr))
 #define mm_vtop(vaddr)		((unsigned long) (vaddr))
-#define phys_to_virt(addr)	((void *)__phys_to_virt (addr))
-#define virt_to_phys(addr)	((unsigned long)__virt_to_phys (addr))
+#define phys_to_virt(addr)	((void *) (addr))
+#define virt_to_phys(addr)	((unsigned long) (addr))
 
 #define virt_to_bus virt_to_phys
 #define bus_to_virt phys_to_virt
