@@ -1,6 +1,8 @@
-#ifndef _LM32_ASM_DMA_MAPPING_H
-#define _LM32_ASM_DMA_MAPPING_H
+#ifndef _ASM_LM32_DMA_MAPPING_H
+#define _ASM_LM32_DMA_MAPPING_H
+
+struct scatterlist;
 
 #include <asm-generic/dma-mapping-broken.h>
 
-#endif  /* _LM32_ASM_DMA_MAPPING_H */
+#endif  /* _ASM_LM32_DMA_MAPPING_H */
