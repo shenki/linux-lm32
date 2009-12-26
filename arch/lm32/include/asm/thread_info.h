@@ -42,6 +42,7 @@ struct thread_info {
 	.restart_block	= {			\
 		.fn = do_no_restart_syscall,	\
 	},					\
+	.mem_seg = KERNEL_DS, \
 }
 
 #define init_thread_info	(init_thread_union.thread_info)

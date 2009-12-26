@@ -41,7 +41,7 @@
 #include <linux/pfn.h>
 
 #include <asm-generic/sections.h>
-#include <asm-lm32/setup.h>
+#include <asm/setup.h>
 
 //#undef DEBUG
 #define DEBUG
@@ -93,7 +93,7 @@ void __init bootmem_init(void)
 	 * the bootmem bitmap so we then reserve it after freeing it :-)
 	 */
 	free_bootmem(memory_start, memory_end - memory_start);
-	reserve_bootmem(memory_start, bootmap_size);
+	reserve_bootmem(memory_start, bootmap_size, BOOTMEM_DEFAULT);
 
 	/*
 	 * reserve initrd boot memory
@@ -105,7 +105,7 @@ void __init bootmem_init(void)
 		initrd_start = _kernel_arg_initrd_start;
 		initrd_end = _kernel_arg_initrd_end;
 		printk("reserving initrd memory: %lx size %lx\n", reserve_start, reserve_end-reserve_start);
-		reserve_bootmem(reserve_start, reserve_end-reserve_start);
+		reserve_bootmem(reserve_start, reserve_end-reserve_start, BOOTMEM_DEFAULT);
 	}
 #endif
 }

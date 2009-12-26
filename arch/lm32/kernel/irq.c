@@ -167,7 +167,7 @@ int show_interrupts(struct seq_file *p, void *v)
 
 	if (i < NR_IRQS)
 	{
-		spin_lock_irqsave(&irq_desc[i].lock, flags);
+		raw_spin_lock_irqsave(&irq_desc[i].lock, flags);
 		action = irq_desc[i].action;
 		if( action )
 		{
@@ -178,7 +178,7 @@ int show_interrupts(struct seq_file *p, void *v)
 				seq_printf(p, ", %s", action->name);
 			seq_putc(p, '\n');
 		}
-		spin_unlock_irqrestore(&irq_desc[i].lock, flags);
+		raw_spin_unlock_irqrestore(&irq_desc[i].lock, flags);
 	} else if (i == NR_IRQS) {
 		seq_printf(p, "Errors: %lu\n", irq_err_count);
 	}

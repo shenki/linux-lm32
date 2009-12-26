@@ -204,7 +204,7 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 
 
 
-int copy_thread(int nr, unsigned long clone_flags,
+int copy_thread(unsigned long clone_flags,
 		unsigned long usp, unsigned long stk_size,
 		struct task_struct * p, struct pt_regs * regs)
 {
