@@ -1,28 +1,5 @@
-/*
- * (C) Copyright 2007
- *     Theobroma Systems <www.theobroma-systems.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- */
-
-#ifndef _LM32_ASM_SOCKET_H
-#define _LM32_ASM_SOCKET_H
+#ifndef _ASM_LM32_SOCKET_H
+#define _ASM_LM32_SOCKET_H
 
 #include <asm/sockios.h>
 
@@ -61,16 +38,28 @@
 #define SO_BINDTODEVICE	25
 
 /* Socket filtering */
-#define SO_ATTACH_FILTER	26
-#define SO_DETACH_FILTER	27
+#define SO_ATTACH_FILTER        26
+#define SO_DETACH_FILTER        27
 
-#define SO_PEERNAME		28
+#define SO_PEERNAME             28
 #define SO_TIMESTAMP		29
 #define SCM_TIMESTAMP		SO_TIMESTAMP
 
 #define SO_ACCEPTCONN		30
+
 #define SO_PEERSEC		31
 #define SO_PASSSEC		34
 #define SO_TIMESTAMPNS		35
 #define SCM_TIMESTAMPNS		SO_TIMESTAMPNS
-#endif /* _LM32_ASM_SOCKET_H */
+
+#define SO_MARK			36
+
+#define SO_TIMESTAMPING		37
+#define SCM_TIMESTAMPING	SO_TIMESTAMPING
+
+#define SO_PROTOCOL		38
+#define SO_DOMAIN		39
+
+#define SO_RXQ_OVFL             40
+
+#endif /* _ASM_LM32_SOCKET_H */

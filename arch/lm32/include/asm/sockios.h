@@ -1,10 +1,5 @@
-/*
- * Based on:
- * include/asm-arm/sockios.h
- */
-
-#ifndef _LM32_ASM_SOCKIOS__
-#define _LM32_ASM_SOCKIOS__
+#ifndef _ASM_LM32_SOCKIOS__
+#define _ASM_LM32_SOCKIOS__
 
 /* Socket-level I/O control calls. */
 #define FIOSETOWN	0x8901
@@ -15,4 +10,4 @@
 #define SIOCGSTAMP	0x8906		/* Get stamp (timeval) */
 #define SIOCGSTAMPNS	0x8907		/* Get stamp (timespec) */
 
-#endif /* _LM32_ASM_SOCKIOS__ */
+#endif /* _ASM_LM32_SOCKIOS__ */
