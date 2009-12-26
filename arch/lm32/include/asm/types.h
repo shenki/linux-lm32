@@ -94,4 +94,4 @@ typedef u32 dma64_addr_t;
 
 #endif /* __KERNEL__ */
 
-#endif /* _LM32_TYPES_H */
+#endif /* _LM32_ASM_TYPES_H */
