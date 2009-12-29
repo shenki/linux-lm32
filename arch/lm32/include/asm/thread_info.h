@@ -5,13 +5,19 @@
  * - Incorporating suggestions made by Linus Torvalds and Dave Miller
  */
 
-#ifndef _ASM_THREAD_INFO_H
-#define _ASM_THREAD_INFO_H
+#ifndef _ASM_LM32_THREAD_INFO_H
+#define _ASM_LM32_THREAD_INFO_H
 
 #include <asm/page.h>
 #include <asm/segment.h>
 
 #ifdef __KERNEL__
+
+/*
+ * Size of kernel stack for each process. This must be a power of 2...
+ */
+#define THREAD_SIZE_ORDER	1
+#define THREAD_SIZE		8192	/* 2 pages */
 
 #ifndef __ASSEMBLY__
 
@@ -48,12 +54,6 @@ struct thread_info {
 #define init_thread_info	(init_thread_union.thread_info)
 #define init_stack		(init_thread_union.stack)
 
-
-/*
- * Size of kernel stack for each process. This must be a power of 2...
- */
-#define THREAD_SIZE_ORDER	1
-#define THREAD_SIZE		8192	/* 2 pages */
 
 
 /* how to get the thread information struct from C */
@@ -105,4 +105,4 @@ static inline struct thread_info *current_thread_info(void)
 
 #endif /* __KERNEL__ */
 
-#endif /* _ASM_THREAD_INFO_H */
+#endif /* _ASM_LM32_THREAD_INFO_H */
