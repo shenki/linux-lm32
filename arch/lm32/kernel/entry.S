@@ -38,7 +38,7 @@
 	bi		_return_from_exception; \
 	nop
 
-.section ".exception.text"	
+.section ".exception.text"	,"ax"
 
 ENTRY(reset_handler)
 	KERNEL_EXCEPTION_VECTOR(0)
