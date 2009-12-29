@@ -27,6 +27,7 @@
 #include <linux/err.h>
 #include <linux/platform_device.h>
 #include <asm/irq.h>
+#include <asm/io.h>
 
 MODULE_AUTHOR("");
 MODULE_DESCRIPTION("Milkymist PS/2 keyboard connector driver");
