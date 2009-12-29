@@ -2487,3 +2487,13 @@ config FB_SM712
 	  This driver is also available as a module. The module will be
 	  called sm712fb. If you want to compile it as a module, say M
 	  here and read <file:Documentation/kbuild/modules.txt>.
+
+config FB_MILKYMIST
+	bool "Milkymist framebuffer support"
+	depends on FB && PLAT_MILKYMIST
+	select FB_SYS_FILLRECT
+	select FB_SYS_COPYAREA
+	select FB_SYS_IMAGEBLIT
+	select FB_SYS_FOPS
+	help
+         Say Y here to enable support for Milkymist RGB Framebuffer
