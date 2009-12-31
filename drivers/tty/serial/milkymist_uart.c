@@ -129,7 +129,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(port);
-#if 1
+#if 0
 while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
 #endif
 }
@@ -197,12 +197,12 @@ static void milkymistuart_start_tx(struct uart_port *port)
 			CSR_UART_RXTX = port->x_char;
 			port->x_char = 0;
 			port->icount.tx++;
-			return 0;
+			return;
 		}
 
 		/* stop transmitting if buffer empty */
 		if (uart_circ_empty(xmit) || uart_tx_stopped(port))
-			return 0;
+			return;
 
 		/* send next character */
 		tx_cts = 0;
@@ -213,18 +213,18 @@ static void milkymistuart_start_tx(struct uart_port *port)
 		if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 			uart_write_wakeup(port);
 	}
-	return 0;
+	return;
 }
 
 static void milkymistuart_stop_tx(struct uart_port *port)
 {
-	return 0;
+	return;
 }
 
 
 static void milkymistuart_stop_rx(struct uart_port *port)
 {
-	return 0;
+	return;
 }
 
 static void milkymistuart_enable_ms(struct uart_port *port)
@@ -404,7 +404,7 @@ static struct uart_port* __devinit milkymistuart_init_port(struct platform_devic
 	
 	port = &milkymistuart_ports[0];
 	port->type = PORT_UARTLITE;
-	port->iobase = (void __iomem*)0x0;
+	port->iobase = 0x0;
 	port->membase = (void __iomem*)0x80000000;
 	port->irq = IRQ_UARTRX;
 	port->uartclk = cpu_frequency;
