@@ -1662,6 +1662,21 @@ config SERIAL_MVEBU_CONSOLE
 	  and warnings and which allows logins in single user mode)
 	  Otherwise, say 'N'.
 
+config SERIAL_MILKYMIST
+	bool "Enable Milkymist UART driver"
+	depends on LM32 || COMPILE_TEST
+	select SERIAL_CORE
+	help
+          Enable Milkymist UART driver.
+
+config SERIAL_MILKYMIST_CONSOLE
+	bool "Enable Milkymist UART driver as system console"
+	depends on SERIAL_MILKYMIST
+	select SERIAL_CORE_CONSOLE
+	default y
+	help
+	  Allow to use the Milkymist UART driver as system console.
+
 endmenu
 
 config SERIAL_MCTRL_GPIO
