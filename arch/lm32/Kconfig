@@ -63,10 +63,6 @@ config SELECT_MEMORY_MODEL
 	bool
 	default y
 
-config FLATMEM_MANUAL
-	bool
-	default y
-
 config FLATMEM
 	bool
 	default y
