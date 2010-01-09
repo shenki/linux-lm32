@@ -72,6 +72,9 @@ extern unsigned long memory_end;
 #define	virt_addr_valid(kaddr)	(((void *)(kaddr) >= (void *)PAGE_OFFSET) && \
 				((void *)(kaddr) < (void *)memory_end))
 
+#define	VM_DATA_DEFAULT_FLAGS	(VM_READ | VM_WRITE | VM_EXEC | \
+				VM_MAYREAD | VM_MAYWRITE | VM_MAYEXEC )
+
 #endif /* __ASSEMBLY__ */
 
 #include <asm-generic/memory_model.h>

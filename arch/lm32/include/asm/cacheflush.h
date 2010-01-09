@@ -22,7 +22,7 @@
 #define copy_to_user_page(vma, page, vaddr, dst, src, len) \
 do { \
 	memcpy(dst, src, len); \
-	flush_icache_user_range(vma, page, vaddr, dst, src, len); \
+	__flush_cache_all(); \
 } while (0)
 #define copy_from_user_page(vma, page, vaddr, dst, src, len) \
 	memcpy(dst, src, len)
