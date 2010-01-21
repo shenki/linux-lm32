@@ -40,10 +40,11 @@ void dma_sync_single_for_device(struct device *dev, dma_addr_t handle,
 {
 	switch (dir) {
 	case DMA_TO_DEVICE:
-		flush_dcache_range(handle, size);
+		/* L1 cache is write-through so no need to sync for peripherals
+		 * sitting on the Wishbone bus. */
 		break;
 	case DMA_FROM_DEVICE:
-		/* Should be clear already */
+		flush_dcache_range(handle, size);
 		break;
 	default:
 		if (printk_ratelimit())
