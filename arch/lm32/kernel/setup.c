@@ -254,7 +254,28 @@ static struct platform_device lm32milkmouse_device = {
 };
 #endif
 
-/* setup all devices we find in the hardware setup information */
+#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
+static struct resource lm32milkether_resources[] = {
+	[0] = {
+		.start = 0xc0000000,
+		.end = 0xc0008000,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_ETH_0,
+		.end = IRQ_ETH_0,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device lm32milkether_device = {
+	.name = "ethoc",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(lm32milkether_resources),
+	.resource = lm32milkether_resources,
+};
+#endif
+
 /* setup all devices we find in the hardware setup information */
 static int __init setup_devices(void) {
 	int ret = 0;
@@ -286,6 +307,14 @@ static int __init setup_devices(void) {
 	err = platform_device_register(&lm32milkmouse_device);
 	if( err ) {
 		printk(KERN_ERR "could not register 'milkymist_ps2mouse'error:%d\n", err);
+		ret = err;
+	}
+#endif
+
+#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
+	err = platform_device_register(&lm32milkether_device);
+	if( err ) {
+		printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
 		ret = err;
 	}
 #endif

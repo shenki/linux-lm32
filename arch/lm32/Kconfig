@@ -71,10 +71,6 @@ config FLAT_NODE_MEM_MAP
 	bool
 	default y
 
-config NO_DMA
-	bool
-	default y
-
 config NO_IOPORT
 	bool
 	default y
