@@ -884,21 +884,17 @@ static int ethoc_probe(struct platform_device *pdev)
 	unsigned int phy;
 	int ret = 0;
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* allocate networking device */
 	netdev = alloc_etherdev(sizeof(struct ethoc));
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (!netdev) {
 		dev_err(&pdev->dev, "cannot allocate network device\n");
 		ret = -ENOMEM;
 		goto out;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	SET_NETDEV_DEV(netdev, &pdev->dev);
 	platform_set_drvdata(pdev, netdev);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* obtain I/O memory space */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	if (!res) {
@@ -907,26 +903,21 @@ printk("%s at %d\n", __FILE__, __LINE__);
 		goto free;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	mmio = devm_request_mem_region(&pdev->dev, res->start,
 			res->end - res->start + 1, res->name);
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (!mmio) {
 		dev_err(&pdev->dev, "cannot request I/O memory space\n");
 		ret = -ENXIO;
 		goto free;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	netdev->base_addr = mmio->start;
 
 	/* obtain buffer memory space */
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (res) {
 		mem = devm_request_mem_region(&pdev->dev, res->start,
 			res->end - res->start + 1, res->name);
-printk("%s at %d\n", __FILE__, __LINE__);
 		if (!mem) {
 			dev_err(&pdev->dev, "cannot request memory space\n");
 			ret = -ENXIO;
@@ -938,17 +929,14 @@ printk("%s at %d\n", __FILE__, __LINE__);
 	}
 
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* obtain device IRQ number */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (!res) {
 		dev_err(&pdev->dev, "cannot obtain IRQ\n");
 		ret = -ENXIO;
 		goto free;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	netdev->irq = res->start;
 
 	/* setup driver-private data */
@@ -956,71 +944,57 @@ printk("%s at %d\n", __FILE__, __LINE__);
 	priv->netdev = netdev;
 	priv->dma_alloc = 0;
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	priv->iobase = devm_ioremap_nocache(&pdev->dev, netdev->base_addr,
 			mmio->end - mmio->start + 1);
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (!priv->iobase) {
 		dev_err(&pdev->dev, "cannot remap I/O memory space\n");
 		ret = -ENXIO;
 		goto error;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (netdev->mem_end) {
-printk("%s at %d\n", __FILE__, __LINE__);
 		priv->membase = devm_ioremap_nocache(&pdev->dev,
 			netdev->mem_start, mem->end - mem->start + 1);
-printk("%s at %d\n", __FILE__, __LINE__);
 		if (!priv->membase) {
 			dev_err(&pdev->dev, "cannot remap memory space\n");
 			ret = -ENXIO;
 			goto error;
 		}
 	} else {
-printk("%s at %d\n", __FILE__, __LINE__);
 		/* Allocate buffer memory */
 		priv->membase = dma_alloc_coherent(NULL,
 			buffer_size, (void *)&netdev->mem_start,
 			GFP_KERNEL);
-printk("%s at %d\n", __FILE__, __LINE__);
 		if (!priv->membase) {
 			dev_err(&pdev->dev, "cannot allocate %dB buffer\n",
 				buffer_size);
 			ret = -ENOMEM;
 			goto error;
 		}
-printk("%s at %d\n", __FILE__, __LINE__);
 		netdev->mem_end = netdev->mem_start + buffer_size;
 		priv->dma_alloc = buffer_size;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* Allow the platform setup code to pass in a MAC address. */
 	if (pdev->dev.platform_data) {
-printk("%s at %d\n", __FILE__, __LINE__);
 		struct ethoc_platform_data *pdata =
 			(struct ethoc_platform_data *)pdev->dev.platform_data;
 		memcpy(netdev->dev_addr, pdata->hwaddr, IFHWADDRLEN);
 		priv->phy_id = pdata->phy_id;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* Check that the given MAC address is valid. If it isn't, read the
 	 * current MAC from the controller. */
 	if (!is_valid_ether_addr(netdev->dev_addr))
 		ethoc_get_mac_address(netdev, netdev->dev_addr);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* Check the MAC again for validity, if it still isn't choose and
 	 * program a random one. */
 	if (!is_valid_ether_addr(netdev->dev_addr))
 		random_ether_addr(netdev->dev_addr);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	ethoc_set_mac_address(netdev, netdev->dev_addr);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* register MII bus */
 	priv->mdio = mdiobus_alloc();
 	if (!priv->mdio) {
@@ -1028,7 +1002,6 @@ printk("%s at %d\n", __FILE__, __LINE__);
 		goto free;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	priv->mdio->name = "ethoc-mdio";
 	snprintf(priv->mdio->id, MII_BUS_ID_SIZE, "%s-%d",
 			priv->mdio->name, pdev->id);
@@ -1037,43 +1010,34 @@ printk("%s at %d\n", __FILE__, __LINE__);
 	priv->mdio->reset = ethoc_mdio_reset;
 	priv->mdio->priv = priv;
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	priv->mdio->irq = kmalloc(sizeof(int) * PHY_MAX_ADDR, GFP_KERNEL);
 	if (!priv->mdio->irq) {
 		ret = -ENOMEM;
 		goto free_mdio;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	for (phy = 0; phy < PHY_MAX_ADDR; phy++)
 		priv->mdio->irq[phy] = PHY_POLL;
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	ret = mdiobus_register(priv->mdio);
 	if (ret) {
-printk("%s at %d\n", __FILE__, __LINE__);
 		dev_err(&netdev->dev, "failed to register MDIO bus\n");
 		goto free_mdio;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	ret = ethoc_mdio_probe(netdev);
 	if (ret) {
-printk("%s at %d\n", __FILE__, __LINE__);
 		dev_err(&netdev->dev, "failed to probe MDIO bus\n");
 		goto error;
 	}
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	ether_setup(netdev);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* setup the net_device structure */
 	netdev->netdev_ops = &ethoc_netdev_ops;
 	netdev->watchdog_timeo = ETHOC_TIMEOUT;
 	netdev->features |= 0;
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	/* setup NAPI */
 	memset(&priv->napi, 0, sizeof(priv->napi));
 	netif_napi_add(netdev, &priv->napi, ethoc_poll, 64);
@@ -1081,10 +1045,8 @@ printk("%s at %d\n", __FILE__, __LINE__);
 	spin_lock_init(&priv->rx_lock);
 	spin_lock_init(&priv->lock);
 
-printk("%s at %d\n", __FILE__, __LINE__);
 	ret = register_netdev(netdev);
 	if (ret < 0) {
-printk("%s at %d\n", __FILE__, __LINE__);
 		dev_err(&netdev->dev, "failed to register interface\n");
 		goto error;
 	}
@@ -1092,20 +1054,16 @@ printk("%s at %d\n", __FILE__, __LINE__);
 	goto out;
 
 error:
-printk("%s at %d\n", __FILE__, __LINE__);
 	mdiobus_unregister(priv->mdio);
 free_mdio:
-printk("%s at %d\n", __FILE__, __LINE__);
 	kfree(priv->mdio->irq);
 	mdiobus_free(priv->mdio);
 free:
-printk("%s at %d\n", __FILE__, __LINE__);
 	if (priv->dma_alloc)
 		dma_free_coherent(NULL, priv->dma_alloc, priv->membase,
 			netdev->mem_start);
 	free_netdev(netdev);
 out:
-printk("%s at %d\n", __FILE__, __LINE__);
 	return ret;
 }
 
