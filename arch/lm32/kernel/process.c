@@ -67,7 +67,8 @@ EXPORT_SYMBOL(pm_power_off);
  */
 static void default_idle(void)
 {
- 	while(!need_resched());
+ 	while(!need_resched())
+		__asm__ __volatile__("and r0, r0, r0" ::: "memory");
 }
 
 void (*idle)(void) = default_idle;
