@@ -792,7 +792,7 @@ ENTRY(_sys_call_table)
 	.long sys_getresuid	/* getresuid16 */	/* 165 */
 	.long sys_ni_syscall	/* for vm86 */
 	.long sys_ni_syscall	/* old "query_module" */
-	.long sys_ni_syscall	/* sys_poll */
+	.long sys_poll		/* sys_poll */
 	.long sys_ni_syscall	/* sys_nfsservctl */
 	.long sys_setresgid	/* setresgid16 */	/* 170 */
 	.long sys_getresgid	/* getresgid16 */
@@ -933,7 +933,7 @@ ENTRY(_sys_call_table)
 	.long sys_fchmodat
 	.long sys_faccessat
 	.long sys_ni_syscall /* sys_pselect6 */
-	.long sys_ni_syscall /* sys_ppoll */
+	.long sys_ppoll      /* sys_ppoll */
 	.long sys_unshare	/* 310 */
 	.long sys_ni_syscall
 	.long sys_ni_syscall
