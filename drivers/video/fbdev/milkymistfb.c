@@ -27,30 +27,29 @@
 
 #define VIDEOMEMSIZE	(1024*800*2)	/* 1.6 MB */
 
-#define	MMPTR(x)		(*((volatile unsigned int *)(x)))
-#define	CSR_VGA_RESET		MMPTR(0x80003000)
+#define	CSR_VGA_RESET		0x80003000
 
-#define	VGA_RESET		(0x01)
+#define	VGA_RESET		0x01
 
-#define	CSR_VGA_HRES		MMPTR(0x80003004)
-#define	CSR_VGA_HSYNC_START	MMPTR(0x80003008)
-#define	CSR_VGA_HSYNC_END	MMPTR(0x8000300C)
-#define	CSR_VGA_HSCAN		MMPTR(0x80003010)
+#define	CSR_VGA_HRES		0x80003004
+#define	CSR_VGA_HSYNC_START	0x80003008
+#define	CSR_VGA_HSYNC_END	0x8000300C
+#define	CSR_VGA_HSCAN		0x80003010
 
-#define	CSR_VGA_VRES		MMPTR(0x80003014)
-#define	CSR_VGA_VSYNC_START	MMPTR(0x80003018)
-#define	CSR_VGA_VSYNC_END	MMPTR(0x8000301C)
-#define	CSR_VGA_VSCAN		MMPTR(0x80003020)
+#define	CSR_VGA_VRES		0x80003014
+#define	CSR_VGA_VSYNC_START	0x80003018
+#define	CSR_VGA_VSYNC_END	0x8000301C
+#define	CSR_VGA_VSCAN		0x80003020
 
-#define	CSR_VGA_BASEADDRESS	MMPTR(0x80003024)
-#define	CSR_VGA_BASEADDRESS_ACT	MMPTR(0x80003028)
+#define	CSR_VGA_BASEADDRESS	0x80003024
+#define	CSR_VGA_BASEADDRESS_ACT	0x80003028
 
-#define	CSR_VGA_BURST_COUNT	MMPTR(0x8000302C)
+#define	CSR_VGA_BURST_COUNT	0x8000302C
 
-#define	CSR_VGA_SOURCE_CLOCK	MMPTR(0x80003030)
-#define	VGA_CLOCK_VGA		(0x00)
-#define	VGA_CLOCK_SVGA		(0x01)
-#define	VGA_CLOCK_XGA		(0x02)
+#define	CSR_VGA_SOURCE_CLOCK	0x80003030
+#define	VGA_CLOCK_VGA		0x00
+#define	VGA_CLOCK_SVGA		0x01
+#define	VGA_CLOCK_XGA		0x02
 
 /* TODO: move these into the driver private structure (info->par) */
 static void *videomemory;
@@ -573,12 +572,12 @@ static int __init milkymistfb_probe(struct platform_device *dev)
 	info->screen_base = (char __iomem *)videomemory;
 	info->fbops = &milkymistfb_ops;
 
-	CSR_VGA_RESET = 1;
-	vga = &milkymistfb_predefined[milkymistfb_def_mode].vga;
-	CSR_VGA_SOURCE_CLOCK = vga->csr_vga_source_clock;
-	if ( CSR_VGA_SOURCE_CLOCK != vga->csr_vga_source_clock ) {
+	out_be32((u32 *)CSR_VGA_RESET,1);
+	vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
+	out_be32((u32 *)CSR_VGA_SOURCE_CLOCK,vga->csr_vga_source_clock);
+	if ( in_be32((u32 *)CSR_VGA_SOURCE_CLOCK) != vga->csr_vga_source_clock ) {
 		milkymistfb_def_mode = 1;
-		vga = &milkymistfb_predefined[milkymistfb_def_mode].vga;
+		vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
 	}
 
 	info->var = milkymistfb_predefined[milkymistfb_def_mode].var;
@@ -586,7 +585,7 @@ static int __init milkymistfb_probe(struct platform_device *dev)
 	info->pseudo_palette = info->par;
 	info->par = NULL;
 	info->flags = FBINFO_FLAG_DEFAULT;
-	info->fix.smem_start = (char *)videomemory;
+	info->fix.smem_start = (unsigned long)videomemory;
 
 	retval = fb_alloc_cmap(&info->cmap, 256, 0);
 	if (retval < 0)
@@ -605,17 +604,17 @@ static int __init milkymistfb_probe(struct platform_device *dev)
 		info->node,
 		milkymistfb_predefined[milkymistfb_def_mode].name);
 
-	CSR_VGA_BASEADDRESS = videomemory;
-	CSR_VGA_HRES = vga->csr_vga_hres;
-	CSR_VGA_HSYNC_START = vga->csr_vga_hsync_start;
-	CSR_VGA_HSYNC_END = vga->csr_vga_hsync_end;
-	CSR_VGA_HSCAN = vga->csr_vga_hscan;
-	CSR_VGA_VRES = vga->csr_vga_vres;
-	CSR_VGA_VSYNC_START = vga->csr_vga_vsync_start;
-	CSR_VGA_VSYNC_END = vga->csr_vga_vsync_end;
-	CSR_VGA_VSCAN = vga->csr_vga_vscan;
-	CSR_VGA_BURST_COUNT = (vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64);
-	CSR_VGA_RESET = 0;
+	out_be32((u32 *)CSR_VGA_BASEADDRESS,(unsigned int)videomemory);
+	out_be32((u32 *)CSR_VGA_HRES,vga->csr_vga_hres);
+	out_be32((u32 *)CSR_VGA_HSYNC_START,vga->csr_vga_hsync_start);
+	out_be32((u32 *)CSR_VGA_HSYNC_END,vga->csr_vga_hsync_end);
+	out_be32((u32 *)CSR_VGA_HSCAN,vga->csr_vga_hscan);
+	out_be32((u32 *)CSR_VGA_VRES,vga->csr_vga_vres);
+	out_be32((u32 *)CSR_VGA_VSYNC_START,vga->csr_vga_vsync_start);
+	out_be32((u32 *)CSR_VGA_VSYNC_END,vga->csr_vga_vsync_end);
+	out_be32((u32 *)CSR_VGA_VSCAN,vga->csr_vga_vscan);
+	out_be32((u32 *)CSR_VGA_BURST_COUNT,(vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64));
+	out_be32((u32 *)CSR_VGA_RESET,0);
        
 	return 0;
 err2:
@@ -631,7 +630,7 @@ static int milkymistfb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 
-	CSR_VGA_RESET = VGA_RESET;
+	out_be32((u32 *)CSR_VGA_RESET,VGA_RESET);
 
 	if (info) {
 		unregister_framebuffer(info);

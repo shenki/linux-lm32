@@ -90,13 +90,12 @@ void cpu_idle(void)
 	}
 }
 
-#define MMPTR(x) (*((volatile unsigned int *)(x)))
-#define CSR_SYSTEM_ID MMPTR(0x8000103c)
+#define CSR_SYSTEM_ID 0x8000103c
 
 void machine_restart(char * __unused)
 {
 	/* Writing to CSR_SYSTEM_ID causes a system reset */
-	CSR_SYSTEM_ID = 1;
+	out_be32((u32 *)CSR_SYSTEM_ID,1);
 	while(1);
 }
 

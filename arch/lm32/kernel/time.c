@@ -48,14 +48,12 @@
 #include <asm/setup.h>
 #include <asm/uaccess.h>
 
-#define MMPTR(x) (*((volatile unsigned int *)(x)))
+#define CSR_TIMER0_CONTROL	0x80001010
+#define CSR_TIMER0_COMPARE	0x80001014
+#define CSR_TIMER0_COUNTER	0x80001018
 
-#define CSR_TIMER0_CONTROL	MMPTR(0x80001010)
-#define CSR_TIMER0_COMPARE	MMPTR(0x80001014)
-#define CSR_TIMER0_COUNTER	MMPTR(0x80001018)
-
-#define TIMER_ENABLE		(0x01)
-#define TIMER_AUTORESTART	(0x02)
+#define TIMER_ENABLE		0x01
+#define TIMER_AUTORESTART	0x02
 
 cycles_t lm32_cycles = 0;
 
@@ -74,7 +72,7 @@ static struct irqaction lm32_core_timer_irqaction = {
  */
 static irqreturn_t timer_interrupt(int irq, void *arg)
 {
-	lm32_cycles += CSR_TIMER0_COMPARE;
+	lm32_cycles += in_be32((u32 *)CSR_TIMER0_COMPARE);
 	write_seqlock(&xtime_lock);
 
 	do_timer(1);
@@ -106,24 +104,24 @@ void time_init(void)
 
 static unsigned long get_time_offset(void)
 {
-	return CSR_TIMER0_COUNTER/(cpu_frequency / HZ);
+	return in_be32((u32 *)CSR_TIMER0_COUNTER)/(cpu_frequency / HZ);
 }
 
 cycles_t get_cycles(void)
 {
 	return lm32_cycles +
-		CSR_TIMER0_COUNTER;
+		in_be32((u32 *)CSR_TIMER0_COUNTER);
 }
 
 void lm32_systimer_program(int periodic, cycles_t cyc)
 {
 	/* stop timer */
-	CSR_TIMER0_CONTROL = 0;
+	out_be32((u32 *)CSR_TIMER0_CONTROL,0);
 	/* reset/configure timer */
-	CSR_TIMER0_COUNTER = 0;
-	CSR_TIMER0_COMPARE = cyc;
+	out_be32((u32 *)CSR_TIMER0_COUNTER,0);
+	out_be32((u32 *)CSR_TIMER0_COMPARE,cyc);
 	/* start timer */
-	CSR_TIMER0_CONTROL = periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE;
+	out_be32((u32 *)CSR_TIMER0_CONTROL,periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE);
 }
 
 /*

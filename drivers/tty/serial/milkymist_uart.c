@@ -37,10 +37,8 @@
 #include <asm/irq.h>
 #include <asm/setup.h>
 
-#define MMPTR(x)		(*((volatile unsigned int *)(x)))
-
-#define CSR_UART_RXTX		MMPTR(0x80000000)
-#define CSR_UART_DIVISOR	MMPTR(0x80000004)
+#define CSR_UART_RXTX		0x80000000
+#define CSR_UART_DIVISOR	0x80000004
 
 #define IRQ_UARTRX		(3)
 #define IRQ_UARTTX		(4)
@@ -99,7 +97,7 @@ static struct uart_ops milkymistuart_pops = {
 
 static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud)
 {
-	CSR_UART_DIVISOR = 100000000 / baud / 16;
+	out_be32((u32 *)CSR_UART_DIVISOR,(int)(100000000/baud/16));
 }
 
 static void milkymistuart_tx_next_char(struct uart_port* port)
@@ -109,7 +107,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 	if (port->x_char) {
 		/* send xon/xoff character */
 		tx_cts = 0;
-		CSR_UART_RXTX = port->x_char;
+		out_be32((u32 *)CSR_UART_RXTX,port->x_char);
 		port->x_char = 0;
 		port->icount.tx++;
 		return;
@@ -123,7 +121,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 
 	/* send next character */
 	tx_cts = 0;
-	CSR_UART_RXTX = xmit->buf[xmit->tail];
+	out_be32((u32 *)CSR_UART_RXTX,xmit->buf[xmit->tail]);
 	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 	port->icount.tx++;
 
@@ -139,7 +137,7 @@ static void milkymistuart_rx_next_char(struct uart_port* port)
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
-	ch = CSR_UART_RXTX & 0xFF;
+	ch = in_be32((u32 *)CSR_UART_RXTX) & 0xFF;
 	port->icount.rx++;
 
 	if (uart_handle_sysrq_char(port, ch))
@@ -194,7 +192,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 		if (port->x_char) {
 			/* send xon/xoff character */
 			tx_cts = 0;
-			CSR_UART_RXTX = port->x_char;
+			out_be32((u32 *)CSR_UART_RXTX,port->x_char);
 			port->x_char = 0;
 			port->icount.tx++;
 			return;
@@ -206,7 +204,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 
 		/* send next character */
 		tx_cts = 0;
-		CSR_UART_RXTX = xmit->buf[xmit->tail];
+		out_be32((u32 *)CSR_UART_RXTX,xmit->buf[xmit->tail]);
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
 
@@ -317,7 +315,7 @@ static int milkymistuart_verify_port(struct uart_port *port, struct serial_struc
 #ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
 static void milkymist_console_putchar(struct uart_port *port, int ch)
 {
-	CSR_UART_RXTX = ch;
+	out_be32((u32 *)CSR_UART_RXTX,ch);
 	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
 	lm32_irq_ack(IRQ_UARTTX);
 }
@@ -365,7 +363,7 @@ static struct console milkymist_console = {
 static int __init milkymist_early_console_init(void)
 {
 	add_preferred_console(MILKYMISTUART_DEVICENAME, milkymistuart_default_console_device->id, NULL);
-	milkymistuart_init_port(&milkymistuart_default_console_device);
+	milkymistuart_init_port((struct platform_device *)&milkymistuart_default_console_device);
 	register_console(&milkymist_console);
 	pr_info("milkymist_uart: registered real console\n");
 	return 0;
