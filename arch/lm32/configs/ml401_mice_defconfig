@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.33-rc8
-# Sun Feb 21 12:15:34 2010
+# Linux kernel version: 2.6.33
+# Thu Feb 25 16:37:12 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
@@ -461,7 +461,7 @@ CONFIG_SERIAL_CORE=y
 CONFIG_SERIAL_MILKYMIST=y
 # CONFIG_SERIAL_MILKYMIST_CONSOLE is not set
 CONFIG_UNIX98_PTYS=y
-# CONFIG_DEVPTS_MULTIPLE_INSTANCES is not set
+CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
 CONFIG_LEGACY_PTYS=y
 CONFIG_LEGACY_PTY_COUNT=256
 # CONFIG_IPMI_HANDLER is not set
