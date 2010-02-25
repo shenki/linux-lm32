@@ -1,8 +1,6 @@
 /*
  * Based on:
  * include/asm-m68knommu/io.h
- *
- * lm32 does not currently support ISA/PCI
  */
 
 #ifndef _LM32_ASM_IO_H
@@ -11,20 +9,6 @@
 #ifdef __KERNEL__
 
 #ifndef __ASSEMBLY__
-
-/*
- * These are for ISA/PCI shared memory _only_ and should never be used
- * on any other type of memory, including Zorro memory. They are meant to
- * access the bus in the bus byte order which is little-endian!.
- *
- * readX/writeX() are used to access memory mapped devices. On some
- * architectures the memory mapped IO stuff needs to be accessed
- * differently. On the m68k architecture, we just read/write the
- * memory location directly.
- */
-/* ++roman: The assignments to temp. vars avoid that gcc sometimes generates
- * two accesses to memory, which may be undesireable for some devices.
- */
 
 /*
  * swap functions are sometimes needed to interface little-endian hardware
@@ -116,60 +100,37 @@ static inline void insl(unsigned int addr, void *buf, int len)
  *	can override them as required
  */
 
-#define memset_io(a,b,c)	memset((void *)(a),(b),(c))
-#define memcpy_fromio(a,b,c)	memcpy((a),(void *)(b),(c))
-#define memcpy_toio(a,b,c)	memcpy((void *)(a),(b),(c))
+#define memset_io(a, b, c)	memset((void *)(a), (b), (c))
+#define memcpy_fromio(a, b, c)	memcpy((a), (void *)(b), (c))
+#define memcpy_toio(a, b, c)	memcpy((void *)(a), (b), (c))
 
 #define inb(addr)    readb(addr)
 #define inw(addr)    readw(addr)
 #define inl(addr)    readl(addr)
-#define outb(x,addr) ((void) writeb(x,addr))
-#define outw(x,addr) ((void) writew(x,addr))
-#define outl(x,addr) ((void) writel(x,addr))
+#define outb(x,addr) ((void) writeb(x, addr))
+#define outw(x,addr) ((void) writew(x, addr))
+#define outl(x,addr) ((void) writel(x, addr))
 
 #define inb_p(addr)    inb(addr)
 #define inw_p(addr)    inw(addr)
 #define inl_p(addr)    inl(addr)
-#define outb_p(x,addr) outb(x,addr)
-#define outw_p(x,addr) outw(x,addr)
-#define outl_p(x,addr) outl(x,addr)
+#define outb_p(x, addr) outb(x, addr)
+#define outw_p(x, addr) outw(x, addr)
+#define outl_p(x, addr) outl(x, addr)
 
-#define DEF_MMIO_IN_BE(name, size, insn)                                \
-static inline u##size name(const volatile u##size __iomem *addr)        \
-{                                                                       \
-        u##size ret;                                                    \
-        __asm__ __volatile__(#insn " %0,%1"\
-                : "=r" (ret) : "m" (*addr) : "memory");                 \
-        return ret;                                                     \
-}
-
-#define DEF_MMIO_OUT_BE(name, size, insn)                               \
-static inline void name(volatile u##size __iomem *addr, u##size val)    \
-{                                                                       \
-        __asm__ __volatile__(#insn " %0,%1"                 \
-                : "=m" (*addr) : "r" (val) : "memory");                 \
-}
-
-#if 0
-//#define in_8(addr)     readb(addr)
-//#define in_be16(addr)  readw(addr)
-//#define out_8(b, addr) ((void) writeb(b,addr))
-//#define out_be16(b, addr) ((void)writew(b,addr))
-#else
-DEF_MMIO_IN_BE(in_8,     8, lb);
-DEF_MMIO_IN_BE(in_be16, 16, lh);
-DEF_MMIO_IN_BE(in_be32, 32, lw);
-DEF_MMIO_OUT_BE(out_8,     8, sb);
-DEF_MMIO_OUT_BE(out_be16, 16, sh);
-DEF_MMIO_OUT_BE(out_be32, 32, sw);
-#endif
+#define in_8(addr)     readb(addr)
+#define in_be16(addr)  readw(addr)
+#define in_be32(addr)  readl(addr)
+#define out_8(b, addr) ((void) writeb(b, addr))
+#define out_be16(b, addr) ((void)writew(b, addr))
+#define out_be32(b, addr) ((void)writel(b, addr))
 
 #define in_le16(addr)  __le16_to_cpu(readw(addr))
-#define out_le16(b, addr) ((void)writew(__cpu_to_le16(b),addr))
+#define in_le32(addr)  __le32_to_cpu(readl(addr))
+#define out_le16(b, addr) ((void)writew(__cpu_to_le16(b), addr))
+#define out_le32(b, addr) ((void)writel(__cpu_to_le32(b), addr))
 
-
-
-#define IO_SPACE_LIMIT 0xffff
+#define IO_SPACE_LIMIT 0xffffffff
 
 
 /* Values for nocacheflag and cmode */
@@ -201,7 +162,6 @@ static inline void *ioremap_fullcache(unsigned long physaddr, unsigned long size
 extern void iounmap(void *addr);
 
 /* Nothing to do */
-
 #define dma_cache_inv(_start,_size)		do { } while (0)
 #define dma_cache_wback(_start,_size)		do { } while (0)
 #define dma_cache_wback_inv(_start,_size)	do { } while (0)

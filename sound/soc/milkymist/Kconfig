@@ -1,0 +1,12 @@
+config SND_MILKYMIST_SOC
+	tristate "SoC Audio for the Milkymist chips"
+	select AC97_BUS
+	select SND_SOC_AC97_BUS
+	depends on PLAT_MILKYMIST
+ 
+config SND_MILKYMIST_SOC_MM1
+	tristate "SoC Audio support for Milkymist One and ML401"
+	depends on SND_MILKYMIST_SOC && BOARD_XILINX_ML401
+	select SND_SOC_LM4550
+	help
+	  Say Y if you want to add support for SoC audio on Milkymist One and ML401.

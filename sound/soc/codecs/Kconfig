@@ -89,6 +89,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_MAX9850 if I2C
 	select SND_SOC_MAX9860 if I2C
 	select SND_SOC_MAX9768 if I2C
+	select SND_SOC_LM4550 if SND_SOC_AC97_BUS
 	select SND_SOC_MAX9877 if I2C
 	select SND_SOC_MC13783 if MFD_MC13XXX
 	select SND_SOC_ML26124 if I2C
@@ -481,6 +482,9 @@ config SND_SOC_JZ4740_CODEC
 
 config SND_SOC_L3
        tristate
+
+config SND_SOC_LM4550
+	tristate
 
 config SND_SOC_DA7210
         tristate

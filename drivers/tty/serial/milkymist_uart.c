@@ -256,6 +256,8 @@ static int milkymistuart_startup(struct uart_port *port)
 
 static void milkymistuart_shutdown(struct uart_port *port)
 {
+	lm32_irq_mask(IRQ_UARTRX);
+	lm32_irq_mask(IRQ_UARTTX);
 	free_irq(IRQ_UARTRX, port);
 	free_irq(IRQ_UARTTX, port);
 }
