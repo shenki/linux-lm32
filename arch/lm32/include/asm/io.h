@@ -158,8 +158,10 @@ static inline void name(volatile u##size __iomem *addr, u##size val)    \
 #else
 DEF_MMIO_IN_BE(in_8,     8, lb);
 DEF_MMIO_IN_BE(in_be16, 16, lh);
+DEF_MMIO_IN_BE(in_be32, 32, lw);
 DEF_MMIO_OUT_BE(out_8,     8, sb);
 DEF_MMIO_OUT_BE(out_be16, 16, sh);
+DEF_MMIO_OUT_BE(out_be32, 32, sw);
 #endif
 
 #define in_le16(addr)  __le16_to_cpu(readw(addr))

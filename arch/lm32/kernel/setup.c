@@ -312,8 +312,8 @@ static int __init setup_devices(void) {
 #endif
 
 #if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
-	writel( lm32milkether_resources[0].start, 0xa000);
-	if ( readl( lm32milkether_resources[0].start) == 0xa000) {
+	out_be32( lm32milkether_resources[0].start, 0xa000);
+	if ( in_be32( lm32milkether_resources[0].start) == 0xa000) {
 		err = platform_device_register(&lm32milkether_device);
 		if( err ) {
 			printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
