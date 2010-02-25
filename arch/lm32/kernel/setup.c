@@ -74,8 +74,6 @@ unsigned int cpu_frequency;
 unsigned int sdram_start;
 unsigned int sdram_size;
 
-unsigned int lm32tag_num_uart = 1;
-
 void __init setup_arch(char **cmdline_p)
 {
 	/*
@@ -176,7 +174,7 @@ struct seq_operations cpuinfo_op = {
 static struct resource milkymistuart_resources[] = {
 	[0] = {
 		.start = 0x80000000,
-		.end = 0x8000000f,
+		.end = 0x80000fff,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -197,7 +195,7 @@ static struct platform_device milkymistuart_device = {
 static struct resource lm32sysace_resources[] = {
 	[0] = {
 		.start = 0xa0000000,
-		.end = 0xa00000ff,
+		.end = 0xafffffff,
 		.flags = IORESOURCE_MEM,
 	},
 };
@@ -214,7 +212,7 @@ static struct platform_device lm32sysace_device = {
 static struct resource lm32milkbd_resources[] = {
 	[0] = {
 		.start = 0x80007000,
-		.end = 0x80007000,
+		.end = 0x80007fff,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -236,7 +234,7 @@ static struct platform_device lm32milkbd_device = {
 static struct resource lm32milkmouse_resources[] = {
 	[0] = {
 		.start = 0x80008000,
-		.end = 0x80008000,
+		.end = 0x80008fff,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
@@ -276,7 +274,28 @@ static struct platform_device lm32milkether_device = {
 };
 #endif
 
-/* setup all devices we find in the hardware setup information */
+#if defined(CONFIG_SND_MILKYMIST_SOC_AC97)
+static struct resource ac97_resources[] = {
+	[0] = {
+		.start = 0x80004000,
+		.end = 0x80004fff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_AC97CRREQUEST,
+		.end = IRQ_AC97DMAW,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device ac97_device = {
+	.name = "milkymist-ac97",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(ac97_resources),
+	.resource = ac97_resources,
+};
+#endif
+
 static int __init setup_devices(void) {
 	int ret = 0;
 	int err;
@@ -312,14 +331,18 @@ static int __init setup_devices(void) {
 #endif
 
 #if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
-	out_be32( lm32milkether_resources[0].start, 0xa000);
-	if ( in_be32( lm32milkether_resources[0].start) == 0xa000) {
-		err = platform_device_register(&lm32milkether_device);
-		if( err ) {
-			printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
-			ret = err;
-		}
-		printk("ETHER: ETHOC at 0x%x\n", lm32milkether_resources[0].start);
+	err = platform_device_register(&lm32milkether_device);
+	if( err ) {
+		printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
+		ret = err;
+	}
+#endif
+
+#if defined(CONFIG_SND_MILKYMIST_SOC_AC97)
+	err = platform_device_register(&ac97_device);
+	if( err ) {
+		printk(KERN_ERR "could not register 'milkymist_ac97'error:%d\n", err);
+		ret = err;
 	}
 #endif
 

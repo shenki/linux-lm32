@@ -83,10 +83,10 @@ static void milkymist_ac97_cold_reset(struct snd_ac97 *ac97)
 }
 
 struct snd_ac97_bus_ops soc_ac97_ops = {
-	.read	= milkymist_ac97_read,
-	.write	= milkymist_ac97_write,
+	.read		= milkymist_ac97_read,
+	.write		= milkymist_ac97_write,
 	.warm_reset	= milkymist_ac97_warm_reset,
-	.reset	= milkymist_ac97_cold_reset,
+	.reset		= milkymist_ac97_cold_reset,
 };
 EXPORT_SYMBOL_GPL(soc_ac97_ops);
 
@@ -109,15 +109,36 @@ struct snd_soc_dai milkymist_ac97_dai = {
 };
 EXPORT_SYMBOL_GPL(milkymist_ac97_dai);
 
-static int __init milkymist_ac97_init(void)
+static int __devinit milkymist_ac97_probe(struct platform_device *pdev)
 {
+	milkymist_ac97_dai.dev = &pdev->dev;
 	return snd_soc_register_dai(&milkymist_ac97_dai);
 }
+
+static void __devexit milkymist_ac97_remove(struct platform_device *pdev)
+{
+	snd_soc_unregister_dai(&milkymist_ac97_dai);
+}
+
+static struct platform_driver milkymist_ac97_driver = {
+	.probe  = milkymist_ac97_probe,
+	.remove = __devexit_p(milkymist_ac97_remove),
+	.driver = {
+		.name   = "milkymist-ac97",
+		.owner  = THIS_MODULE,
+	}
+};
+
+static int __init milkymist_ac97_init(void)
+{
+	return platform_driver_register(&milkymist_ac97_driver);
+}
+
 module_init(milkymist_ac97_init);
 
 static void __exit milkymist_ac97_exit(void)
 {
-	snd_soc_unregister_dai(&milkymist_ac97_dai);
+	platform_driver_unregister(&milkymist_ac97_driver);
 }
 module_exit(milkymist_ac97_exit);
 

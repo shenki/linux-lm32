@@ -2,7 +2,7 @@
  * ALSA SoC LM4550 codec support
  *
  * Copyright (C) 2010 Sebastien Bourdeauducq
- * Based on lm4550.c, (C) Analog Devices Inc.
+ * Based on ad1980.c, (C) Analog Devices Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
