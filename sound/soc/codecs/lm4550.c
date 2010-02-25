@@ -2,7 +2,7 @@
  * ALSA SoC LM4550 codec support
  *
  * Copyright (C) 2010 Sebastien Bourdeauducq
- * Based on ad1980.c, (C) Analog Devices Inc.
+ * Based on lm4550.c, (C) Analog Devices Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -109,7 +109,7 @@ static int lm4550_soc_probe(struct platform_device *pdev)
 	codec = socdev->card->codec;
 	mutex_init(&codec->mutex);
 
-	codec->name = "lm4550";
+	codec->name = "LM4550";
 	codec->owner = THIS_MODULE;
 	codec->dai = &lm4550_dai;
 	codec->num_dai = 1;

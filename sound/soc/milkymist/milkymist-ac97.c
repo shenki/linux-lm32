@@ -38,7 +38,7 @@ static unsigned short milkymist_ac97_read(struct snd_ac97 *ac97,
 	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN);
 
 	timeout = 1000;
-	while (!(lm32_irq_pending() & IRQ_AC97CRREPLY)) {
+	while (!(lm32_irq_pending() & (1 << IRQ_AC97CRREPLY))) {
 		udelay(10);
 		timeout--;
 		if(timeout == 0) {
@@ -61,7 +61,7 @@ void milkymist_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN|AC97_CRCTL_WRITE);
 
 	timeout = 1000;
-	while (!(lm32_irq_pending() & IRQ_AC97CRREQUEST)) {
+	while (!(lm32_irq_pending() & (1 << IRQ_AC97CRREQUEST))) {
 		udelay(10);
 		timeout--;
 		if(timeout == 0) {

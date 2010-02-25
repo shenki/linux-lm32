@@ -35,7 +35,7 @@ static struct snd_soc_dai_link milkymist_mm1_dai = {
 };
 
 static struct snd_soc_card milkymist_mm1 = {
-	.name = "Milkymist One",
+	.name = "Milkymist One/ML401 audio",
 	.platform = &milkymist_ac97_soc_platform,
 	.dai_link = &milkymist_mm1_dai,
 	.num_links = 1,
