@@ -95,7 +95,7 @@ void cpu_idle(void)
 void machine_restart(char * __unused)
 {
 	/* Writing to CSR_SYSTEM_ID causes a system reset */
-	out_be32((u32 *)CSR_SYSTEM_ID,1);
+	out_be32(CSR_SYSTEM_ID,1);
 	while(1);
 }
 

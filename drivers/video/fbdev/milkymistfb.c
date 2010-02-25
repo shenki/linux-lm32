@@ -572,10 +572,10 @@ static int __init milkymistfb_probe(struct platform_device *dev)
 	info->screen_base = (char __iomem *)videomemory;
 	info->fbops = &milkymistfb_ops;
 
-	out_be32((u32 *)CSR_VGA_RESET,1);
+	out_be32(CSR_VGA_RESET,1);
 	vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
-	out_be32((u32 *)CSR_VGA_SOURCE_CLOCK,vga->csr_vga_source_clock);
-	if ( in_be32((u32 *)CSR_VGA_SOURCE_CLOCK) != vga->csr_vga_source_clock ) {
+	out_be32(CSR_VGA_SOURCE_CLOCK,vga->csr_vga_source_clock);
+	if ( in_be32(CSR_VGA_SOURCE_CLOCK) != vga->csr_vga_source_clock ) {
 		milkymistfb_def_mode = 1;
 		vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
 	}
@@ -604,17 +604,17 @@ static int __init milkymistfb_probe(struct platform_device *dev)
 		info->node,
 		milkymistfb_predefined[milkymistfb_def_mode].name);
 
-	out_be32((u32 *)CSR_VGA_BASEADDRESS,(unsigned int)videomemory);
-	out_be32((u32 *)CSR_VGA_HRES,vga->csr_vga_hres);
-	out_be32((u32 *)CSR_VGA_HSYNC_START,vga->csr_vga_hsync_start);
-	out_be32((u32 *)CSR_VGA_HSYNC_END,vga->csr_vga_hsync_end);
-	out_be32((u32 *)CSR_VGA_HSCAN,vga->csr_vga_hscan);
-	out_be32((u32 *)CSR_VGA_VRES,vga->csr_vga_vres);
-	out_be32((u32 *)CSR_VGA_VSYNC_START,vga->csr_vga_vsync_start);
-	out_be32((u32 *)CSR_VGA_VSYNC_END,vga->csr_vga_vsync_end);
-	out_be32((u32 *)CSR_VGA_VSCAN,vga->csr_vga_vscan);
-	out_be32((u32 *)CSR_VGA_BURST_COUNT,(vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64));
-	out_be32((u32 *)CSR_VGA_RESET,0);
+	out_be32(CSR_VGA_BASEADDRESS,(unsigned int)videomemory);
+	out_be32(CSR_VGA_HRES,vga->csr_vga_hres);
+	out_be32(CSR_VGA_HSYNC_START,vga->csr_vga_hsync_start);
+	out_be32(CSR_VGA_HSYNC_END,vga->csr_vga_hsync_end);
+	out_be32(CSR_VGA_HSCAN,vga->csr_vga_hscan);
+	out_be32(CSR_VGA_VRES,vga->csr_vga_vres);
+	out_be32(CSR_VGA_VSYNC_START,vga->csr_vga_vsync_start);
+	out_be32(CSR_VGA_VSYNC_END,vga->csr_vga_vsync_end);
+	out_be32(CSR_VGA_VSCAN,vga->csr_vga_vscan);
+	out_be32(CSR_VGA_BURST_COUNT,(vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64));
+	out_be32(CSR_VGA_RESET,0);
        
 	return 0;
 err2:
@@ -630,7 +630,7 @@ static int milkymistfb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 
-	out_be32((u32 *)CSR_VGA_RESET,VGA_RESET);
+	out_be32(CSR_VGA_RESET,VGA_RESET);
 
 	if (info) {
 		unregister_framebuffer(info);

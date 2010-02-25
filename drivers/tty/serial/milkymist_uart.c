@@ -97,7 +97,7 @@ static struct uart_ops milkymistuart_pops = {
 
 static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud)
 {
-	out_be32((u32 *)CSR_UART_DIVISOR,(int)(100000000/baud/16));
+	out_be32(CSR_UART_DIVISOR,100000000/baud/16);
 }
 
 static void milkymistuart_tx_next_char(struct uart_port* port)
@@ -107,7 +107,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 	if (port->x_char) {
 		/* send xon/xoff character */
 		tx_cts = 0;
-		out_be32((u32 *)CSR_UART_RXTX,port->x_char);
+		out_be32(CSR_UART_RXTX,(int)port->x_char);
 		port->x_char = 0;
 		port->icount.tx++;
 		return;
@@ -121,7 +121,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 
 	/* send next character */
 	tx_cts = 0;
-	out_be32((u32 *)CSR_UART_RXTX,xmit->buf[xmit->tail]);
+	out_be32(CSR_UART_RXTX,(int)xmit->buf[xmit->tail]);
 	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 	port->icount.tx++;
 
@@ -137,7 +137,7 @@ static void milkymistuart_rx_next_char(struct uart_port* port)
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
-	ch = in_be32((u32 *)CSR_UART_RXTX) & 0xFF;
+	ch = in_be32(CSR_UART_RXTX) & 0xFF;
 	port->icount.rx++;
 
 	if (uart_handle_sysrq_char(port, ch))
@@ -192,7 +192,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 		if (port->x_char) {
 			/* send xon/xoff character */
 			tx_cts = 0;
-			out_be32((u32 *)CSR_UART_RXTX,port->x_char);
+			out_be32(CSR_UART_RXTX,(int)port->x_char);
 			port->x_char = 0;
 			port->icount.tx++;
 			return;
@@ -204,7 +204,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 
 		/* send next character */
 		tx_cts = 0;
-		out_be32((u32 *)CSR_UART_RXTX,xmit->buf[xmit->tail]);
+		out_be32(CSR_UART_RXTX,(int)xmit->buf[xmit->tail]);
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
 
@@ -315,7 +315,7 @@ static int milkymistuart_verify_port(struct uart_port *port, struct serial_struc
 #ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
 static void milkymist_console_putchar(struct uart_port *port, int ch)
 {
-	out_be32((u32 *)CSR_UART_RXTX,ch);
+	out_be32(CSR_UART_RXTX,ch);
 	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
 	lm32_irq_ack(IRQ_UARTTX);
 }

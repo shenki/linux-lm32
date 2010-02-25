@@ -110,18 +110,18 @@ static unsigned long get_time_offset(void)
 cycles_t get_cycles(void)
 {
 	return lm32_cycles +
-		in_be32((u32 *)CSR_TIMER0_COUNTER);
+		in_be32(CSR_TIMER0_COUNTER);
 }
 
 void lm32_systimer_program(int periodic, cycles_t cyc)
 {
 	/* stop timer */
-	out_be32((u32 *)CSR_TIMER0_CONTROL,0);
+	out_be32(CSR_TIMER0_CONTROL,0);
 	/* reset/configure timer */
-	out_be32((u32 *)CSR_TIMER0_COUNTER,0);
-	out_be32((u32 *)CSR_TIMER0_COMPARE,cyc);
+	out_be32(CSR_TIMER0_COUNTER,0);
+	out_be32(CSR_TIMER0_COMPARE,(int)cyc);
 	/* start timer */
-	out_be32((u32 *)CSR_TIMER0_CONTROL,periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE);
+	out_be32(CSR_TIMER0_CONTROL,periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE);
 }
 
 /*
