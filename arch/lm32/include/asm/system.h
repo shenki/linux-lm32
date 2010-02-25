@@ -59,6 +59,7 @@ static inline void local_irq_enable(void)
 #define local_irq_restore(x) { unsigned int ie; \
 	asm volatile ( \
 		"rcsr %0, IE\n" \
+		"andi %0, %0, 0xfffe\n" \
 		"or %0, %0, %1\n" \
 		"wcsr IE, %0\n": \
 		 "=&r"(ie): "r"(x) ); }
