@@ -34,15 +34,15 @@ static unsigned short milkymist_ac97_read(struct snd_ac97 *ac97,
 	int timeout;
 
 	lm32_irq_ack(IRQ_AC97CRREPLY);
-	out_be32(CSR_AC97_CRADDR, reg);
+	out_be32(CSR_AC97_CRADDR, (unsigned int)reg);
 	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN);
 
 	timeout = 1000;
 	while (!(lm32_irq_pending() & IRQ_AC97CRREPLY)) {
-		usleep(10);
+		udelay(10);
 		timeout--;
 		if(timeout == 0) {
-			pr_warn("Timeout waiting for readout of AC97 register %02x\n", reg);
+			pr_warning("Timeout waiting for readout of AC97 register %02x\n", reg);
 			return 0;
 		}
 	}
@@ -56,16 +56,16 @@ void milkymist_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	int timeout;
 
 	lm32_irq_ack(IRQ_AC97CRREQUEST);
-	out_be32(CSR_AC97_CRADDR, reg);
-	out_be32(CSR_AC97_CRDATAOUT, val);
+	out_be32(CSR_AC97_CRADDR, (unsigned int)reg);
+	out_be32(CSR_AC97_CRDATAOUT, (unsigned int)val);
 	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN|AC97_CRCTL_WRITE);
 
 	timeout = 1000;
 	while (!(lm32_irq_pending() & IRQ_AC97CRREQUEST)) {
-		usleep(10);
+		udelay(10);
 		timeout--;
 		if(timeout == 0) {
-			pr_warn("Timeout waiting for writing of AC97 register %02x\n", reg);
+			pr_warning("Timeout waiting for writing of AC97 register %02x\n", reg);
 			return;
 		}
 	}

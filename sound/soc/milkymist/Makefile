@@ -1,5 +1,5 @@
 # Milkymist Platform Support
-snd-soc-milkymist-objs := milkymist-pcm.o
+snd-soc-milkymist-objs := milkymist-pcm.o milkymist-ac97.o
 
 obj-$(CONFIG_SND_MILKYMIST_SOC) += snd-soc-milkymist.o
 
