@@ -32,9 +32,6 @@
 
 #define	NO_IRQ		(-1)
 
-/* LM32: we always use the first timer in the hardware-description as the system timer */
-extern unsigned int  lm32_core_timer_irq;
-
 #define	IRQ_GPIO		(0)
 #define	IRQ_TIMER0		(1)
 #define	IRQ_TIMER1		(2)
@@ -61,7 +58,6 @@ static inline void ack_bad_irq(int irq)
 {
 	irq_err_count++;
 }
-
 
 /* in arch/lm32/kernel/irq.c */
 void lm32_irq_mask(unsigned int irq);

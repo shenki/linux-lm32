@@ -23,23 +23,53 @@
 #include <sound/soc.h>
 
 #include <asm/irq.h>
-#include <asm/portmux.h>
-#include <linux/mutex.h>
-#include <linux/gpio.h>
+#include <asm/io.h>
 
 #include "milkymist-ac97.h"
+#include "milkymist-hw.h"
 
 static unsigned short milkymist_ac97_read(struct snd_ac97 *ac97,
 	unsigned short reg)
 {
-	/* TODO */
-	return 0;
+	int timeout;
+
+	lm32_irq_ack(IRQ_AC97CRREPLY);
+	out_be32(CSR_AC97_CRADDR, reg);
+	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN);
+
+	timeout = 1000;
+	while (!(lm32_irq_pending() & IRQ_AC97CRREPLY)) {
+		usleep(10);
+		timeout--;
+		if(timeout == 0) {
+			pr_warn("Timeout waiting for readout of AC97 register %02x\n", reg);
+			return 0;
+		}
+	}
+	lm32_irq_ack(IRQ_AC97CRREPLY);
+	return in_be32(CSR_AC97_CRDATAIN);
 }
 
 void milkymist_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	unsigned short val)
 {
-	/* TODO */
+	int timeout;
+
+	lm32_irq_ack(IRQ_AC97CRREQUEST);
+	out_be32(CSR_AC97_CRADDR, reg);
+	out_be32(CSR_AC97_CRDATAOUT, val);
+	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN|AC97_CRCTL_WRITE);
+
+	timeout = 1000;
+	while (!(lm32_irq_pending() & IRQ_AC97CRREQUEST)) {
+		usleep(10);
+		timeout--;
+		if(timeout == 0) {
+			pr_warn("Timeout waiting for writing of AC97 register %02x\n", reg);
+			return;
+		}
+	}
+	lm32_irq_ack(IRQ_AC97CRREQUEST);
 }
 
 static void milkymist_ac97_warm_reset(struct snd_ac97 *ac97)
