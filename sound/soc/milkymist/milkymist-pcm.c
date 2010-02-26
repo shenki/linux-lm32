@@ -29,12 +29,26 @@
 
 static unsigned int initial_dremaining;
 static unsigned int initial_uremaining;
-struct snd_pcm_substream *downstream;
-struct snd_pcm_substream *upstream;
+static unsigned int downstream_period;
+static struct snd_pcm_substream *downstream;
+static struct snd_pcm_substream *upstream;
 
 static irqreturn_t downstream_irq(int irq, void *data)
 {
+	struct snd_pcm_runtime *runtime = downstream->runtime;
+	int fragsize_bytes = frames_to_bytes(runtime, runtime->period_size);
+
+	downstream_period++;
+	if(downstream_period == runtime->periods) {
+		downstream_period = 0;
+		out_be32(CSR_AC97_DADDRESS, runtime->dma_addr);
+	}
+
+	out_be32(CSR_AC97_DREMAINING, fragsize_bytes);
+	initial_dremaining = fragsize_bytes;
+	
 	snd_pcm_period_elapsed(downstream);
+	
 	return IRQ_HANDLED;
 }
 
@@ -43,6 +57,8 @@ static irqreturn_t upstream_irq(int irq, void *data)
 	snd_pcm_period_elapsed(upstream);
 	return IRQ_HANDLED;
 }
+
+#define MAX_BUFFER (2*AC97_MAX_DMASIZE)
 
 static const struct snd_pcm_hardware milkymist_pcm_hardware = {
 	.info = (SNDRV_PCM_INFO_INTERLEAVED | SNDRV_PCM_INFO_BLOCK_TRANSFER |
@@ -53,11 +69,11 @@ static const struct snd_pcm_hardware milkymist_pcm_hardware = {
 	.rate_max =		48000,
 	.channels_min =		2,
 	.channels_max =		2,
-	.buffer_bytes_max =	AC97_MAX_DMASIZE,
-	.period_bytes_min =	4,
+	.buffer_bytes_max =	MAX_BUFFER,
+	.period_bytes_min =	1024,
 	.period_bytes_max =	AC97_MAX_DMASIZE,
 	.periods_min =		1,
-	.periods_max =		1,
+	.periods_max =		64,
 };
 
 static int milkymist_pcm_hw_params(struct snd_pcm_substream *substream,
@@ -77,15 +93,16 @@ static int milkymist_pcm_prepare(struct snd_pcm_substream *substream)
 	int fragsize_bytes = frames_to_bytes(runtime, runtime->period_size);
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
+		downstream_period = 0;
 		downstream = substream;
 		out_be32(CSR_AC97_DADDRESS, runtime->dma_addr);
-		initial_dremaining = fragsize_bytes;
 		out_be32(CSR_AC97_DREMAINING, fragsize_bytes);
+		initial_dremaining = fragsize_bytes;
 	} else {
 		upstream = substream;
 		out_be32(CSR_AC97_UADDRESS, runtime->dma_addr);
-		initial_uremaining = fragsize_bytes;
 		out_be32(CSR_AC97_UREMAINING, fragsize_bytes);
+		initial_uremaining = fragsize_bytes;
 	}
 
 	return 0;
@@ -168,7 +185,7 @@ static int milkymist_pcm_ac97_new(struct snd_card *card, struct snd_soc_dai *dai
 	lm32_irq_unmask(IRQ_AC97DMAW);
 	
 	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
-		card->dev, 2*AC97_MAX_DMASIZE, 2*AC97_MAX_DMASIZE);
+		card->dev, MAX_BUFFER, MAX_BUFFER);
 	if(ret) {
 		free_irq(IRQ_AC97DMAR, pcm);
 		free_irq(IRQ_AC97DMAW, pcm);
