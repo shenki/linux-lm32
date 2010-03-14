@@ -155,7 +155,7 @@ void __init init_IRQ(void)
 
 	for (irq = 0; irq < NR_IRQS; irq++) {
 		set_irq_chip(irq, &lm32_internal_irq_chip);
-		set_irq_handler(irq, handle_simple_irq);
+		set_irq_handler(irq, handle_level_irq);
 	}
 }
 
@@ -204,11 +204,8 @@ asmlinkage void asm_do_IRQ(unsigned long vec, struct pt_regs *regs)
 
 	/* decode irq */
 	for (irq=0 ; irq<32; ++irq ) {
-		if ( vec & (1 << irq) ) {
-			/* acknowledge */
-			lm32_irq_ack(irq);
+		if ( vec & (1 << irq) )
 			generic_handle_irq(irq);
-		}
 	}
 
 	irq_exit();
