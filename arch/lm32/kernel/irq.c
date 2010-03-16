@@ -57,10 +57,20 @@ void lm32_irq_mask(unsigned int irq)
 	mask &= lm32_current_irq_mask;
 	lm32_current_irq_mask = mask;
 
-	/*
-	 * set mask
-	 */
 	asm volatile ("wcsr IM, %0" : : "r"(mask));
+
+	local_irq_restore(flags);
+}
+
+void lm32_irq_multimask(unsigned long mask)
+{
+	unsigned long flags;
+
+	local_irq_save(flags);
+
+	lm32_current_irq_mask &= ~mask;
+
+	asm volatile ("wcsr IM, %0" : : "r"(lm32_current_irq_mask));
 
 	local_irq_restore(flags);
 }
@@ -76,9 +86,6 @@ void lm32_irq_unmask(unsigned int irq)
 		mask |= lm32_current_irq_mask;
 		lm32_current_irq_mask = mask;
 
-		/*
-		 * set mask
-		 */
 		asm volatile ("wcsr IM, %0" : : "r"(mask));
 
 		local_irq_restore(flags);
@@ -89,9 +96,6 @@ void lm32_irq_ack(unsigned int irq)
 {
 	unsigned long mask = 1 << irq;
 
-	/*
-	 * confirm irq
-	 */
 	asm volatile ("wcsr IP, %0" : : "r"(mask));
 }
 
@@ -106,14 +110,8 @@ void lm32_irq_mask_ack(unsigned int irq)
 	mask &= lm32_current_irq_mask;
 	lm32_current_irq_mask = mask;
 
-	/*
-	 * set mask
-	 */
 	asm volatile ("wcsr IM, %0" : : "r"(mask));
 
-	/*
-	 * confirm irq
-	 */
 	asm volatile ("wcsr IP, %0" : : "r"(ack));
 
 	local_irq_restore(flags);
@@ -123,9 +121,6 @@ unsigned long lm32_irq_pending()
 {
 	unsigned long ret;
 
-	/*
-	 * read interrupt pending register
-	 */
 	asm volatile ("rcsr %0, IP" : "=r"(ret) : );
 
 	return ret;
@@ -143,7 +138,7 @@ struct irq_chip lm32_internal_irq_chip = {
 	.ack		= lm32_irq_ack,
 	.mask		= lm32_irq_mask,
 	.unmask		= lm32_irq_unmask,
-	.mask_ack		= lm32_irq_mask_ack,
+	.mask_ack	= lm32_irq_mask_ack,
 	.end		= noop,
 };
 
@@ -155,7 +150,7 @@ void __init init_IRQ(void)
 
 	for (irq = 0; irq < NR_IRQS; irq++) {
 		set_irq_chip(irq, &lm32_internal_irq_chip);
-		set_irq_handler(irq, handle_level_irq);
+		set_irq_handler(irq, handle_simple_irq);
 	}
 }
 
@@ -202,10 +197,21 @@ asmlinkage void asm_do_IRQ(unsigned long vec, struct pt_regs *regs)
 
 	irq_enter();
 
+	/* Only process unmasked interrupts.
+	 * This avoids a race condition if several interrupts
+	 * arrive at the same time!
+	 */
+	vec &= lm32_current_irq_mask;
+	/* mask ALL interrupts we are going to process */
+	lm32_irq_multimask(vec);
+	
 	/* decode irq */
 	for (irq=0 ; irq<32; ++irq ) {
-		if ( vec & (1 << irq) )
-			generic_handle_irq(irq);
+		if ( vec & (1 << irq) ) {
+			generic_handle_irq(irq); /* < this (re)enables interrupts globally */
+			lm32_irq_ack(irq);
+			lm32_irq_unmask(irq);
+		}
 	}
 
 	irq_exit();

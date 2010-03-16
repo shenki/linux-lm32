@@ -61,6 +61,7 @@ static inline void ack_bad_irq(int irq)
 
 /* in arch/lm32/kernel/irq.c */
 void lm32_irq_mask(unsigned int irq);
+void lm32_irq_multimask(unsigned long mask);
 void lm32_irq_unmask(unsigned int irq);
 void lm32_irq_ack(unsigned int irq);
 unsigned long lm32_irq_pending(void);
