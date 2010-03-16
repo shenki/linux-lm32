@@ -45,7 +45,9 @@
 #define	IRQ_TMU			(10)
 #define	IRQ_KEYBOARD		(11)
 #define	IRQ_MOUSE		(12)
-#define IRQ_ETH_0               (13)
+#define IRQ_ETHRX		(13)
+#define IRQ_ETHTX		(14)
+
 
 #define IRQ_SYSTMR	(IRQ_TIMER0)
 

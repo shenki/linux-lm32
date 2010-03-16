@@ -252,22 +252,22 @@ static struct platform_device lm32milkmouse_device = {
 };
 #endif
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
+#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_MILKYMIST_MINIMAC)
 static struct resource lm32milkether_resources[] = {
 	[0] = {
-		.start = 0xc0000000,
-		.end = 0xc0008000,
+		.start = 0x80009000,
+		.end = 0x80009fff,
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_ETH_0,
-		.end = IRQ_ETH_0,
+		.start = IRQ_ETHRX,
+		.end = IRQ_ETHTX,
 		.flags = IORESOURCE_IRQ,
 	},
 };
 
 static struct platform_device lm32milkether_device = {
-	.name = "ethoc",
+	.name = "minimac",
 	.id = 0,
 	.num_resources = ARRAY_SIZE(lm32milkether_resources),
 	.resource = lm32milkether_resources,
@@ -330,7 +330,7 @@ static int __init setup_devices(void) {
 	}
 #endif
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_ETHOC)
+#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_MILKYMIST_MINIMAC)
 	err = platform_device_register(&lm32milkether_device);
 	if( err ) {
 		printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
