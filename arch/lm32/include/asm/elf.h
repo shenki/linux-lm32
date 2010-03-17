@@ -63,7 +63,7 @@ typedef struct fp_regs elf_fpregset_t;
 /*
  * This is used to ensure we don't load something for the wrong architecture.
  */
-#define elf_check_arch(x) ((x)->e_machine == EM_LM32)
+#define elf_check_arch(x) (((x)->e_machine == EM_LM32)||((x)->e_machine == EM_LM32_OLD))
 #define elf_check_fdpic(x) (1)
 #define elf_check_const_displacement(x) (1)
 
@@ -73,7 +73,8 @@ typedef struct fp_regs elf_fpregset_t;
 #define ELF_CLASS	ELFCLASS32
 #define ELF_DATA	ELFDATA2MSB
 #define ELF_ARCH	EM_LM32
-#define EM_LM32 0x666 // FIXME
+#define EM_LM32		0x8A
+#define EM_LM32_OLD	0x666 // FIXME
 
 #define ELF_PLAT_INIT(_r, load_addr)	do { } while(0)
 
