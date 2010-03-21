@@ -24,6 +24,8 @@
 #ifndef _LM32_ASM_IRQ_H
 #define _LM32_ASM_IRQ_H
 
+#include <asm/hw/interrupts.h>
+
 /* # of lm32 interrupts */
 #define NR_IRQS (32)
 
@@ -31,23 +33,6 @@
 #define NR_IRQLVL	1
 
 #define	NO_IRQ		(-1)
-
-#define	IRQ_GPIO		(0)
-#define	IRQ_TIMER0		(1)
-#define	IRQ_TIMER1		(2)
-#define	IRQ_UARTRX		(3)
-#define	IRQ_UARTTX		(4)
-#define	IRQ_AC97CRREQUEST	(5)
-#define	IRQ_AC97CRREPLY		(6)
-#define	IRQ_AC97DMAR		(7)
-#define	IRQ_AC97DMAW		(8)
-#define	IRQ_PFPU		(9)
-#define	IRQ_TMU			(10)
-#define	IRQ_KEYBOARD		(11)
-#define	IRQ_MOUSE		(12)
-#define IRQ_ETHRX		(13)
-#define IRQ_ETHTX		(14)
-
 
 #define IRQ_SYSTMR	(IRQ_TIMER0)
 

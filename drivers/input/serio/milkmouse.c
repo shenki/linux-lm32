@@ -29,22 +29,17 @@
 #include <asm/irq.h>
 #include <asm/io.h>
 
+#include <asm/hw/milkymist.h>
+
 MODULE_AUTHOR("");
 MODULE_DESCRIPTION("Milkymist PS/2 mouse connector driver");
 MODULE_LICENSE("GPL");
 
-/*
- * Register numbers.
- */
-#define	PS2_DATA_REG	0x80008000
-#define PS2_STATUS_REG	0x80008004
-#define PS2_TX_BUSY	0x01
-
 static int milkmouse_write(struct serio *port, unsigned char val)
 {
-	while(readl(PS2_STATUS_REG)&PS2_TX_BUSY);
+	while(in_be32(CSR_PS2_MOUSE_STATUS)&PS2_BUSY);
 
-	writel(val, PS2_DATA_REG);
+	out_be32(CSR_PS2_MOUSE_DATA, val);
 
 	return 0;
 }
@@ -55,7 +50,7 @@ static irqreturn_t milkmouse_rx(int irq, void *dev_id)
 	unsigned int byte;
 	int handled = IRQ_NONE;
 
-	byte = readl(PS2_DATA_REG);
+	byte = in_be32(CSR_PS2_MOUSE_DATA);
 	serio_interrupt(port, byte, 0);
 	handled = IRQ_HANDLED;
 
@@ -65,23 +60,23 @@ static irqreturn_t milkmouse_rx(int irq, void *dev_id)
 static int milkmouse_open(struct serio *port)
 {
 
-	if (request_irq(IRQ_MOUSE, milkmouse_rx, 0, "milkmouse", port) != 0) {
+	if (request_irq(IRQ_PS2MOUSE, milkmouse_rx, 0, "milkmouse", port) != 0) {
 		printk(KERN_ERR "milkmouse.c: Could not allocate mouse receive IRQ\n");
 		return -EBUSY;
 	}
 
-	lm32_irq_unmask(IRQ_MOUSE);
+	lm32_irq_unmask(IRQ_PS2MOUSE);
 
 	printk(KERN_INFO "milkymist_ps2: Mouse connector at 0x%08x irq %d\n",
-		PS2_DATA_REG,
-		IRQ_MOUSE);
+		CSR_PS2_MOUSE_DATA,
+		IRQ_PS2MOUSE);
 
 	return 0;
 }
 
 static void milkmouse_close(struct serio *port)
 {
-	free_irq(IRQ_MOUSE, port);
+	free_irq(IRQ_PS2MOUSE, port);
 }
 
 /*

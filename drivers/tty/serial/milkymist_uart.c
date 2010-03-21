@@ -36,12 +36,7 @@
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
-
-#define CSR_UART_RXTX		0x80000000
-#define CSR_UART_DIVISOR	0x80000004
-
-#define IRQ_UARTRX		(3)
-#define IRQ_UARTTX		(4)
+#include <asm/hw/milkymist.h>
 
 #define MILKYMISTUART_DRIVERNAME "milkymist_uart"
 #define MILKYMISTUART_DEVICENAME "ttyS"

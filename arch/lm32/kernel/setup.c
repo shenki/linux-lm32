@@ -57,6 +57,10 @@
 #include <asm/pgtable.h>
 #include <asm/thread_info.h>
 
+#ifdef CONFIG_PLAT_MILKYMIST
+#include <asm/hw/milkymist.h>
+#endif
+
 /* this is set first thing as the kernel is started
  * from the arguments to the kernel. */
 unsigned long asmlinkage _kernel_arg_cmdline; /* address of the commandline parameters */
@@ -171,6 +175,7 @@ struct seq_operations cpuinfo_op = {
 	.show	= show_cpuinfo,
 };
 
+#ifdef CONFIG_PLAT_MILKYMIST
 static struct resource milkymistuart_resources[] = {
 	[0] = {
 		.start = 0x80000000,
@@ -191,7 +196,6 @@ static struct platform_device milkymistuart_device = {
 	.resource = milkymistuart_resources,
 };
 
-#ifdef CONFIG_BOARD_XILINX_ML401
 static struct resource lm32sysace_resources[] = {
 	[0] = {
 		.start = 0xa0000000,
@@ -206,9 +210,7 @@ static struct platform_device lm32sysace_device = {
 	.num_resources = ARRAY_SIZE(lm32sysace_resources),
 	.resource = lm32sysace_resources,
 };
-#endif
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_SERIO_MILKBD)
 static struct resource lm32milkbd_resources[] = {
 	[0] = {
 		.start = 0x80007000,
@@ -216,8 +218,8 @@ static struct resource lm32milkbd_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_KEYBOARD,
-		.end = IRQ_KEYBOARD,
+		.start = IRQ_PS2KEYBOARD,
+		.end = IRQ_PS2KEYBOARD,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -228,9 +230,7 @@ static struct platform_device lm32milkbd_device = {
 	.num_resources = ARRAY_SIZE(lm32milkbd_resources),
 	.resource = lm32milkbd_resources,
 };
-#endif
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_SERIO_MILKMOUSE)
 static struct resource lm32milkmouse_resources[] = {
 	[0] = {
 		.start = 0x80008000,
@@ -238,8 +238,8 @@ static struct resource lm32milkmouse_resources[] = {
 		.flags = IORESOURCE_MEM,
 	},
 	[1] = {
-		.start = IRQ_MOUSE,
-		.end = IRQ_MOUSE,
+		.start = IRQ_PS2MOUSE,
+		.end = IRQ_PS2MOUSE,
 		.flags = IORESOURCE_IRQ,
 	},
 };
@@ -250,9 +250,7 @@ static struct platform_device lm32milkmouse_device = {
 	.num_resources = ARRAY_SIZE(lm32milkmouse_resources),
 	.resource = lm32milkmouse_resources,
 };
-#endif
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_MILKYMIST_MINIMAC)
 static struct resource lm32milkether_resources[] = {
 	[0] = {
 		.start = 0x80009000,
@@ -272,9 +270,7 @@ static struct platform_device lm32milkether_device = {
 	.num_resources = ARRAY_SIZE(lm32milkether_resources),
 	.resource = lm32milkether_resources,
 };
-#endif
 
-#if defined(CONFIG_SND_MILKYMIST_SOC_AC97)
 static struct resource ac97_resources[] = {
 	[0] = {
 		.start = 0x80004000,
@@ -300,56 +296,54 @@ static int __init setup_devices(void) {
 	int ret = 0;
 	int err;
 
-	err = platform_device_register(&milkymistuart_device);
-	if( err ) {
+#ifdef CONFIG_PLAT_MILKYMIST
+	int cap;
+	cap = in_be32(CSR_CAPABILITIES);
+	
+	if( ( err = platform_device_register(&milkymistuart_device)) ) {
 		printk(KERN_ERR "could not register 'milkymist_uart'error:%d\n", err);
 		ret = err;
 	}
 
-#ifdef CONFIG_BOARD_XILINX_ML401
-	err = platform_device_register(&lm32sysace_device);
-	if( err ) {
-		printk(KERN_ERR "could not register 'milkymist_sysace'error:%d\n", err);
-		ret = err;
-	}
-#endif
+	if( cap & CAP_SYSTEMACE )
+		if( (err = platform_device_register(&lm32sysace_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_sysace'error:%d\n", err);
+			ret = err;
+		}
+	
+	if( cap & CAP_PS2_KEYBOARD )
+		if( (err = platform_device_register(&lm32milkbd_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ps2kbd'error:%d\n", err);
+			ret = err;
+		}
+	
+	if( cap & CAP_PS2_MOUSE )
+		if( (err = platform_device_register(&lm32milkmouse_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ps2mouse'error:%d\n", err);
+			ret = err;
+		}
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_SERIO_MILKBD)
-	err = platform_device_register(&lm32milkbd_device);
-	if( err ) {
-		printk(KERN_ERR "could not register 'milkymist_ps2kbd'error:%d\n", err);
-		ret = err;
-	}
-#endif
+	if( cap & CAP_ETHERNET )
+		if( (err = platform_device_register(&lm32milkether_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
+			ret = err;
+		}
 
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_SERIO_MILKMOUSE)
-	err = platform_device_register(&lm32milkmouse_device);
-	if( err ) {
-		printk(KERN_ERR "could not register 'milkymist_ps2mouse'error:%d\n", err);
-		ret = err;
-	}
-#endif
-
-#if defined(CONFIG_BOARD_XILINX_ML401) && defined(CONFIG_MILKYMIST_MINIMAC)
-	err = platform_device_register(&lm32milkether_device);
-	if( err ) {
-		printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
-		ret = err;
-	}
-#endif
-
-#if defined(CONFIG_SND_MILKYMIST_SOC_AC97)
-	err = platform_device_register(&ac97_device);
-	if( err ) {
-		printk(KERN_ERR "could not register 'milkymist_ac97'error:%d\n", err);
-		ret = err;
-	}
+	if( cap & CAP_AC97 )
+		if( (err = platform_device_register(&ac97_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ac97'error:%d\n", err);
+			ret = err;
+		}
 #endif
 
 	return ret;
 }
 /* default console - interface to milkymistuart.c serial + console driver */
+#ifdef CONFIG_PLAT_MILKYMIST
 struct platform_device* milkymistuart_default_console_device = &milkymistuart_device;
+#else
+struct platform_device* milkymistuart_default_console_device = (struct platform_device *)NULL;
+#endif
 
 arch_initcall(setup_devices);
 

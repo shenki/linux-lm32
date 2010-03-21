@@ -29,22 +29,17 @@
 #include <asm/irq.h>
 #include <asm/io.h>
 
+#include <asm/hw/milkymist.h>
+
 MODULE_AUTHOR("");
 MODULE_DESCRIPTION("Milkymist PS/2 keyboard connector driver");
 MODULE_LICENSE("GPL");
 
-/*
- * Register numbers.
- */
-#define	PS2_DATA_REG	0x80007000
-#define	PS2_STATUS_REG	0x80007004
-#define PS2_TX_BUSY	0x01
-
 static int milkbd_write(struct serio *port, unsigned char val)
 {
-	while(readl(PS2_STATUS_REG)&PS2_TX_BUSY);
+	while(in_be32(CSR_PS2_KEYBOARD_STATUS)&PS2_BUSY);
 
-	writel(val, PS2_DATA_REG);
+	out_be32(CSR_PS2_KEYBOARD_DATA, val);
 
 	return 0;
 }
@@ -55,7 +50,7 @@ static irqreturn_t milkbd_rx(int irq, void *dev_id)
 	unsigned int byte;
 	int handled = IRQ_NONE;
 
-	byte = readl(PS2_DATA_REG);
+	byte = in_be32(CSR_PS2_KEYBOARD_DATA);
 	serio_interrupt(port, byte, 0);
 	handled = IRQ_HANDLED;
 
@@ -65,23 +60,23 @@ static irqreturn_t milkbd_rx(int irq, void *dev_id)
 static int milkbd_open(struct serio *port)
 {
 
-	if (request_irq(IRQ_KEYBOARD, milkbd_rx, 0, "milkbd", port) != 0) {
+	if (request_irq(IRQ_PS2KEYBOARD, milkbd_rx, 0, "milkbd", port) != 0) {
 		printk(KERN_ERR "milkbd.c: Could not allocate keyboard receive IRQ\n");
 		return -EBUSY;
 	}
 
-	lm32_irq_unmask(IRQ_KEYBOARD);
+	lm32_irq_unmask(IRQ_PS2KEYBOARD);
 
 	printk(KERN_INFO "milkymist_ps2: Keyboard connector at 0x%08x irq %d\n",
-		PS2_DATA_REG,
-		IRQ_KEYBOARD);
+		CSR_PS2_KEYBOARD_DATA,
+		IRQ_PS2KEYBOARD);
 
 	return 0;
 }
 
 static void milkbd_close(struct serio *port)
 {
-	free_irq(IRQ_KEYBOARD, port);
+	free_irq(IRQ_PS2KEYBOARD, port);
 }
 
 /*

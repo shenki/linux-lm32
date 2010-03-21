@@ -18,6 +18,8 @@
 #include <linux/fb.h>
 #include <linux/init.h>
 
+#include <asm/hw/milkymist.h>
+
     /*
      *  RAM we reserve for the frame buffer. This defines the maximum screen
      *  size
@@ -26,25 +28,6 @@
      */
 
 #define VIDEOMEMSIZE	(1024*800*2)	/* 1.6 MB */
-
-#define	CSR_VGA_RESET		0x80003000
-
-#define	VGA_RESET		0x01
-
-#define	CSR_VGA_HRES		0x80003004
-#define	CSR_VGA_HSYNC_START	0x80003008
-#define	CSR_VGA_HSYNC_END	0x8000300C
-#define	CSR_VGA_HSCAN		0x80003010
-
-#define	CSR_VGA_VRES		0x80003014
-#define	CSR_VGA_VSYNC_START	0x80003018
-#define	CSR_VGA_VSYNC_END	0x8000301C
-#define	CSR_VGA_VSCAN		0x80003020
-
-#define	CSR_VGA_BASEADDRESS	0x80003024
-#define	CSR_VGA_BASEADDRESS_ACT	0x80003028
-
-#define	CSR_VGA_BURST_COUNT	0x8000302C
 
 #define	CSR_VGA_SOURCE_CLOCK	0x80003030
 #define	VGA_CLOCK_VGA		0x00
