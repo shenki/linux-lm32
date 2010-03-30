@@ -190,7 +190,7 @@ static int minimac_rx(struct net_device *dev, int budget)
 
 	while (netif_running(dev) && received < budget ) {
 
-		for (i=0; i<=tp->num_rx; ++i) {
+		for (i=1; i<=tp->num_rx; ++i) {
 			if ( (tp->pkt_buf+i)->state == MINIMAC_STATE_PENDING ) {
  				src = phys_to_virt( (tp->pkt_buf+i)->buf );
 				size = get_frame(src, (tp->pkt_buf+i)->count );
