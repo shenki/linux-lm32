@@ -110,6 +110,19 @@ source "drivers/net/ethernet/mediatek/Kconfig"
 source "drivers/net/ethernet/mellanox/Kconfig"
 source "drivers/net/ethernet/micrel/Kconfig"
 source "drivers/net/ethernet/microchip/Kconfig"
+
+config MILKYMIST_MINIMAC
+	tristate "Milkymist 10/100 Ethernet mini MAC support"
+	depends on NET_ETHERNET && HAS_IOMEM && HAS_DMA
+	select CRC32
+	help
+	  This driver supports the 10/100 Ethernet mini MAC
+
+config DEBUG_MILKYMIST_MINIMAC
+	default y
+	bool "Debug: Enable MILKYMIST_MINIMAC debugging support"
+	depends on MILKYMIST_MINIMAC
+
 source "drivers/net/ethernet/moxa/Kconfig"
 source "drivers/net/ethernet/myricom/Kconfig"
 
