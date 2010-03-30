@@ -186,12 +186,14 @@ static int minimac_rx(struct net_device *dev, int budget)
 	int size;
 	int i;
 	int received = 0;
+	int count;
 	void *src;
 
 	while (netif_running(dev) && received < budget ) {
-
-		for (i=1; i<=tp->num_rx; ++i) {
+		count = 0;
+		for (i=1; i<=tp->num_rx && received < budget ; ++i) {
 			if ( (tp->pkt_buf+i)->state == MINIMAC_STATE_PENDING ) {
+				++count;
  				src = phys_to_virt( (tp->pkt_buf+i)->buf );
 				size = get_frame(src, (tp->pkt_buf+i)->count );
 				if ( size > 0 ) {
@@ -203,7 +205,6 @@ static int minimac_rx(struct net_device *dev, int budget)
 						dev->stats.rx_packets++;
 						dev->stats.rx_bytes += size;
 						netif_receive_skb(skb);
-						received++;
 					} else {
 						if (net_ratelimit())
 							dev_warn(&dev->dev, "Memory squeeze, dropping packet\n");
@@ -217,9 +218,11 @@ static int minimac_rx(struct net_device *dev, int budget)
 #endif
 				}
 				(tp->pkt_buf+i)->state = MINIMAC_STATE_EMPTY;
+				received++;
 			}
 		}
-		break;
+		if (count == 0)
+			break;
 	}
 
 out:
