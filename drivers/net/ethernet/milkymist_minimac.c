@@ -283,6 +283,10 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 			out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
 		}
 	}
+	asm volatile( /* Invalidate Level-1 data cache */
+		"wcsr DCC, r0\n"
+		"nop\n"
+	);
 
 	if (napi_schedule_prep(&tp->napi))
 		__napi_schedule(&tp->napi);
