@@ -278,7 +278,7 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 					out_be32(CSR_MINIMAC_ADDR0+(i-1)*12, (int)(tp->pkt_buf+j)->buf);
 				}
 			} else {
-				dev->stats.rx_dropped;
+				dev->stats.rx_dropped++;
 			}
 			out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
 		}
