@@ -188,31 +188,16 @@ asmlinkage void manage_signals_irq(struct pt_regs* regs);
  * come via this function.  Instead, they should provide their
  * own 'handler'
  */
-asmlinkage void asm_do_IRQ(unsigned long vec, struct pt_regs *regs)
+asmlinkage void asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
 {
-	struct pt_regs *old_regs;
-	unsigned int irq;
-	
-	old_regs = set_irq_regs(regs);
+	struct pt_regs *old_regs = set_irq_regs(regs);
 
 	irq_enter();
 
-	/* Only process unmasked interrupts.
-	 * This avoids a race condition if several interrupts
-	 * arrive at the same time!
-	 */
-	vec &= lm32_current_irq_mask;
-	/* mask ALL interrupts we are going to process */
-	lm32_irq_multimask(vec);
-	
-	/* decode irq */
-	for (irq=0 ; irq<32; ++irq ) {
-		if ( vec & (1 << irq) ) {
-			generic_handle_irq(irq); /* < this (re)enables interrupts globally */
-			lm32_irq_ack(irq);
-			lm32_irq_unmask(irq);
-		}
-	}
+	lm32_irq_mask(irq);
+	generic_handle_irq(irq); /* < this (re)enables interrupts globally */
+	lm32_irq_ack(irq);
+	lm32_irq_unmask(irq);
 
 	irq_exit();
 

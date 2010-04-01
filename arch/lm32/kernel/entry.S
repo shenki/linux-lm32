@@ -79,14 +79,13 @@ ENTRY(divide_by_zero_handler)
 	KERNEL_EXCEPTION_VECTOR(160)
 
 ENTRY(interrupt_handler)
-	addi    sp, sp, -128
-	sw      (sp+120), ra
-	calli   _save_irq_frame
-	rcsr    r1, IP
-
-	addi    r2, sp, 4
-	calli   asm_do_IRQ
-	bi      _restore_irq_frame_and_return
+	bi      _long_interrupt_handler
+	nop
+	nop
+	nop
+	nop
+	nop
+	nop
 	nop
 
 ENTRY(system_call)
@@ -358,6 +357,29 @@ ENTRY(sys_clone_wrapper)
 /* in IRQ we call a function between save and restore */
 /* we therefore only save and restore the caller saved registers */
 /* (r1-r10, ra, ea because an interrupt could interrupt another one) */
+_long_interrupt_handler:
+	addi    sp, sp, -128
+	sw      (sp+120), ra
+	calli   _save_irq_frame
+
+	rcsr    r2, IP
+	rcsr    r3, IM
+	mvi     r1, 0
+	and     r2, r2, r3
+	mvi     r3, 1
+	be      r2, r0, 3f
+1:
+	and     r4, r2, r3
+	bne     r4, r0, 2f
+	sli     r3, r3, 1
+	addi    r1, r1, 1
+	bi      1b
+2:
+	addi    r2, sp, 4
+	calli   asm_do_IRQ
+3:
+	bi      _restore_irq_frame_and_return
+
 _save_irq_frame:
 	sw      (sp+8),   r1
 	sw      (sp+12),  r2
