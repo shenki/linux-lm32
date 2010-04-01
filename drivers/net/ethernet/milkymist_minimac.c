@@ -7,6 +7,7 @@
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
+#include <asm/cacheflush.h>
 #include <asm/hw/milkymist.h>
 
 static int buffer_size = 0x8000;	/* 32KBytes */
@@ -246,10 +247,7 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	int i, j, byte_count, state;
 
 	for (i=1; i<=MAX_PACKET_RECEPTION_SLOT; ++i) {
-		asm volatile( /* Invalidate Level-1 data cache */
-			"wcsr DCC, r0\n"
-			"nop\n"
-		);
+		flush_dcache_range(CSR_MINIMAC_STATE0,256);
 		state = in_be32(CSR_MINIMAC_STATE0+(i-1)*12);
 		if ( state == MINIMAC_STATE_PENDING ) {
 			byte_count = in_be32(CSR_MINIMAC_COUNT0+(i-1)*12);
@@ -283,10 +281,7 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 			out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
 		}
 	}
-	asm volatile( /* Invalidate Level-1 data cache */
-		"wcsr DCC, r0\n"
-		"nop\n"
-	);
+	flush_dcache_range(CSR_MINIMAC_STATE0,256);
 
 	if (napi_schedule_prep(&tp->napi))
 		__napi_schedule(&tp->napi);
