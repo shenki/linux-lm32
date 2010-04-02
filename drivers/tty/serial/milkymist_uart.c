@@ -157,9 +157,7 @@ static irqreturn_t milkymistuart_irq_tx(int irq, void* portarg)
 {
 	struct uart_port* port = (struct uart_port*)portarg;
 
-	lm32_irq_mask(IRQ_UARTTX);
 	milkymistuart_tx_next_char(port);
-	lm32_irq_unmask(IRQ_UARTTX);
 
 	return IRQ_HANDLED;
 }
