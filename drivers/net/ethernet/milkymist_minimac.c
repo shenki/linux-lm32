@@ -255,8 +255,10 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	struct net_device *dev = (struct net_device *)dev_id;
 	struct minimac *tp = netdev_priv(dev);
 
+	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_IRQ_MASK_RX)
+		return IRQ_NONE;
+
 	out_be32(CSR_MINIMAC_SETUP, MINIMAC_IRQ_MASK_RX);
-	flush_dcache_range(CSR_MINIMAC_SETUP,256);
 
 	napi_schedule(&tp->napi);
 
@@ -290,7 +292,6 @@ static int minimac_poll(struct napi_struct *napi, int budget)
 
 	if (work_done < budget) {
 		out_be32(CSR_MINIMAC_SETUP, 0);
-		flush_dcache_range(CSR_MINIMAC_SETUP,256);
 		napi_complete(napi);
 	}
 
