@@ -127,8 +127,6 @@ struct _pkt_buf {
  * @iobase:	pointer to I/O memory region
  * @membase:	pointer to buffer memory region
  * @dma_alloc:	dma allocated buffer size
- * @num_rx:	number of receive buffers
- * @slot:	assigned receive buffer no
  * @netdev:	pointer to network device structure
  * @napi:	NAPI structure
  * @rx_lock:	receive lock
@@ -141,8 +139,6 @@ struct minimac {
 		struct _pkt_buf *pkt_buf;
 	};
 	int dma_alloc;
-	int num_rx;
-	int slot[MAX_PACKET_RECEPTION_SLOT];
 
 	struct net_device *netdev;
 	struct napi_struct napi;
@@ -160,16 +156,9 @@ static int minimac_reset(struct minimac *dev)
 
 	out_be32(CSR_MINIMAC_SETUP, MINIMAC_SETUP_RXRST|MINIMAC_SETUP_TXRST);
 
-	for (i=0; i<=dev->num_rx; ++i) {
-		(dev->pkt_buf+i)->state = MINIMAC_STATE_EMPTY;
-		(dev->pkt_buf+i)->count = 0;
-	}
-
 	for (i=1; i<=MAX_PACKET_RECEPTION_SLOT; ++i) {
-		(dev->pkt_buf+i)->state = MINIMAC_STATE_LOADED;
-		dev->slot[i-1] = i;
 		out_be32(CSR_MINIMAC_ADDR0+(i-1)*12, (int)(dev->pkt_buf+i)->buf);
-		out_be32(CSR_MINIMAC_STATE0+(i-1)*12, (dev->pkt_buf+i)->state);
+		out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
 	}
 
 	memcpy_toio(dev->pkt_buf->buf, preamble, 8);		/* TX buff preamble */
@@ -185,48 +174,70 @@ static int minimac_rx(struct net_device *dev, int budget)
 	struct minimac *tp = netdev_priv(dev);
 	struct sk_buff *skb;
 	int size;
-	int i;
 	int received = 0;
 	int count;
 	void *src;
+	int i, state;
 
 	while (netif_running(dev) && received < budget ) {
 		count = 0;
-		for (i=1; i<=tp->num_rx && received < budget ; ++i) {
-			if ( (tp->pkt_buf+i)->state == MINIMAC_STATE_PENDING ) {
-				++count;
- 				src = phys_to_virt( (tp->pkt_buf+i)->buf );
-				size = get_frame(src, (tp->pkt_buf+i)->count );
-				if ( size > 0 ) {
-					skb = netdev_alloc_skb_ip_align(dev, size);
-					if (likely(skb)) {
-						skb_copy_to_linear_data (skb, src+8, size);
-						skb_put(skb, size);
-						skb->protocol = eth_type_trans(skb, dev);
-						dev->stats.rx_packets++;
-						dev->stats.rx_bytes += size;
-						netif_receive_skb(skb);
-					} else {
-						if (net_ratelimit())
-							dev_warn(&dev->dev, "Memory squeeze, dropping packet\n");
-						dev->stats.rx_dropped++;
-					}
-				} else if ( size == -2 ) {
-					dev->stats.rx_errors++;
-					dev->stats.rx_crc_errors++;
+		for (i=1; i<=MAX_PACKET_RECEPTION_SLOT && received < budget ; ++i) {
+			flush_dcache_range(CSR_MINIMAC_STATE0,256);
+			state = in_be32(CSR_MINIMAC_STATE0+(i-1)*12);
+			if ( state & MINIMAC_STATE_PENDING ) {
+				size = in_be32(CSR_MINIMAC_COUNT0+(i-1)*12);
+				if (size == 0) {
+				} else if (size < 64) {
 #ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-					dev_err(&dev->dev, "rx: wrong CRC\n");
+					dev_err(&dev->dev, "rx: frame too short(%d)\n", size);
 #endif
+					dev->stats.rx_errors++;
+					dev->stats.rx_length_errors++;
+					++received;
+					++count;
+				} else if ( size > MAX_ETH_FRAME_SIZE ) {
+#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
+					dev_err(&dev->dev, "rx: frame too long(%d)\n", size);
+#endif
+					dev->stats.rx_errors++;
+					dev->stats.rx_length_errors++;
+					++received;
+					++count;
+				} else {
+ 					src = phys_to_virt( (tp->pkt_buf+i)->buf );
+					size = get_frame(src, size );
+					if ( size > 0 ) {
+						skb = netdev_alloc_skb_ip_align(dev, size);
+						if (likely(skb)) {
+							skb_copy_to_linear_data (skb, src+8, size);
+							skb_put(skb, size);
+							skb->protocol = eth_type_trans(skb, dev);
+							dev->stats.rx_packets++;
+							dev->stats.rx_bytes += size;
+							netif_receive_skb(skb);
+						} else {
+							if (net_ratelimit())
+								dev_warn(&dev->dev, "Memory squeeze, dropping packet\n");
+							dev->stats.rx_dropped++;
+						}
+					} else if ( size == -2 ) {
+						dev->stats.rx_errors++;
+						dev->stats.rx_crc_errors++;
+#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
+						dev_err(&dev->dev, "rx: wrong CRC\n");
+#endif
+					}
+					++received;
+					++count;
 				}
-				(tp->pkt_buf+i)->state = MINIMAC_STATE_EMPTY;
-				received++;
+				out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
+				flush_dcache_range(CSR_MINIMAC_STATE0,256);
 			}
 		}
 		if (count == 0)
 			break;
 	}
 
-out:
 	return received;
 }
 
@@ -244,47 +255,11 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 {
 	struct net_device *dev = (struct net_device *)dev_id;
 	struct minimac *tp = netdev_priv(dev);
-	int i, j, byte_count, state;
 
-	for (i=1; i<=MAX_PACKET_RECEPTION_SLOT; ++i) {
-		flush_dcache_range(CSR_MINIMAC_STATE0,256);
-		state = in_be32(CSR_MINIMAC_STATE0+(i-1)*12);
-		if ( state == MINIMAC_STATE_PENDING ) {
-			byte_count = in_be32(CSR_MINIMAC_COUNT0+(i-1)*12);
-			// search free pkt_buf
-			for (j=1; j<=(tp->num_rx); ++j)
-				if ((tp->pkt_buf+j)->state == MINIMAC_STATE_EMPTY)
-					break;
-			if (j<=(tp->num_rx)) {
-				if (byte_count < 64) {
-#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-					dev_err(&dev->dev, "rx: frame too short(%d)\n", byte_count);
-#endif
-					dev->stats.rx_errors++;
-					dev->stats.rx_length_errors++;
-				} else if ( byte_count > MAX_ETH_FRAME_SIZE ) {
-#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-					dev_err(&dev->dev, "rx: frame too long(%d)\n", byte_count);
-#endif
-					dev->stats.rx_errors++;
-					dev->stats.rx_length_errors++;
-				} else {
-					(tp->pkt_buf+(tp->slot[i-1]))->count = byte_count;
-					(tp->pkt_buf+(tp->slot[i-1]))->state = state;
-					tp->slot[i-1] = j;
-					(tp->pkt_buf+j)->state = MINIMAC_STATE_LOADED;
-					out_be32(CSR_MINIMAC_ADDR0+(i-1)*12, (int)(tp->pkt_buf+j)->buf);
-				}
-			} else {
-				dev->stats.rx_dropped++;
-			}
-			out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
-		}
-	}
-	flush_dcache_range(CSR_MINIMAC_STATE0,256);
+	out_be32(CSR_MINIMAC_SETUP, MINIMAC_IRQ_MASK_RX);
+	flush_dcache_range(CSR_MINIMAC_SETUP,256);
 
-	if (napi_schedule_prep(&tp->napi))
-		__napi_schedule(&tp->napi);
+	napi_schedule(&tp->napi);
 
 	return IRQ_HANDLED;
 }
@@ -312,16 +287,13 @@ static int minimac_poll(struct napi_struct *napi, int budget)
 	struct net_device *dev = tp->netdev;
 	int work_done;
 
-	spin_lock(&tp->rx_lock);
-	work_done = 0;
-
-	work_done += minimac_rx(dev, budget);
+	work_done = minimac_rx(dev, budget);
 
 	if (work_done < budget) {
+		out_be32(CSR_MINIMAC_SETUP, 0);
+		flush_dcache_range(CSR_MINIMAC_SETUP,256);
 		napi_complete(napi);
 	}
-
-	spin_unlock(&tp->rx_lock);
 
 	return work_done;
 }
@@ -532,8 +504,6 @@ static int minimac_probe(struct platform_device *pdev)
 		netdev->mem_end = netdev->mem_start + buffer_size;
 		tp->dma_alloc = buffer_size;
 	}
-
-	tp->num_rx = (buffer_size / sizeof(struct _pkt_buf)) - 1;
 
 	/* GPIO switch*/
 	macadr[5] = in_be32(CSR_GPIO_IN) >> 5;
