@@ -231,7 +231,6 @@ static int minimac_rx(struct net_device *dev, int budget)
 					++count;
 				}
 				out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
-				flush_dcache_range(CSR_MINIMAC_STATE0,256);
 			}
 		}
 		if (count == 0)
@@ -361,6 +360,11 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	unsigned long fcs;
 	int len;
 
+asm volatile (  "rcsr r24, CC\n"
+                "mvhi r25, 0x2000\n"
+                "sw (r25+0x18), r24\n"
+                ::: "r24","r25");
+
 	if (in_be32(CSR_MINIMAC_TXREMAINING) != 0) {
 		return 0;
 	}
@@ -381,6 +385,11 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	*((dest+len)+ 9) = (fcs & 0xff00) >> 8;
 	*((dest+len)+10) = (fcs & 0xff0000) >> 16;
 	*((dest+len)+11) = (fcs & 0xff000000) >> 24;
+
+asm volatile (  "rcsr r24, CC\n"
+                "mvhi r25, 0x2000\n"
+                "sw (r25+0x1c), r24\n"
+                ::: "r24","r25");
 
 	out_be32(CSR_MINIMAC_TXADR, (unsigned int)dest);
 	out_be32(CSR_MINIMAC_TXREMAINING, len+12);
