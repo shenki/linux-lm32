@@ -48,6 +48,8 @@
 #define CSR_TMU_DSTSQUAREW	(0x80006040)
 #define CSR_TMU_DSTSQUAREH	(0x80006044)
 
+#define CSR_TMU_ALPHA		(0x80006048)
+
 struct tmu_vertex {
 	int x;
 	int y;
