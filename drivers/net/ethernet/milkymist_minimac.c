@@ -255,6 +255,12 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	struct net_device *dev = (struct net_device *)dev_id;
 	struct minimac *tp = netdev_priv(dev);
 
+	flush_dcache_range(CSR_MINIMAC_SETUP,256);
+	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST) {
+		out_be32(CSR_MINIMAC_SETUP, 0);
+		return IRQ_HANDLED;
+	}
+
 	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_IRQ_MASK_RX)
 		return IRQ_NONE;
 
