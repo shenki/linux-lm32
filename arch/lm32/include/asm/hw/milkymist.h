@@ -30,7 +30,6 @@
 #include <asm/hw/fmlbrg.h>
 #include <asm/hw/interrupts.h>
 #include <asm/hw/pfpu.h>
-#include <asm/hw/sram.h>
 #include <asm/hw/systemace.h>
 #include <asm/hw/uart.h>
 
