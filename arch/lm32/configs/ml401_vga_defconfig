@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.34-rc7
-# Tue May 11 22:53:05 2010
+# Linux kernel version: 2.6.34
+# Wed May 19 15:44:22 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
@@ -750,6 +750,7 @@ CONFIG_DEBUG_INFO=y
 # CONFIG_FAULT_INJECTION is not set
 # CONFIG_SYSCTL_SYSCALL_CHECK is not set
 # CONFIG_PAGE_POISONING is not set
+# CONFIG_ATOMIC64_SELFTEST is not set
 # CONFIG_SAMPLES is not set
 # CONFIG_BOOTPARAM is not set
 
