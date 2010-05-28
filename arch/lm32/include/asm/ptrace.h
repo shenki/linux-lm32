@@ -30,6 +30,11 @@
 #define PTRACE_GETREGS            12
 #define PTRACE_SETREGS            13
 
+#define PTRACE_GETFDPIC	          31
+
+#define PTRACE_GETFDPIC_EXEC      0
+#define PTRACE_GETFDPIC_INTERP    1
+
 /* for gdb */
 #define PT_TEXT_ADDR	50
 #define PT_TEXT_END_ADDR	51
