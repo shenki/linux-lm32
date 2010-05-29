@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
-# Linux kernel version: 2.6.33
-# Fri Mar  5 21:08:34 2010
+# Linux kernel version: 2.6.34
+# Sat May 29 16:37:07 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
@@ -51,7 +51,6 @@ CONFIG_RCU_FANOUT=32
 # CONFIG_TREE_RCU_TRACE is not set
 # CONFIG_IKCONFIG is not set
 CONFIG_LOG_BUF_SHIFT=12
-# CONFIG_CGROUPS is not set
 # CONFIG_SYSFS_DEPRECATED_V2 is not set
 # CONFIG_RELAY is not set
 # CONFIG_NAMESPACES is not set
@@ -235,6 +234,7 @@ CONFIG_DEFAULT_TCP_CONG="cubic"
 # CONFIG_RDS is not set
 # CONFIG_TIPC is not set
 # CONFIG_ATM is not set
+# CONFIG_L2TP is not set
 # CONFIG_BRIDGE is not set
 # CONFIG_NET_DSA is not set
 # CONFIG_VLAN_8021Q is not set
@@ -264,6 +264,7 @@ CONFIG_DEFAULT_TCP_CONG="cubic"
 # CONFIG_WIMAX is not set
 # CONFIG_RFKILL is not set
 # CONFIG_NET_9P is not set
+# CONFIG_CAIF is not set
 
 #
 # Device Drivers
@@ -301,6 +302,7 @@ CONFIG_XILINX_SYSACE=y
 #
 # SCSI device support
 #
+CONFIG_SCSI_MOD=y
 # CONFIG_RAID_ATTRS is not set
 # CONFIG_SCSI is not set
 # CONFIG_SCSI_DMA is not set
@@ -332,7 +334,6 @@ CONFIG_PPP_DEFLATE=y
 CONFIG_PPP_BSDCOMP=y
 # CONFIG_PPP_MPPE is not set
 # CONFIG_PPPOE is not set
-# CONFIG_PPPOL2TP is not set
 CONFIG_SLIP=y
 CONFIG_SLIP_COMPRESSED=y
 CONFIG_SLHC=y
@@ -386,6 +387,7 @@ CONFIG_HW_CONSOLE=y
 # CONFIG_VT_HW_CONSOLE_BINDING is not set
 # CONFIG_DEVKMEM is not set
 # CONFIG_SERIAL_NONSTANDARD is not set
+# CONFIG_N_GSM is not set
 
 #
 # Serial drivers
@@ -400,6 +402,8 @@ CONFIG_SERIAL_CORE_CONSOLE=y
 # CONFIG_SERIAL_TIMBERDALE is not set
 CONFIG_SERIAL_MILKYMIST=y
 CONFIG_SERIAL_MILKYMIST_CONSOLE=y
+# CONFIG_SERIAL_ALTERA_JTAGUART is not set
+# CONFIG_SERIAL_ALTERA_UART is not set
 CONFIG_UNIX98_PTYS=y
 CONFIG_DEVPTS_MULTIPLE_INSTANCES=y
 CONFIG_LEGACY_PTYS=y
@@ -411,6 +415,7 @@ CONFIG_LEGACY_PTY_COUNT=256
 # CONFIG_R3964 is not set
 # CONFIG_RAW_DRIVER is not set
 # CONFIG_TCG_TPM is not set
+# CONFIG_RAMOOPS is not set
 # CONFIG_I2C is not set
 # CONFIG_SPI is not set
 
@@ -468,10 +473,6 @@ CONFIG_DUMMY_CONSOLE=y
 # CONFIG_DMADEVICES is not set
 # CONFIG_AUXDISPLAY is not set
 # CONFIG_UIO is not set
-
-#
-# TI VLYNQ
-#
 # CONFIG_STAGING is not set
 
 #
@@ -535,6 +536,7 @@ CONFIG_MISC_FILESYSTEMS=y
 # CONFIG_BEFS_FS is not set
 # CONFIG_BFS_FS is not set
 # CONFIG_EFS_FS is not set
+# CONFIG_LOGFS is not set
 CONFIG_CRAMFS=y
 # CONFIG_SQUASHFS is not set
 # CONFIG_VXFS_FS is not set
@@ -549,24 +551,7 @@ CONFIG_ROMFS_BACKED_BY_BLOCK=y
 CONFIG_ROMFS_ON_BLOCK=y
 # CONFIG_SYSV_FS is not set
 # CONFIG_UFS_FS is not set
-CONFIG_NETWORK_FILESYSTEMS=y
-CONFIG_NFS_FS=y
-CONFIG_NFS_V3=y
-# CONFIG_NFS_V3_ACL is not set
-# CONFIG_NFS_V4 is not set
-CONFIG_ROOT_NFS=y
-# CONFIG_NFSD is not set
-CONFIG_LOCKD=y
-CONFIG_LOCKD_V4=y
-CONFIG_NFS_COMMON=y
-CONFIG_SUNRPC=y
-# CONFIG_RPCSEC_GSS_KRB5 is not set
-# CONFIG_RPCSEC_GSS_SPKM3 is not set
-# CONFIG_SMB_FS is not set
-# CONFIG_CIFS is not set
-# CONFIG_NCP_FS is not set
-# CONFIG_CODA_FS is not set
-# CONFIG_AFS_FS is not set
+# CONFIG_NETWORK_FILESYSTEMS is not set
 
 #
 # Partition Types
@@ -643,7 +628,7 @@ CONFIG_DEBUG_KERNEL=y
 # CONFIG_DEBUG_SPINLOCK_SLEEP is not set
 # CONFIG_DEBUG_LOCKING_API_SELFTESTS is not set
 # CONFIG_DEBUG_KOBJECT is not set
-CONFIG_DEBUG_BUGVERBOSE=y
+# CONFIG_DEBUG_BUGVERBOSE is not set
 CONFIG_DEBUG_INFO=y
 # CONFIG_DEBUG_VM is not set
 # CONFIG_DEBUG_NOMMU_REGIONS is not set
@@ -662,6 +647,7 @@ CONFIG_DEBUG_INFO=y
 # CONFIG_FAULT_INJECTION is not set
 # CONFIG_SYSCTL_SYSCALL_CHECK is not set
 # CONFIG_PAGE_POISONING is not set
+# CONFIG_ATOMIC64_SELFTEST is not set
 # CONFIG_SAMPLES is not set
 # CONFIG_BOOTPARAM is not set
 
