@@ -528,7 +528,7 @@ static int __init milkymistfb_setup(char *options)
      *  Initialisation
      */
 
-static int __init milkymistfb_probe(struct platform_device *dev)
+static int __devinit milkymistfb_probe(struct platform_device *dev)
 {
 	struct fb_info *info;
 	struct csr_vga *vga;
