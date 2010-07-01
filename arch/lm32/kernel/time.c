@@ -48,6 +48,10 @@
 #include <asm/setup.h>
 #include <asm/uaccess.h>
 
+#ifdef CONFIG_SMP
+extern void smp_local_timer_interrupt(void);
+#endif
+
 #define CSR_TIMER0_CONTROL	0x80001010
 #define CSR_TIMER0_COMPARE	0x80001014
 #define CSR_TIMER0_COUNTER	0x80001018
@@ -78,6 +82,11 @@ static irqreturn_t timer_interrupt(int irq, void *arg)
 	do_timer(1);
 #ifndef CONFIG_SMP
 	update_process_times(user_mode(0));
+#endif
+
+#ifdef CONFIG_SMP
+	smp_local_timer_interrupt();
+	smp_send_timer();
 #endif
 
 	if (current->pid)
