@@ -93,7 +93,7 @@ static struct uart_ops milkymistuart_pops = {
 static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud)
 {
 	// TODO: use the board configuration option to get the frequency
-	out_be32(CSR_UART_DIVISOR, 83333333/baud/16);
+	out_be32(CSR_UART_DIVISOR, (unsigned long)CONFIG_CPU_CLOCK/baud/16);
 }
 
 static void milkymistuart_tx_next_char(struct uart_port* port)

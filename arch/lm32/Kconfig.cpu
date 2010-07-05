@@ -38,7 +38,7 @@ endif
 config CPU_CLOCK
 	int "CPU Clock [Hz] (integer)"
 	default "100000000" if BOARD_XILINX_ML401
-	default "100000000" if BOARD_MILKYMIST_ONE
+	default "83333333" if BOARD_MILKYMIST_ONE
 
 config MEMORY_START
 	hex "Physical memory start address (hex)"
