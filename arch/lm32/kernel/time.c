@@ -98,11 +98,6 @@ static irqreturn_t timer_interrupt(int irq, void *arg)
 
 void time_init(void)
 {
-	xtime.tv_sec = 0;
-	xtime.tv_nsec = 0;
-
-	wall_to_monotonic.tv_sec = -xtime.tv_sec;
-
 	lm32_systimer_program(1, cpu_frequency / HZ);
 
 	if( setup_irq(IRQ_SYSTMR, &lm32_core_timer_irqaction) )
@@ -132,61 +127,3 @@ void lm32_systimer_program(int periodic, cycles_t cyc)
 	/* start timer */
 	out_be32(CSR_TIMER0_CONTROL,periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE);
 }
-
-/*
- * This version of gettimeofday has near microsecond resolution.
- */
-void do_gettimeofday(struct timeval *tv)
-{
-	unsigned long flags;
-	unsigned long seq;
-	unsigned long usec, sec;
-
-	do {
-		seq = read_seqbegin_irqsave(&xtime_lock, flags);
-		usec = get_time_offset();
-		sec = xtime.tv_sec;
-		usec += (xtime.tv_nsec / 1000);
-	} while (read_seqretry_irqrestore(&xtime_lock, seq, flags));
-
-	while (usec >= 1000000) {
-		usec -= 1000000;
-		sec++;
-	}
-
-	tv->tv_sec = sec;
-	tv->tv_usec = usec;
-}
-EXPORT_SYMBOL(do_gettimeofday);
-
-int do_settimeofday(struct timespec *tv)
-{
-	time_t wtm_sec, sec = tv->tv_sec;
-	long wtm_nsec, nsec = tv->tv_nsec;
-
-	if ((unsigned long)tv->tv_nsec >= NSEC_PER_SEC)
-		return -EINVAL;
-
-	write_seqlock_irq(&xtime_lock);
-	/*
-	 * This is revolting. We need to set the xtime.tv_usec
-	 * correctly. However, the value in this location is
-	 * is value at the last tick.
-	 * Discover what correction gettimeofday
-	 * would have done, and then undo it!
-	 */
-	nsec -= (get_time_offset() * 1000);
-
-	wtm_sec  = wall_to_monotonic.tv_sec + (xtime.tv_sec - sec);
-	wtm_nsec = wall_to_monotonic.tv_nsec + (xtime.tv_nsec - nsec);
-
-	set_normalized_timespec(&xtime, sec, nsec);
-	set_normalized_timespec(&wall_to_monotonic, wtm_sec, wtm_nsec);
-
-	ntp_clear();
-	write_sequnlock_irq(&xtime_lock);
-	clock_was_set();
-
-	return 0;
-}
-EXPORT_SYMBOL(do_settimeofday);
