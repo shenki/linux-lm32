@@ -164,7 +164,7 @@ void flush_thread(void)
 /*
  * sys_execve() executes a new program.
  */
-asmlinkage int sys_execve(char *name, char **argv, char **envp, struct pt_regs* regs)
+asmlinkage int sys_execve(const char *name, char **argv, char **envp, struct pt_regs* regs)
 {
 	int error;
 	char * filename;
