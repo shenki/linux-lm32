@@ -40,7 +40,7 @@
 #include <asm/unistd.h>
 
 
-int kernel_execve(const char *filename, char *const argv[], char *const envp[])
+int kernel_execve(const char *filename, const char *const argv[], const char *const envp[])
 {
     register unsigned int  r_syscall	asm("r8") = __NR_execve; 
     register long          r_a          asm("r1") = (unsigned long)filename; 
