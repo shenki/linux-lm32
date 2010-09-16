@@ -41,23 +41,16 @@
 #include <linux/timex.h>
 #include <linux/interrupt.h>
 
-//#include <asm/machdep.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/irq_regs.h>
 #include <asm/setup.h>
 #include <asm/uaccess.h>
+#include <asm/hw/milkymist.h>
 
 #ifdef CONFIG_SMP
 extern void smp_local_timer_interrupt(void);
 #endif
-
-#define CSR_TIMER0_CONTROL	0x80001010
-#define CSR_TIMER0_COMPARE	0x80001014
-#define CSR_TIMER0_COUNTER	0x80001018
-
-#define TIMER_ENABLE		0x01
-#define TIMER_AUTORESTART	0x02
 
 cycles_t lm32_cycles = 0;
 

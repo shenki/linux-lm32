@@ -15,23 +15,26 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __INTERRUPTS_H
-#define __INTERRUPTS_H
+#ifndef __HW_INTERRUPTS_H
+#define __HW_INTERRUPTS_H
 
-#define IRQ_GPIO		(0)
-#define IRQ_TIMER0		(1)
-#define IRQ_TIMER1		(2)
-#define IRQ_UARTRX		(3)
-#define IRQ_UARTTX		(4)
+#define IRQ_UARTRX		(0)
+#define IRQ_UARTTX		(1)
+#define IRQ_GPIO		(2)
+#define IRQ_TIMER0		(3)
+#define IRQ_TIMER1		(4)
 #define IRQ_AC97CRREQUEST	(5)
 #define IRQ_AC97CRREPLY		(6)
 #define IRQ_AC97DMAR		(7)
 #define IRQ_AC97DMAW		(8)
 #define IRQ_PFPU		(9)
 #define IRQ_TMU			(10)
-#define IRQ_PS2KEYBOARD		(11)
-#define IRQ_PS2MOUSE		(12)
-#define IRQ_ETHRX		(13)
-#define IRQ_ETHTX		(14)
+#define IRQ_ETHRX		(11)
+#define IRQ_ETHTX		(12)
+#define IRQ_VIDEOIN		(13)
+#define IRQ_MIDIRX		(14)
+#define IRQ_MIDITX		(15)
+#define IRQ_IR			(16)
+#define IRQ_USB			(17)
 
-#endif /* __INTERRUPTS_H */
+#endif /* __HW_INTERRUPTS_H */

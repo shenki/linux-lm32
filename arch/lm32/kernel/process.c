@@ -47,6 +47,7 @@
 #include <asm/traps.h>
 #include <asm/setup.h>
 #include <asm/pgtable.h>
+#include <asm/hw/milkymist.h>
 
 asmlinkage void ret_from_fork(void);
 
@@ -89,8 +90,6 @@ void cpu_idle(void)
 		preempt_disable();
 	}
 }
-
-#define CSR_SYSTEM_ID 0x8000103c
 
 void machine_restart(char * __unused)
 {

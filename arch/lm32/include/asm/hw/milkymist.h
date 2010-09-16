@@ -19,19 +19,12 @@
 #define __HW_MILKYMIST_H
 
 #include <asm/hw/ac97.h>
-#include <asm/hw/fmlmeter.h>
-#include <asm/hw/hpdmc.h>
 #include <asm/hw/minimac.h>
-#include <asm/hw/ps2.h>
 #include <asm/hw/sysctl.h>
-#include <asm/hw/tmu.h>
 #include <asm/hw/vga.h>
 #include <asm/hw/capabilities.h>
 #include <asm/hw/fmlbrg.h>
 #include <asm/hw/interrupts.h>
-#include <asm/hw/pfpu.h>
-#include <asm/hw/systemace.h>
 #include <asm/hw/uart.h>
 
 #endif
-

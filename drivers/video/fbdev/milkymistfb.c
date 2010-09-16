@@ -27,12 +27,11 @@
      *  The default can be overridden if the driver is compiled as a module
      */
 
-#define VIDEOMEMSIZE	(1024*800*2)	/* 1.6 MB */
+#define VIDEOMEMSIZE	(1024*768*2)
 
-#define	CSR_VGA_SOURCE_CLOCK	0x80003030
-#define	VGA_CLOCK_VGA		0x00
-#define	VGA_CLOCK_SVGA		0x01
-#define	VGA_CLOCK_XGA		0x02
+/* TODO: Change pixel clocks. We should use the Spartan-6 DCM_CLKGEN 
+ * reconfiguration port in the FPGA design.
+ * /
 
 /* TODO: move these into the driver private structure (info->par) */
 static void *videomemory;
@@ -54,7 +53,6 @@ struct csr_vga {
 	unsigned int csr_vga_vsync_start;
 	unsigned int csr_vga_vsync_end;
 	unsigned int csr_vga_vscan;
-	unsigned int csr_vga_source_clock;
 };
 
 static const struct {
@@ -99,8 +97,7 @@ static const struct {
 			.csr_vga_vres = 480,
 			.csr_vga_vsync_start = 491,
 			.csr_vga_vsync_end = 493,
-			.csr_vga_vscan = 523,
-			.csr_vga_source_clock = VGA_CLOCK_VGA,
+			.csr_vga_vscan = 523
 		}
 	}, {
 		/* 800x600, 48 KHz, 72.2 Hz, 50 MHz PixClock */
@@ -135,8 +132,7 @@ static const struct {
 			.csr_vga_vres = 600,
 			.csr_vga_vsync_start = 637,
 			.csr_vga_vsync_end = 643,
-			.csr_vga_vscan = 666,
-			.csr_vga_source_clock = VGA_CLOCK_SVGA,
+			.csr_vga_vscan = 666
 		}
 	}, {
 		/* 1024x768, 48.363 KHz, 60 Hz, 65 MHz PixClock */
@@ -171,8 +167,7 @@ static const struct {
 			.csr_vga_vres = 768,
 			.csr_vga_vsync_start = 771,
 			.csr_vga_vsync_end = 777,
-			.csr_vga_vscan = 806,
-			.csr_vga_source_clock = VGA_CLOCK_XGA,
+			.csr_vga_vscan = 806
 		}
 	}
 };
@@ -557,11 +552,7 @@ static int __devinit milkymistfb_probe(struct platform_device *dev)
 
 	out_be32(CSR_VGA_RESET,1);
 	vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
-	out_be32(CSR_VGA_SOURCE_CLOCK,vga->csr_vga_source_clock);
-	if ( in_be32(CSR_VGA_SOURCE_CLOCK) != vga->csr_vga_source_clock ) {
-		milkymistfb_def_mode = 1;
-		vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
-	}
+	milkymistfb_def_mode = 1;
 
 	info->var = milkymistfb_predefined[milkymistfb_def_mode].var;
 	info->fix = milkymistfb_predefined[milkymistfb_def_mode].fix;

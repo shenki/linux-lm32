@@ -36,9 +36,7 @@
 #include <linux/string.h>
 #include <asm/setup.h>
 #include <asm/irq.h>
-
-#define CSR_UART_RXTX 		0x80000000
-#define CSR_UART_DIVISOR	0x80000004
+#include <asm/hw/milkymist.h>
 
 static void early_console_putc (char c)
 {

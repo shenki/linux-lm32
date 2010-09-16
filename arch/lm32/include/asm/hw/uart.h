@@ -18,7 +18,8 @@
 #ifndef __HW_UART_H
 #define __HW_UART_H
 
-#define CSR_UART_RXTX 		(0x80000000)
-#define CSR_UART_DIVISOR	(0x80000004)
+#define CSR_UART_RXTX 		(0xe0000000)
+#define CSR_UART_DIVISOR	(0xe0000004)
+#define CSR_UART_THRU		(0xe0000008)
 
 #endif /* __HW_UART_H */

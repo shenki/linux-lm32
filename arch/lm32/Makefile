@@ -22,7 +22,6 @@
 # MA 02111-1307 USA
 #
 
-board-$(CONFIG_BOARD_XILINX_ML401)	:= ml401
 board-$(CONFIG_BOARD_MILKYMIST_ONE)	:= milkymist-one
 BOARD := $(board-y)
 
