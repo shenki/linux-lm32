@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.36-rc4
-# Thu Sep 16 15:23:52 2010
+# Thu Sep 16 16:25:36 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
@@ -331,21 +331,7 @@ CONFIG_MARVELL_PHY=y
 CONFIG_MICREL_PHY=y
 # CONFIG_FIXED_PHY is not set
 CONFIG_MDIO_BITBANG=y
-CONFIG_NET_ETHERNET=y
-# CONFIG_MII is not set
-# CONFIG_ETHOC is not set
-# CONFIG_DNET is not set
-# CONFIG_IBM_NEW_EMAC_ZMII is not set
-# CONFIG_IBM_NEW_EMAC_RGMII is not set
-# CONFIG_IBM_NEW_EMAC_TAH is not set
-# CONFIG_IBM_NEW_EMAC_EMAC4 is not set
-# CONFIG_IBM_NEW_EMAC_NO_FLOW_CTRL is not set
-# CONFIG_IBM_NEW_EMAC_MAL_CLR_ICINTSTAT is not set
-# CONFIG_IBM_NEW_EMAC_MAL_COMMON_ERR is not set
-# CONFIG_B44 is not set
-# CONFIG_KS8851_MLL is not set
-CONFIG_MILKYMIST_MINIMAC=y
-CONFIG_DEBUG_MILKYMIST_MINIMAC=y
+# CONFIG_NET_ETHERNET is not set
 # CONFIG_NETDEV_1000 is not set
 # CONFIG_NETDEV_10000 is not set
 # CONFIG_WLAN is not set
