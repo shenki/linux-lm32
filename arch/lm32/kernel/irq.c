@@ -34,6 +34,7 @@
 unsigned long irq_err_count;
 /* this is the current mask in IM */
 static unsigned long lm32_current_irq_mask = 0;
+static unsigned long lm32_current_irq_disable = 0;
 
 /*
  * NOP IRQ functions
@@ -80,7 +81,7 @@ void lm32_irq_unmask(unsigned int irq)
 	unsigned long flags;
 	unsigned long mask = (1 << irq);
 
-	if( !(lm32_current_irq_mask & mask) ) {
+	if( !(lm32_current_irq_mask & mask) && !(lm32_current_irq_disable & mask)) {
 		local_irq_save(flags);
 
 		mask |= lm32_current_irq_mask;
@@ -90,6 +91,26 @@ void lm32_irq_unmask(unsigned int irq)
 
 		local_irq_restore(flags);
 	}
+}
+
+void lm32_irq_disable(unsigned int irq)
+{
+	unsigned long mask = (1 << irq);
+
+	mask |= lm32_current_irq_disable;
+	lm32_current_irq_disable = mask;
+
+	lm32_irq_mask(irq);
+}
+
+void lm32_irq_enable(unsigned int irq)
+{
+	unsigned long mask = ~(1 << irq);
+
+	mask &= lm32_current_irq_disable;
+	lm32_current_irq_disable = mask;
+
+	lm32_irq_unmask(irq);
 }
 
 void lm32_irq_ack(unsigned int irq)
