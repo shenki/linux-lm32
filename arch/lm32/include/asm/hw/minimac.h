@@ -22,8 +22,6 @@
 
 #define MINIMAC_SETUP_RXRST		(0x1)
 #define MINIMAC_SETUP_TXRST		(0x2)
-#define MINIMAC_IRQ_MASK_RX		(0x4)
-#define MINIMAC_IRQ_MASK_TX		(0x8)
 
 #define CSR_MINIMAC_MDIO		(0xe0008004)
 

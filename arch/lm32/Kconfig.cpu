@@ -28,12 +28,16 @@ choice
 
 config	BOARD_MILKYMIST_ONE
 	bool "Milkymist One"
+
+config	BOARD_MILKYMIST_SOC
+	bool "Milkymist SoC"
 endchoice
 endif
 
 config CPU_CLOCK
 	int "CPU Clock [Hz] (integer)"
-	default "83333333"
+	default "80000000" if BOARD_MILKYMIST_ONE
+	default "100000000" if BOARD_MILKYMIST_SOC
 
 config MEMORY_START
 	hex "Physical memory start address (hex)"
@@ -41,7 +45,8 @@ config MEMORY_START
 
 config MEMORY_SIZE
 	hex "Physical memory size (hex)"
-	default "0x08000000"
+	default "0x08000000" if BOARD_MILKYMIST_ONE
+	default "0x04000000" if BOARD_MILKYMIST_SOC
 
 config TEXT_OFFSET
 	hex "Set the text offset in memory"

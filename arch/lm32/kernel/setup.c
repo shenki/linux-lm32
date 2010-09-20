@@ -236,6 +236,64 @@ static struct platform_device ac97_device = {
 	.resource = ac97_resources,
 };
 #endif
+#ifdef CONFIG_XILINX_SYSACE
+static struct resource lm32sysace_resources[] = {
+	[0] = {
+		.start = 0x70000000,
+		.end = 0x7000ffff,
+		.flags = IORESOURCE_MEM,
+        },
+};
+
+static struct platform_device lm32sysace_device = {
+	.name = "xsysace",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(lm32sysace_resources),
+	.resource = lm32sysace_resources,
+};
+#endif
+#ifdef CONFIG_SERIO_MILKBD
+static struct resource lm32milkbd_resources[] = {
+	[0] = {
+		.start = CSR_PS2_KEYBOARD_DATA,
+		.end = CSR_PS2_KEYBOARD_DATA+0xff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_PS2KEYBOARD,
+		.end = IRQ_PS2KEYBOARD,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device lm32milkbd_device = {
+	.name = "milkbd",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(lm32milkbd_resources),
+	.resource = lm32milkbd_resources,
+};
+#endif
+#ifdef CONFIG_SERIO_MILKMOUSE
+static struct platform_device lm32milkbd_device = {
+        .name = "milkbd",
+        .id = 0,
+        .num_resources = ARRAY_SIZE(lm32milkbd_resources),
+        .resource = lm32milkbd_resources,
+};
+
+static struct resource lm32milkmouse_resources[] = {
+	[0] = {
+		.start = CSR_PS2_MOUSE_DATA,
+		.end = CSR_PS2_MOUSE_DATA+0xff,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_PS2MOUSE,
+		.end = IRQ_PS2MOUSE,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+#endif
 
 static int __init setup_devices(void) {
 	int ret = 0;
@@ -259,6 +317,27 @@ static int __init setup_devices(void) {
 	if( cap & CAP_AC97 )
 		if( (err = platform_device_register(&ac97_device)) ) {
 			printk(KERN_ERR "could not register 'milkymist_ac97'error:%d\n", err);
+			ret = err;
+		}
+#endif
+#ifdef CONFIG_XILINX_SYSACE
+	if( cap & CAP_SYSTEMACE )
+		if( (err = platform_device_register(&lm32sysace_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_sysace'error:%d\n", err);
+			ret = err;
+		}
+#endif
+#ifdef CONFIG_SERIO_MILKBD
+	if( cap & CAP_PS2KEYBOARD )
+		if( (err = platform_device_register(&lm32milkbd_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ps2kbd'error:%d\n", err);
+			ret = err;
+		}
+#endif
+#ifdef CONFIG_SERIO_MILKMOUSE
+	if( cap & CAP_PS2MOUSE )
+		if( (err = platform_device_register(&lm32milkmouse_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_ps2mouse'error:%d\n", err);
 			ret = err;
 		}
 #endif

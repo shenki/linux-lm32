@@ -1,6 +1,6 @@
 /*
  * Milkymist VJ SoC (Software)
- * Copyright (C) 2007, 2008, 2009, 2010 Sebastien Bourdeauducq
+ * Copyright (C) 2007, 2008, 2009 Sebastien Bourdeauducq
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -15,19 +15,14 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __HW_MILKYMIST_H
-#define __HW_MILKYMIST_H
+#ifndef __HW_PS2_H
+#define __HW_PS2_H
 
-#include <asm/hw/ac97.h>
-#include <asm/hw/minimac.h>
-#include <asm/hw/sysctl.h>
-#include <asm/hw/vga.h>
-#include <asm/hw/capabilities.h>
-#include <asm/hw/fmlbrg.h>
-#include <asm/hw/interrupts.h>
-#include <asm/hw/uart.h>
-#if defined(CONFIG_SERIO_MILKBD) || defined(CONFIG_SERIO_MILKMOUSE)
-#include <asm/hw/ps2.h>
-#endif
+#define CSR_PS2_KEYBOARD_DATA	(0xe000c000)
+#define CSR_PS2_KEYBOARD_STATUS	(0xe000c004)
+#define CSR_PS2_MOUSE_DATA	(0xe000d000)
+#define CSR_PS2_MOUSE_STATUS	(0xe000d004)
 
-#endif
+#define PS2_BUSY		(0x1)
+
+#endif /* __HW_PS2_H */

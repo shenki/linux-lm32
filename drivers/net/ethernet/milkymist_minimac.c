@@ -3,14 +3,13 @@
  */
 
 #include <linux/etherdevice.h>
-//#include <linux/crc32.h>
 #include <linux/io.h>
 #include <linux/platform_device.h>
 #include <linux/sched.h>
 #include <asm/cacheflush.h>
 #include <asm/hw/milkymist.h>
 
-static int buffer_size = 0x8000;	/* 32KBytes */
+static int buffer_size = 0x4000;	/* 16KBytes */
 module_param(buffer_size, int, 0);
 MODULE_PARM_DESC(buffer_size, "DMA buffer allocation size");
 
@@ -126,7 +125,6 @@ struct _pkt_buf {
  * struct minimac - driver-tpate device structure
  * @iobase:	pointer to I/O memory region
  * @membase:	pointer to buffer memory region
- * @dma_alloc:	dma allocated buffer size
  * @netdev:	pointer to network device structure
  * @napi:	NAPI structure
  * @rx_lock:	receive lock
@@ -138,7 +136,6 @@ struct minimac {
 		void __iomem *membase;
 		struct _pkt_buf *pkt_buf;
 	};
-	int dma_alloc;
 
 	struct net_device *netdev;
 	struct napi_struct napi;
@@ -258,13 +255,9 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	flush_dcache_range(CSR_MINIMAC_SETUP,256);
 	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST) {
 		out_be32(CSR_MINIMAC_SETUP, 0);
-		return IRQ_HANDLED;
 	}
 
-	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_IRQ_MASK_RX)
-		return IRQ_NONE;
-
-	out_be32(CSR_MINIMAC_SETUP, MINIMAC_IRQ_MASK_RX);
+	lm32_irq_disable(dev->irq);
 
 	napi_schedule(&tp->napi);
 
@@ -297,8 +290,8 @@ static int minimac_poll(struct napi_struct *napi, int budget)
 	work_done = minimac_rx(dev, budget);
 
 	if (work_done < budget) {
-		out_be32(CSR_MINIMAC_SETUP, 0);
 		napi_complete(napi);
+		lm32_irq_enable(dev->irq);
 	}
 
 	return work_done;
@@ -309,21 +302,20 @@ static int minimac_open(struct net_device *dev)
 	struct minimac *tp = netdev_priv(dev);
 	int ret;
 
-	ret = request_irq(dev->irq, minimac_interrupt_rx, IRQF_SHARED, "milkymist_minimac RX", dev);
+	ret = request_irq(dev->irq, minimac_interrupt_rx, IRQF_DISABLED, "milkymist_minimac RX", dev);
 	if (ret)
 		return -1;
-	lm32_irq_unmask(dev->irq);
 
-	ret = request_irq((dev->irq)+1, minimac_interrupt_tx, IRQF_SHARED, "milkymist_minimac TX", dev);
+	ret = request_irq((dev->irq)+1, minimac_interrupt_tx, IRQF_DISABLED, "milkymist_minimac TX", dev);
 	if (ret)
 		return -1;
-	lm32_irq_unmask((dev->irq)+1);
 
 	minimac_reset(tp);
-
 	netif_start_queue(dev);
-
 	napi_enable(&tp->napi);
+
+	lm32_irq_unmask(dev->irq);
+	lm32_irq_unmask((dev->irq)+1);
 
 	return 0;
 }
@@ -355,8 +347,6 @@ static int minimac_stop(struct net_device *dev)
 
 static struct net_device_stats *minimac_stats(struct net_device *dev)
 {
-	struct minimac *tp = netdev_priv(dev);
-
 	return &dev->stats;
 }
 
@@ -368,7 +358,7 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	int len;
 
 	if (in_be32(CSR_MINIMAC_TXREMAINING) != 0) {
-		return 0;
+		return NETDEV_TX_BUSY;
 	}
 
 	spin_lock_irq(&tp->lock);
@@ -404,7 +394,6 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 static const struct net_device_ops minimac_netdev_ops = {
 	.ndo_open	= minimac_open,
 	.ndo_stop	= minimac_stop,
-//	.ndo_do_ioctl	= minimac_ioctl,
 	.ndo_tx_timeout	= minimac_tx_timeout,
 	.ndo_get_stats	= minimac_stats,
 	.ndo_start_xmit	= minimac_start_xmit,
@@ -451,20 +440,13 @@ static int minimac_probe(struct platform_device *pdev)
 	netdev->base_addr = mmio->start;
 
 	/* obtain buffer memory space */
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 1);
-	if (res) {
-		mem = devm_request_mem_region(&pdev->dev, res->start,
-			resource_size(res), res->name);
-		if (!mem) {
-			dev_err(&pdev->dev, "cannot request memory space\n");
-			ret = -ENXIO;
-			goto free;
-		}
-
-		netdev->mem_start = mem->start;
-		netdev->mem_end   = mem->end;
+	netdev->mem_start = (unsigned long)kmalloc(buffer_size, GFP_KERNEL | GFP_DMA);
+	if (!netdev->mem_start) {
+		dev_err(&pdev->dev, "cannot allocate memory space\n");
+		ret = -ENXIO;
+		goto free;
 	}
-
+	netdev->mem_end   = netdev->mem_start + buffer_size;
 
 	/* obtain device IRQ number */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
@@ -478,7 +460,7 @@ static int minimac_probe(struct platform_device *pdev)
 
 	tp = netdev_priv(netdev);
 	tp->netdev = netdev;
-	tp->dma_alloc = 0;
+	tp->membase = netdev->mem_start;
 
 	tp->iobase = devm_ioremap_nocache(&pdev->dev, netdev->base_addr,
 			resource_size(mmio));
@@ -486,29 +468,6 @@ static int minimac_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "cannot remap I/O memory space\n");
 		ret = -ENXIO;
 		goto error;
-	}
-
-	if (netdev->mem_end) {
-		tp->membase = devm_ioremap_nocache(&pdev->dev,
-			netdev->mem_start, resource_size(mem));
-		if (!tp->membase) {
-			dev_err(&pdev->dev, "cannot remap memory space\n");
-			ret = -ENXIO;
-			goto error;
-		}
-	} else {
-		/* Allocate buffer memory */
-		tp->membase = dma_alloc_coherent(NULL,
-			buffer_size, (void *)&netdev->mem_start,
-			GFP_KERNEL);
-		if (!tp->membase) {
-			dev_err(&pdev->dev, "cannot allocate %dB buffer\n",
-				buffer_size);
-			ret = -ENOMEM;
-			goto error;
-		}
-		netdev->mem_end = netdev->mem_start + buffer_size;
-		tp->dma_alloc = buffer_size;
 	}
 
 	/* GPIO switch*/
@@ -533,6 +492,9 @@ static int minimac_probe(struct platform_device *pdev)
 	memset(&tp->napi, 0, sizeof(tp->napi));
 	netif_napi_add(netdev, &tp->napi, minimac_poll, 64);
 
+	/* reset stats */
+	memset(&netdev->stats, 0, sizeof(netdev->stats));
+
 	spin_lock_init(&tp->lock);
 	spin_lock_init(&tp->rx_lock);
 
@@ -546,9 +508,10 @@ static int minimac_probe(struct platform_device *pdev)
 
 error:
 free:
-	if (tp->dma_alloc)
-		dma_free_coherent(NULL, tp->dma_alloc, tp->membase,
-			netdev->mem_start);
+	if (tp->membase) {
+		kfree(tp->membase);
+		tp->membase = NULL;
+	}
 	free_netdev(netdev);
 out:
 	return ret;
@@ -563,9 +526,10 @@ static int minimac_remove(struct platform_device *pdev)
 
 	if (netdev) {
 
-		if (tp->dma_alloc)
-			dma_free_coherent(NULL, tp->dma_alloc, tp->membase,
-				netdev->mem_start);
+		if (tp->membase) {
+			kfree(tp->membase);
+			tp->membase = NULL;
+		}
 		unregister_netdev(netdev);
 		free_netdev(netdev);
 	}

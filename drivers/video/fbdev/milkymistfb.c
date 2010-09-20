@@ -31,7 +31,7 @@
 
 /* TODO: Change pixel clocks. We should use the Spartan-6 DCM_CLKGEN 
  * reconfiguration port in the FPGA design.
- * /
+ */
 
 /* TODO: move these into the driver private structure (info->par) */
 static void *videomemory;
