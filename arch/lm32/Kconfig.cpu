@@ -36,8 +36,7 @@ endif
 
 config CPU_CLOCK
 	int "CPU Clock [Hz] (integer)"
-	default "80000000" if BOARD_MILKYMIST_ONE
-	default "100000000" if BOARD_MILKYMIST_SOC
+	default "80000000"
 
 config MEMORY_START
 	hex "Physical memory start address (hex)"

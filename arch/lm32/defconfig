@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.36-rc4
-# Thu Sep 16 16:25:36 2010
+# Wed Sep 22 19:31:48 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
