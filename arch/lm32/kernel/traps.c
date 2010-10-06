@@ -204,3 +204,7 @@ asmlinkage unsigned long asm_do_sig(unsigned long vec, struct pt_regs *regs)
 	}
 }
 
+int is_valid_bugaddr(unsigned long addr)
+{
+	return 1;
+}
