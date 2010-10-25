@@ -25,51 +25,9 @@
 #define _LM32_ASM_SYSTEM_H
 
 #include <linux/linkage.h>
+#include <linux/irqflags.h>
 
 #ifndef __ASSEMBLY__
-
-static inline int local_irq_disable(void)
-{
-	unsigned int old_ie, new_ie;
-	asm volatile (
-		"mvi %0,0xfffffffe\n" \
-		"rcsr %1, IE\n" \
-		"and %0, %1, %0\n" \
-		"wcsr IE, %0\n" \
-		"andi %1, %1, 1\n" \
-		: "=r"(new_ie), "=r"(old_ie) \
-	);
-	return old_ie;
-}
-
-static inline void local_irq_enable(void)
-{
-	unsigned int ie;
-	asm volatile (
-		"rcsr %0, IE\n" 
-		"ori %0, %0, 1\n"
-		"wcsr IE, %0\n"
-		: "=r"(ie));
-}
-
-#define local_save_flags(x) asm volatile ("rcsr %0, IE\n" : "=r"(x))
-
-#define local_irq_save(x) { x = local_irq_disable(); }
-
-#define local_irq_restore(x) { unsigned int ie; \
-	asm volatile ( \
-		"rcsr %0, IE\n" \
-		"andi %0, %0, 0xfffe\n" \
-		"or %0, %0, %1\n" \
-		"wcsr IE, %0\n": \
-		 "=&r"(ie): "r"(x) ); }
-
-static inline int irqs_disabled(void)
-{
-	unsigned long flags;
-	local_save_flags(flags);
-	return ((flags & 0x1) == 0);
-}
 
 extern asmlinkage struct task_struct* resume(struct task_struct* last, struct task_struct* next);
 
@@ -107,24 +65,24 @@ static inline unsigned long __xchg(unsigned long x, volatile void *ptr, int size
 
 	switch (size) {
 	case 1:
-		local_irq_save(flags);
+		raw_local_irq_save(flags);
 		ret = *(volatile unsigned char *)ptr;
 		*(volatile unsigned char *)ptr = x;
-		local_irq_restore(flags);
+		raw_local_irq_restore(flags);
 		break;
 
 	case 2:
-		local_irq_save(flags);
+		raw_local_irq_save(flags);
 		ret = *(volatile unsigned short *)ptr;
 		*(volatile unsigned short *)ptr = x;
-		local_irq_restore(flags);
+		raw_local_irq_restore(flags);
 		break;
 
 	case 4:
-		local_irq_save(flags);
+		raw_local_irq_save(flags);
 		ret = *(volatile unsigned long *)ptr;
 		*(volatile unsigned long *)ptr = x;
-		local_irq_restore(flags);
+		raw_local_irq_restore(flags);
 		break;
 
 	}
@@ -145,10 +103,10 @@ static inline unsigned long __cmpxchg_u32(volatile int *p, unsigned long old,
 	 unsigned long flags;
 	 int prev;
 
-	 local_irq_save(flags);
+	 raw_local_irq_save(flags);
 	 if ((prev = *p) == old)
 					 *p = nnew;
-	 local_irq_restore(flags);
+	 raw_local_irq_restore(flags);
 	 return(prev);
 }
 
@@ -158,10 +116,10 @@ static inline unsigned long long __cmpxchg_u64(volatile long long *p, unsigned l
 	 unsigned long flags;
 	 int prev;
 
-	 local_irq_save(flags);
+	 raw_local_irq_save(flags);
 	 if ((prev = *p) == old)
 					 *p = nnew;
-	 local_irq_restore(flags);
+	 raw_local_irq_restore(flags);
 	 return(prev);
 }
 

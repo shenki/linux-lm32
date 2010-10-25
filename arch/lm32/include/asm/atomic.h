@@ -19,9 +19,9 @@
 static __inline__ int atomic_add_return(int i, atomic_t *v)
 {
 	int ret,flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	ret = v->counter += i;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret;
 }
 
@@ -31,9 +31,9 @@ static __inline__ int atomic_add_return(int i, atomic_t *v)
 static __inline__ int atomic_sub_return(int i, atomic_t *v)
 {
 	int ret,flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	ret = v->counter -= i;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret;
 }
 
@@ -43,10 +43,10 @@ static __inline__ int atomic_sub_return(int i, atomic_t *v)
 static __inline__ int atomic_inc_return(atomic_t *v)
 {
 	int ret,flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	v->counter++;
 	ret = v->counter;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret;
 }
 
@@ -65,10 +65,10 @@ static __inline__ int atomic_inc_return(atomic_t *v)
 static __inline__ int atomic_dec_return(atomic_t *v)
 {
 	int ret,flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	--v->counter;
 	ret = v->counter;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret;
 }
 
@@ -77,10 +77,10 @@ static __inline__ int atomic_dec_return(atomic_t *v)
 static __inline__ int atomic_dec_and_test(atomic_t *v)
 {
 	int ret,flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	--v->counter;
 	ret = v->counter;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret == 0;
 }
 
@@ -89,11 +89,11 @@ static inline int atomic_cmpxchg(atomic_t *v, int old, int new)
 	int ret;
 	unsigned long flags;
 
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	ret = v->counter;
 	if (likely(ret == old))
 		v->counter = new;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret;
 }
 
@@ -104,11 +104,11 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 	int ret;
 	unsigned long flags;
 
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	ret = v->counter;
 	if (ret != u)
 		v->counter += a;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 	return ret != u;
 }
 #define atomic_inc_not_zero(v) atomic_add_unless((v), 1, 0)
@@ -116,17 +116,17 @@ static inline int atomic_add_unless(atomic_t *v, int a, int u)
 static __inline__ void atomic_clear_mask(unsigned long mask, unsigned long *v)
 {
 	unsigned long flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	*v &= mask;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 }
 
 static __inline__ void atomic_set_mask(unsigned long mask, unsigned long *v)
 {
 	unsigned long flags;
-	local_irq_save(flags);
+	flags = arch_local_irq_save();
 	*v |= mask;
-	local_irq_restore(flags);
+	arch_local_irq_restore(flags);
 }
 
 /* Atomic operations are already serializing */
