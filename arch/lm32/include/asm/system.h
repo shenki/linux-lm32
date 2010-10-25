@@ -24,10 +24,10 @@
 #ifndef _LM32_ASM_SYSTEM_H
 #define _LM32_ASM_SYSTEM_H
 
+#ifndef __ASSEMBLY__
+
 #include <linux/linkage.h>
 #include <linux/irqflags.h>
-
-#ifndef __ASSEMBLY__
 
 extern asmlinkage struct task_struct* resume(struct task_struct* last, struct task_struct* next);
 
