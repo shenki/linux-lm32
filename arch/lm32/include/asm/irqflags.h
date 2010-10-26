@@ -1,22 +1,18 @@
 #ifndef _LM32_IRQFLAGS_H
 #define _LM32_IRQFLAGS_H
 
-static inline unsigned long arch_local_irq_save(void)
+static inline unsigned long arch_local_save_flags(void)
 {
 	unsigned long flags;
 	asm volatile ("rcsr %0, IE\n" : "=r" (flags));
-//	arch_local_irq_disable();
 	return flags;
 }
 
-static inline void arch_local_irq_enable(void)
+static inline unsigned long arch_local_irq_save(void)
 {
-	unsigned int ie;
-	asm volatile (
-		"rcsr %0, IE\n"
-		"ori %0, %0, 1\n"
-		"wcsr IE, %0\n"
-		: "=r"(ie));
+	unsigned long flags = arch_local_save_flags();
+	arch_local_irq_disable();
+	return flags;
 }
 
 static inline void arch_local_irq_disable(void)
@@ -33,11 +29,14 @@ static inline void arch_local_irq_disable(void)
 	return;
 }
 
-static inline unsigned long arch_local_save_flags(void)
+static inline void arch_local_irq_enable(void)
 {
-	unsigned long flags;
-	asm volatile ("rcsr %0, IE\n" : "=r" (flags));
-	return flags;
+	unsigned int ie;
+	asm volatile (
+		"rcsr %0, IE\n"
+		"ori %0, %0, 1\n"
+		"wcsr IE, %0\n"
+		: "=r"(ie));
 }
 
 static inline void arch_local_irq_restore(unsigned long flags)
@@ -46,6 +45,7 @@ static inline void arch_local_irq_restore(unsigned long flags)
 	asm volatile ( \
 		"rcsr %0, IE\n" \
 		"andi %0, %0, 0xfffe\n" \
+		"andi %1, %1, 0x0001\n" \
 		"or %0, %0, %1\n" \
 		"wcsr IE, %0\n": \
 		 "=&r" (ie): "r" (flags) );
