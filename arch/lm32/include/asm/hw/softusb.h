@@ -15,32 +15,17 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __HW_SYSCTL_H
-#define __HW_SYSCTL_H
+#ifndef __SOFTUSB_H
+#define __SOFTUSB_H
 
-#define CSR_GPIO_IN		(0xe0001000)
-#define CSR_GPIO_OUT		(0xe0001004)
-#define CSR_GPIO_INTEN		(0xe0001008)
+#define CSR_SOFTUSB_CONTROL	(0xe000f000)
 
-#define CSR_TIMER0_CONTROL	(0xe0001010)
-#define CSR_TIMER0_COMPARE	(0xe0001014)
-#define CSR_TIMER0_COUNTER	(0xe0001018)
+#define SOFTUSB_CONTROL_RESET	(0x1)
 
-#define CSR_TIMER1_CONTROL	(0xe0001020)
-#define CSR_TIMER1_COMPARE	(0xe0001024)
-#define CSR_TIMER1_COUNTER	(0xe0001028)
+#define SOFTUSB_PMEM_BASE	(0xa0000000)
+#define SOFTUSB_DMEM_BASE	(0xa0020000)
 
-#define TIMER_ENABLE		(0x01)
-#define TIMER_AUTORESTART	(0x02)
+#define SOFTUSB_PMEM_SIZE	(1 << 12)
+#define SOFTUSB_DMEM_SIZE	(1 << 13)
 
-#define CSR_ICAP		(0xe0001034)
-
-#define ICAP_READY		(0x01)
-
-#define ICAP_CE			(0x10000)
-#define ICAP_WRITE		(0x20000)
-
-#define CSR_CAPABILITIES	(0xe0001038)
-#define CSR_SYSTEM_ID		(0xe000103c)
-
-#endif /* __HW_SYSCTL_H */
+#endif /* __SOFTUSB_H */

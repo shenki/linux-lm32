@@ -404,7 +404,6 @@ static int minimac_probe(struct platform_device *pdev)
 	struct net_device *netdev = NULL;
 	struct resource *res = NULL;
 	struct resource *mmio = NULL;
-	struct resource *mem = NULL;
 	struct minimac *tp = NULL;
 	static int first = 1;
 	int ret = 0;
@@ -460,7 +459,7 @@ static int minimac_probe(struct platform_device *pdev)
 
 	tp = netdev_priv(netdev);
 	tp->netdev = netdev;
-	tp->membase = netdev->mem_start;
+	tp->membase = (void *)netdev->mem_start;
 
 	tp->iobase = devm_ioremap_nocache(&pdev->dev, netdev->base_addr,
 			resource_size(mmio));
