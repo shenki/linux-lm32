@@ -252,6 +252,27 @@ static struct platform_device lm32sysace_device = {
 	.resource = lm32sysace_resources,
 };
 #endif
+#ifdef CONFIG_KEYBOARD_SOFTUSB
+static struct resource lm32softusb_resources[] = {
+	[0] = {
+		.start = SOFTUSB_PMEM_BASE,
+		.end = SOFTUSB_DMEM_BASE + SOFTUSB_DMEM_SIZE,
+		.flags = IORESOURCE_MEM,
+	},
+	[1] = {
+		.start = IRQ_USB,
+		.end = IRQ_USB,
+		.flags = IORESOURCE_IRQ,
+	},
+};
+
+static struct platform_device lm32softusb_device = {
+	.name = "softusb",
+	.id = 0,
+	.num_resources = ARRAY_SIZE(lm32softusb_resources),
+	.resource = lm32softusb_resources,
+};
+#endif
 #ifdef CONFIG_SERIO_MILKBD
 static struct resource lm32milkbd_resources[] = {
 	[0] = {
@@ -324,6 +345,13 @@ static int __init setup_devices(void) {
 	if( cap & CAP_SYSTEMACE )
 		if( (err = platform_device_register(&lm32sysace_device)) ) {
 			printk(KERN_ERR "could not register 'milkymist_sysace'error:%d\n", err);
+			ret = err;
+		}
+#endif
+#ifdef CONFIG_KEYBOARD_SOFTUSB
+	if( cap & CAP_USB )
+		if( (err = platform_device_register(&lm32softusb_device)) ) {
+			printk(KERN_ERR "could not register 'milkymist_softusb'error:%d\n", err);
 			ret = err;
 		}
 #endif

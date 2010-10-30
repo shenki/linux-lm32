@@ -719,4 +719,11 @@ config KEYBOARD_BCM
 	  To compile this driver as a module, choose M here: the
 	  module will be called bcm-keypad.
 
+config KEYBOARD_SOFTUSB
+	tristate "Milkymist soft-usb"
+	depends on BOARD_MILKYMIST_ONE
+	help
+	  Say Y here if you are building for Milkymist One and want to use an
+	  USB keyboard
+
 endif

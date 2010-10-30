@@ -1,7 +1,7 @@
 #
 # Automatically generated make config: don't edit
 # Linux kernel version: 2.6.36
-# Wed Oct 27 01:16:21 2010
+# Sat Oct 30 19:47:47 2010
 #
 CONFIG_LM32=y
 # CONFIG_MMU is not set
@@ -411,6 +411,7 @@ CONFIG_KEYBOARD_ATKBD=y
 # CONFIG_KEYBOARD_STOWAWAY is not set
 # CONFIG_KEYBOARD_SUNKBD is not set
 # CONFIG_KEYBOARD_XTKBD is not set
+CONFIG_KEYBOARD_SOFTUSB=y
 # CONFIG_INPUT_MOUSE is not set
 # CONFIG_INPUT_JOYSTICK is not set
 # CONFIG_INPUT_TABLET is not set
