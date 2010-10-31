@@ -81,7 +81,7 @@ int ptrace_setregs (struct task_struct *child, unsigned long __user *data)
 	return 0;
 }
 
-long arch_ptrace(struct task_struct *child, long request, long addr, long data)
+long arch_ptrace(struct task_struct *child, long request, unsigned long addr, unsigned long data)
 {
 	int ret;
 
