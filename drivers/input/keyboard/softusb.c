@@ -77,21 +77,50 @@ static irqreturn_t softusb_rx(int irq, void *dev_id)
 {
 	struct input_dev *dev = dev_id;
 	unsigned int scancode;
-	int	done = 0;
+	int	modifiers, modifiers_xor;
+	static int previous_modifiers = 0, previous_scancode;
 
 	while(keyboard_consume != COMLOC_KEVT_PRODUCE) {
-		scancode = COMLOC_KEVT(2*keyboard_consume+1);
+		modifiers = COMLOC_KEVT(8*keyboard_consume+0);
+		modifiers_xor = modifiers ^ previous_modifiers;
+		scancode = COMLOC_KEVT(8*keyboard_consume+2);
 #ifdef DEBUG
-scancode = COMLOC_KEVT(2*keyboard_consume)<<8 | COMLOC_KEVT(2*keyboard_consume+1);
-printk("%04x ", scancode);
+{
+int i;
+for (i=0;i<8;++i)
+printk("%02x", COMLOC_KEVT(8*keyboard_consume+i));
+printk(" ");
+}
 #endif
-		keyboard_consume = (keyboard_consume + 1) & 07;
-		input_report_key(dev, softusb_keycode[scancode], 1);
-		input_report_key(dev, softusb_keycode[scancode], 0);
-		done = 1;
+		keyboard_consume = (keyboard_consume + 1) & 0x07;
+		if (modifiers_xor & 0x1) {
+			input_report_key(dev, KEY_LEFTCTRL, (modifiers & 0x1) != 0);
+		} else if (modifiers_xor & 0x2) {
+			input_report_key(dev, KEY_LEFTSHIFT, (modifiers & 0x2) != 0);
+		} else if (modifiers_xor & 0x4) {
+			input_report_key(dev, KEY_LEFTALT, (modifiers & 0x4) != 0);
+		} else if (modifiers_xor & 0x8) {
+			input_report_key(dev, KEY_LEFTMETA, (modifiers & 0x8) != 0);
+		} else if (modifiers_xor & 0x10) {
+			input_report_key(dev, KEY_RIGHTCTRL, (modifiers & 0x10) != 0);
+		} else if (modifiers_xor & 0x20) {
+			input_report_key(dev, KEY_RIGHTSHIFT, (modifiers & 0x20) != 0);
+		} else if (modifiers_xor & 0x40) {
+			input_report_key(dev, KEY_RIGHTALT, (modifiers & 0x40) != 0);
+		} else if (modifiers_xor & 0x80) {
+			input_report_key(dev, KEY_RIGHTCTRL, (modifiers & 0x80) != 0);
+		} else {
+			if (scancode) {
+				input_report_key(dev, softusb_keycode[scancode], 1);
+				previous_scancode = scancode;
+			} else {
+				input_report_key(dev, softusb_keycode[previous_scancode], 0);
+				previous_scancode = 0;
+			}
+		}
+		previous_modifiers = modifiers;
 	}
-	if (done)
-		input_sync(dev);
+	input_sync(dev);
 
 	return IRQ_HANDLED;
 }
