@@ -407,7 +407,7 @@ static int minimac_probe(struct platform_device *pdev)
 	struct minimac *tp = NULL;
 	static int first = 1;
 	int ret = 0;
-	unsigned char macadr[] = {0x02, 0x31, 0x41, 0x59, 0x26, 0x01};
+	unsigned char macadr[] = {0x10, 0xe2, 0xd5, 0x00, 0x00, 0x01};
 
 	/* allocate networking device */
 	netdev = alloc_etherdev(sizeof(struct minimac));
