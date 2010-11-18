@@ -104,13 +104,13 @@ MODULE_DESCRIPTION("Xilinx SystemACE device driver");
 MODULE_LICENSE("GPL");
 
 /* SystemACE register definitions */
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_BUSMODE (0x00<<1)+2
 #else
 #define ACE_BUSMODE (0x00)
 #endif
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_STATUS (0x04<<1)+2
 #else
 #define ACE_STATUS (0x04)
@@ -134,7 +134,7 @@ MODULE_LICENSE("GPL");
 #define ACE_STATUS_CFCORR       (0x00400000)
 #define ACE_STATUS_CFERR        (0x00800000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_ERROR (0x08<<1)+2
 #define ACE_CFGLBA (0x0c<<1)+2
 #define ACE_MPULBA (0x10<<1)+2
@@ -144,7 +144,7 @@ MODULE_LICENSE("GPL");
 #define ACE_MPULBA (0x10)
 #endif
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_SECCNTCMD (0x14<<1)+2
 #else
 #define ACE_SECCNTCMD (0x14)
@@ -155,7 +155,7 @@ MODULE_LICENSE("GPL");
 #define ACE_SECCNTCMD_WRITE_DATA (0x0400)
 #define ACE_SECCNTCMD_ABORT      (0x0600)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_VERSION (0x16<<1)+2
 #else
 #define ACE_VERSION (0x16)
@@ -164,7 +164,7 @@ MODULE_LICENSE("GPL");
 #define ACE_VERSION_MINOR_MASK    (0x0F00)
 #define ACE_VERSION_MAJOR_MASK    (0xF000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_CTRL (0x18<<1)+2
 #else
 #define ACE_CTRL (0x18)
@@ -184,7 +184,7 @@ MODULE_LICENSE("GPL");
 #define ACE_CTRL_CFGPROG        (0x1000)
 #define ACE_CTRL_CFGADDR_MASK   (0xe000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 #define ACE_FATSTAT (0x1c<<1)+2
 #else
 #define ACE_FATSTAT (0x1c)
@@ -315,7 +315,7 @@ static void ace_datain_be16(struct ace_device *ace)
 	int i = ACE_FIFO_SIZE / 2;
 	u16 *dst = ace->data_ptr;
 	while (i--)
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 		*dst++ = in_le16(ace->baseaddr + 0x82);
 #else
 		*dst++ = in_le16(ace->baseaddr + 0x40);
@@ -328,7 +328,7 @@ static void ace_dataout_be16(struct ace_device *ace)
 	int i = ACE_FIFO_SIZE / 2;
 	u16 *src = ace->data_ptr;
 	while (i--)
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
 		out_le16(ace->baseaddr + 0x82, *src++);
 #else
 		out_le16(ace->baseaddr + 0x40, *src++);
@@ -1014,8 +1014,8 @@ static int ace_setup(struct ace_device *ace)
 	/*
 	 * Map the device
 	 */
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_XILINX_ML401)
-	ace->baseaddr = ioremap(ace->physaddr, 0xa0000000);
+#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
+	ace->baseaddr = ioremap(ace->physaddr, 0x100);
 #else
 	ace->baseaddr = ioremap(ace->physaddr, 0x80);
 #endif
@@ -1072,7 +1072,7 @@ static int ace_setup(struct ace_device *ace)
 
 	/* Put sysace in a sane state by clearing most control reg bits */
 	ace_out(ace, ACE_CTRL, ACE_CTRL_FORCECFGMODE |
-		ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ);
+		ace->irq != NO_IRQ ? ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ : 0);
 
 	/* Now we can hook up the irq handler */
 	if (ace->irq) {
@@ -1086,7 +1086,8 @@ static int ace_setup(struct ace_device *ace)
 
 	/* Enable interrupts */
 	val = ace_in(ace, ACE_CTRL);
-	val |= ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ;
+	if (ace->irq != NO_IRQ)
+		val |= ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ;
 	ace_out(ace, ACE_CTRL, val);
 
 	/* Print the identification */
