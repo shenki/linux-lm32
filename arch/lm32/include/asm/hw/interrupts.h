@@ -37,6 +37,6 @@
 #define IRQ_IR			(16)
 #define IRQ_USB			(17)
 #define	IRQ_PS2KEYBOARD		(14)
-#define	IRQ_PS2_MOUSE		(15)
+#define	IRQ_PS2MOUSE		(15)
 
 #endif /* __HW_INTERRUPTS_H */
