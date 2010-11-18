@@ -295,13 +295,6 @@ static struct platform_device lm32milkbd_device = {
 };
 #endif
 #ifdef CONFIG_SERIO_MILKMOUSE
-static struct platform_device lm32milkbd_device = {
-        .name = "milkbd",
-        .id = 0,
-        .num_resources = ARRAY_SIZE(lm32milkbd_resources),
-        .resource = lm32milkbd_resources,
-};
-
 static struct resource lm32milkmouse_resources[] = {
 	[0] = {
 		.start = CSR_PS2_MOUSE_DATA,
@@ -313,6 +306,13 @@ static struct resource lm32milkmouse_resources[] = {
 		.end = IRQ_PS2MOUSE,
 		.flags = IORESOURCE_IRQ,
 	},
+};
+
+static struct platform_device lm32milkmouse_device = {
+        .name = "milkmouse",
+        .id = 0,
+        .num_resources = ARRAY_SIZE(lm32milkmouse_resources),
+        .resource = lm32milkmouse_resources,
 };
 #endif
 
@@ -342,7 +342,7 @@ static int __init setup_devices(void) {
 		}
 #endif
 #ifdef CONFIG_XILINX_SYSACE
-	if( cap & CAP_SYSTEMACE )
+	if( cap & CAP_ACEUSB )
 		if( (err = platform_device_register(&lm32sysace_device)) ) {
 			printk(KERN_ERR "could not register 'milkymist_sysace'error:%d\n", err);
 			ret = err;
