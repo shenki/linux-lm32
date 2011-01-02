@@ -188,6 +188,21 @@ struct seq_operations cpuinfo_op = {
 };
 
 #ifdef CONFIG_PLAT_MILKYMIST
+static struct resource milkymist_mmc_resources[] = {
+	{
+		.start = CSR_MEMCARD_CLK2XDIV,
+		.end = CSR_MEMCARD_CLK2XDIV + 0xff,
+		.flags = IORESOURCE_MEM,
+	}
+};
+
+static struct platform_device milkymist_mmc_device = {
+	.name = "milkymist-mmc",
+	.id = -1,
+	.num_resources = ARRAY_SIZE(milkymist_mmc_resources),
+	.resource = milkymist_mmc_resources,
+};
+
 static struct resource milkymistuart_resources[] = {
 #if 0
 	[0] = {
@@ -342,7 +357,7 @@ static int __init setup_devices(void) {
 		printk(KERN_ERR "could not register 'milkymist_uart'error:%d\n", err);
 		ret = err;
 	}
-	
+
 	if( cap & CAP_ETHERNET )
 		if( (err = platform_device_register(&lm32milkether_device)) ) {
 			printk(KERN_ERR "could not register 'milkymist_ethernet'error:%d\n", err);
@@ -383,7 +398,10 @@ static int __init setup_devices(void) {
 			ret = err;
 		}
 #endif
-
+	if( ( err = platform_device_register(&milkymist_mmc_device)) ) {
+		printk(KERN_ERR "could not register 'milkymist_mmc'error:%d\n", err);
+		ret = err;
+	}
 	return ret;
 }
 /* default console - interface to milkymistuart.c serial + console driver */
