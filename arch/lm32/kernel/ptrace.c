@@ -86,21 +86,6 @@ long arch_ptrace(struct task_struct *child, long request, unsigned long addr, un
 
 	//printk("arch_ptrace: %lx %lx %lx %lx\n", child, request, addr, data);
 	switch (request) {
-	/* when I and D space are separate, these will need to be fixed. */
-	case PTRACE_PEEKTEXT: /* read word at location addr. */
-	case PTRACE_PEEKDATA: {
-		unsigned long tmp;
-		int copied;
-
-		copied = access_process_vm(child, addr, &tmp, sizeof(tmp), 0);
-		ret = -EIO;
-		if (copied != sizeof(tmp))
-			break;
-		ret = put_user(tmp,(unsigned long __user *) data);
-		//printk("PTRACE_PEEK* [%lx] @%lx = %lx\n", child, addr, tmp);
-		break;
-	}
-
 	/* Read the word at location addr in the USER area. */
 	case PTRACE_PEEKUSR: {
 		struct pt_regs *regs;
