@@ -167,7 +167,6 @@ extern void iounmap(void *addr);
 #define dma_cache_wback_inv(_start,_size)	do { } while (0)
 
 /* Pages to physical address... */
-#define page_to_phys(page)      ((page - mem_map) << PAGE_SHIFT)
 #define page_to_bus(page)       ((page - mem_map) << PAGE_SHIFT)
 
 /*
