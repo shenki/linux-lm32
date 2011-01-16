@@ -31,17 +31,14 @@ export BOARD
 cflags-y := -mmultiply-enabled -mdivide-enabled \
 	-mbarrel-shift-enabled -msign-extend-enabled
 
-AFLAGS += $(cflags-y)
+KBUILD_AFLAGS += $(cflags-y)
+KBUILD_CFLAGS += $(cflags-y)
 
 OBJCOPYFLAGS	:=-O binary -R .note -R .comment -S
 
-CFLAGS += $(cflags-y)
-CFLAGS += -D__linux__
-CFLAGS += -DUTS_SYSNAME=\"uClinux\"
-
 head-y := arch/lm32/kernel/head.o arch/lm32/kernel/init_task.o
 
-core-y	+= arch/lm32/kernel/ arch/lm32/mm/
+core-y	+= arch/lm32/
 libs-y	+= arch/lm32/lib/
 
 vmlinux.bin: vmlinux

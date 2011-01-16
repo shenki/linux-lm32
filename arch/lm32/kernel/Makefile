@@ -8,5 +8,6 @@ obj-y := \
 	ptrace.o irq.o process.o entry.o dma.o gpio.o \
 	flat.o sys_call_table.o
 
-obj-$(CONFIG_EARLY_PRINTK)  += early_printk.o 
+obj-$(CONFIG_EARLY_PRINTK)  += early_printk.o
 obj-$(CONFIG_MODULES)       += module.o
+
