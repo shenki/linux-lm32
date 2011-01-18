@@ -178,8 +178,6 @@ static int __devinit softusb_probe(struct platform_device *pdev)
 		return -EBUSY;
 	}
 
-	lm32_irq_unmask(IRQ_USB);
-
 	printk(KERN_INFO "milkymist_softusb: softusb at 0x%08x irq %d\n",
 		SOFTUSB_PMEM_BASE,
 		IRQ_USB);

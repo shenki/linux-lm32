@@ -1,30 +1,13 @@
-/*
- * Based on:
- * include/asm-m68knommu/hardirq.h
- */
+#ifndef _ASM_HARDIRQ_H_
+#define _ASM_HARDIRQ_H_
 
-#ifndef _LM32_ASM_HARDIRQ_H
-#define _LM32_ASM_HARDIRQ_H
+#define ack_bad_irq ack_bad_irq
+#include <asm-generic/hardirq.h>
 
-#include <linux/cache.h>
-#include <linux/threads.h>
-#include <asm/irq.h>
+extern atomic_t irq_err_count;
+static inline void ack_bad_irq(int irq)
+{
+	atomic_inc(&irq_err_count);
+}
 
-typedef struct {
-	unsigned int __softirq_pending;
-} ____cacheline_aligned irq_cpustat_t;
-
-#include <linux/irq_cpustat.h>	/* Standard mappings for irq_cpustat_t above */
-
-#define HARDIRQ_BITS	8
-
-/*
- * The hardirq mask has to be large enough to have
- * space for potentially all IRQ sources in the system
- * nesting on a single CPU:
- */
-#if (1 << HARDIRQ_BITS) < NR_IRQS
-# error HARDIRQ_BITS is too low!
 #endif
-
-#endif /* _LM32_ASM_HARDIRQ_H */

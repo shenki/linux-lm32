@@ -363,22 +363,49 @@ _long_interrupt_handler:
 	sw      (sp+120), ra
 	calli   _save_irq_frame
 
-	rcsr    r2, IP
-	rcsr    r3, IM
+	/* Workaround hardware hazard. Sometimes the interrupt handler is entered
+	 * although interrupts are disabled */
+	rcsr	r1, IE
+	andi	r1, r1, 0x2
+	be		r1, r0, 5f
+
+	rcsr    r3, IP
+	rcsr    r4, IM
 	mvi     r1, 0
-	and     r2, r2, r3
-	mvi     r3, 1
-	be      r2, r0, 3f
+	and     r3, r3, r4
+	be      r3, r0, 5f
+
+	andi	r4, r3, 0xffff
+	bne		r4, r0, 1f
+	sri		r3, r3, 16
+	addi	r1, r1, 16
 1:
-	and     r4, r2, r3
-	bne     r4, r0, 2f
-	sli     r3, r3, 1
-	addi    r1, r1, 1
-	bi      1b
+	andi	r4, r3, 0xff
+	bne		r4, r0, 2f
+	sri		r3, r3, 8
+	addi	r1, r1, 8
 2:
+	andi	r4, r3, 0xf
+	bne		r4, r0, 3f
+	sri		r3, r3, 4
+	addi	r1, r1, 4
+3:
+	andi	r4, r3, 0x3
+	bne		r4, r0, 4f
+	sri		r3, r3, 2
+	addi	r1, r1, 2
+4:
+	andi	r4, r3, 0x1
+	bne		r4, r0, 5f
+	sri		r3, r3, 1
+	addi	r1, r1, 1
+5:
+
 	addi    r2, sp, 4
 	calli   asm_do_IRQ
-3:
+	addi    r1, sp, 4
+	calli   manage_signals_irq
+5:
 	bi      _restore_irq_frame_and_return
 
 _save_irq_frame:

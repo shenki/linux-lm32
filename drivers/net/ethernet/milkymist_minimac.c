@@ -257,7 +257,7 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 		out_be32(CSR_MINIMAC_SETUP, 0);
 	}
 
-	lm32_irq_disable(dev->irq);
+	disable_irq(dev->irq);
 
 	napi_schedule(&tp->napi);
 
@@ -291,7 +291,7 @@ static int minimac_poll(struct napi_struct *napi, int budget)
 
 	if (work_done < budget) {
 		napi_complete(napi);
-		lm32_irq_enable(dev->irq);
+		enable_irq(dev->irq);
 	}
 
 	return work_done;
@@ -302,7 +302,7 @@ static int minimac_open(struct net_device *dev)
 	struct minimac *tp = netdev_priv(dev);
 	int ret;
 
-	ret = request_irq(dev->irq, minimac_interrupt_rx, IRQF_DISABLED, "milkymist_minimac RX", dev);
+	ret = request_irq(dev->irq, minimac_interrupt_rx, 0, "milkymist_minimac RX", dev);
 	if (ret)
 		return -1;
 
@@ -313,9 +313,6 @@ static int minimac_open(struct net_device *dev)
 	minimac_reset(tp);
 	netif_start_queue(dev);
 	napi_enable(&tp->napi);
-
-	lm32_irq_unmask(dev->irq);
-	lm32_irq_unmask((dev->irq)+1);
 
 	return 0;
 }
@@ -328,9 +325,6 @@ static int minimac_stop(struct net_device *dev)
 	napi_disable(&tp->napi);
 
 	netif_stop_queue(dev);
-
-	lm32_irq_mask(dev->irq);
-	lm32_irq_mask(dev->irq+1);
 
 	free_irq(dev->irq, dev);
 	free_irq(dev->irq+1, dev);

@@ -24,35 +24,24 @@
 #ifndef _LM32_ASM_IRQ_H
 #define _LM32_ASM_IRQ_H
 
-#include <asm/hw/interrupts.h>
+#include <asm/atomic.h>
 
-/* # of lm32 interrupts */
-#define NR_IRQS (32)
+#define NR_IRQS 32
+#include <asm-generic/irq.h>
 
-/* # of lm32 irq levels */
-#define NR_IRQLVL	1
+#define	NO_IRQ 0
 
-#define	NO_IRQ		(-1)
-
-#define IRQ_SYSTMR	(IRQ_TIMER0)
-
-#include <linux/irq.h>
-
-#define irq_canonicalize(i) (i)
-
-extern unsigned long irq_err_count;
-static inline void ack_bad_irq(int irq)
+static inline uint32_t lm32_irq_pending(void)
 {
-	irq_err_count++;
+	uint32_t ip;
+	__asm__ __volatile__("rcsr %0, IP" : "=r"(ip) : );
+	return ip;
 }
 
-/* in arch/lm32/kernel/irq.c */
-void lm32_irq_mask(unsigned int irq);
-void lm32_irq_multimask(unsigned long mask);
-void lm32_irq_unmask(unsigned int irq);
-void lm32_irq_ack(unsigned int irq);
-unsigned long lm32_irq_pending(void);
-void lm32_irq_disable(unsigned int irq);
-void lm32_irq_enable(unsigned int irq);
+static inline void lm32_irq_ack(unsigned int irq)
+{
+	uint32_t mask = (1 << irq);
+	__asm__ __volatile__("wcsr IP, %0" : : "r"(mask) );
+}
 
 #endif /* _LM32_ASM_IRQ_H_ */

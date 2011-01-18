@@ -44,6 +44,7 @@
 #define MILKYMISTUART_MINOR 64
 
 static volatile int tx_cts;
+static bool milkymist_uart_irqs_enabled;
 
 /* these two will be initialized by milkymistuart_init */
 static struct uart_port milkymistuart_ports[1];
@@ -240,16 +241,15 @@ static int milkymistuart_startup(struct uart_port *port)
 		return -EBUSY;
 	}
 
-	lm32_irq_unmask(IRQ_UARTRX);
-	lm32_irq_unmask(IRQ_UARTTX);
+	milkymist_uart_irqs_enabled = true;
 
 	return 0;
 }
 
 static void milkymistuart_shutdown(struct uart_port *port)
 {
-	lm32_irq_mask(IRQ_UARTRX);
-	lm32_irq_mask(IRQ_UARTTX);
+	milkymist_uart_irqs_enabled = false;
+
 	free_irq(IRQ_UARTRX, port);
 	free_irq(IRQ_UARTTX, port);
 }
@@ -309,9 +309,13 @@ static int milkymistuart_verify_port(struct uart_port *port, struct serial_struc
 #ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
 static void milkymist_console_putchar(struct uart_port *port, int ch)
 {
+	if (milkymist_uart_irqs_enabled)
+		disable_irq(IRQ_UARTTX);
 	out_be32(CSR_UART_RXTX,ch);
 	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
 	lm32_irq_ack(IRQ_UARTTX);
+	if (milkymist_uart_irqs_enabled)
+		enable_irq(IRQ_UARTTX);
 }
 
 /*

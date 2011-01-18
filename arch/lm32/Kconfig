@@ -2,6 +2,8 @@ config LM32
 	bool
 	default y
 	select CPU_MICO32
+	select HAVE_GENERIC_HARDIRQS
+	select GENERIC_HARDIRQS_NO_DEPRECATED
 
 config MMU
 	bool
@@ -43,10 +45,6 @@ config GENERIC_BUG
 	bool
 	default y
 
-config GENERIC_HARDIRQS
-	bool
-	default y
-
 config GENERIC_CLOCKEVENTS
 	bool
 	default y
@@ -64,10 +62,6 @@ config FLAT_NODE_MEM_MAP
 	default y
 
 config NO_IOPORT
-	bool
-	default y
-
-config GENERIC_HARDIRQS_NO__DO_IRQ
 	bool
 	default y
 
