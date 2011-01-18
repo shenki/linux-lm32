@@ -18,8 +18,10 @@
 #ifndef __HW_UART_H
 #define __HW_UART_H
 
-#define CSR_UART_RXTX 		(0xe0000000)
-#define CSR_UART_DIVISOR	(0xe0000004)
-#define CSR_UART_THRU		(0xe0000008)
+#define CSR_REG(x) ((void __iomem *)(x))
+
+#define CSR_UART_RXTX 		CSR_REG(0xe0000000)
+#define CSR_UART_DIVISOR	CSR_REG(0xe0000004)
+#define CSR_UART_THRU		CSR_REG(0xe0000008)
 
 #endif /* __HW_UART_H */

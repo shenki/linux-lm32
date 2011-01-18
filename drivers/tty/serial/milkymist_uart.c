@@ -94,7 +94,7 @@ static struct uart_ops milkymistuart_pops = {
 static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud)
 {
 	// TODO: use the board configuration option to get the frequency
-	out_be32(CSR_UART_DIVISOR, (unsigned long)CONFIG_CPU_CLOCK/baud/16);
+	iowrite32be((unsigned long)CONFIG_CPU_CLOCK/baud/16, CSR_UART_DIVISOR);
 }
 
 static void milkymistuart_tx_next_char(struct uart_port* port)
@@ -104,7 +104,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 	if (port->x_char) {
 		/* send xon/xoff character */
 		tx_cts = 0;
-		out_be32(CSR_UART_RXTX,(int)port->x_char);
+		iowrite32be(port->x_char, CSR_UART_RXTX);
 		port->x_char = 0;
 		port->icount.tx++;
 		return;
@@ -118,7 +118,7 @@ static void milkymistuart_tx_next_char(struct uart_port* port)
 
 	/* send next character */
 	tx_cts = 0;
-	out_be32(CSR_UART_RXTX,(int)xmit->buf[xmit->tail]);
+	iowrite32be(xmit->buf[xmit->tail], CSR_UART_RXTX);
 	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 	port->icount.tx++;
 
@@ -134,7 +134,7 @@ static void milkymistuart_rx_next_char(struct uart_port* port)
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
-	ch = in_be32(CSR_UART_RXTX) & 0xFF;
+	ch = ioread32be(CSR_UART_RXTX) & 0xFF;
 	port->icount.rx++;
 
 	if (uart_handle_sysrq_char(port, ch))
@@ -187,7 +187,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 		if (port->x_char) {
 			/* send xon/xoff character */
 			tx_cts = 0;
-			out_be32(CSR_UART_RXTX,(int)port->x_char);
+			iowrite32be(port->x_char, CSR_UART_RXTX);
 			port->x_char = 0;
 			port->icount.tx++;
 			return;
@@ -199,7 +199,7 @@ static void milkymistuart_start_tx(struct uart_port *port)
 
 		/* send next character */
 		tx_cts = 0;
-		out_be32(CSR_UART_RXTX,(int)xmit->buf[xmit->tail]);
+		iowrite32be(xmit->buf[xmit->tail], CSR_UART_RXTX);
 		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
 		port->icount.tx++;
 
@@ -311,7 +311,7 @@ static void milkymist_console_putchar(struct uart_port *port, int ch)
 {
 	if (milkymist_uart_irqs_enabled)
 		disable_irq(IRQ_UARTTX);
-	out_be32(CSR_UART_RXTX,ch);
+	iowrite32be(ch, CSR_UART_RXTX);
 	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
 	lm32_irq_ack(IRQ_UARTTX);
 	if (milkymist_uart_irqs_enabled)

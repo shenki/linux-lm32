@@ -179,11 +179,13 @@ struct seq_operations cpuinfo_op = {
 
 #ifdef CONFIG_PLAT_MILKYMIST
 static struct resource milkymistuart_resources[] = {
+#if 0
 	[0] = {
 		.start = CSR_UART_RXTX,
 		.end = CSR_UART_RXTX+0xfff,
 		.flags = IORESOURCE_MEM,
 	},
+#endif
 	[1] = {
 		.start = IRQ_UARTRX,
 		.end = IRQ_UARTTX,
@@ -324,8 +326,8 @@ static int __init setup_devices(void) {
 
 #ifdef CONFIG_PLAT_MILKYMIST
 	int cap;
-	cap = in_be32(CSR_CAPABILITIES);
-	
+	cap = ioread32be(CSR_CAPABILITIES);
+
 	if( ( err = platform_device_register(&milkymistuart_device)) ) {
 		printk(KERN_ERR "could not register 'milkymist_uart'error:%d\n", err);
 		ret = err;

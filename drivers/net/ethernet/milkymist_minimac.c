@@ -151,17 +151,17 @@ static int minimac_reset(struct minimac *dev)
 	static unsigned char preamble[8] = {0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xd5};
 	int i;
 
-	out_be32(CSR_MINIMAC_SETUP, MINIMAC_SETUP_RXRST|MINIMAC_SETUP_TXRST);
+	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, CSR_MINIMAC_SETUP);
 
-	for (i=1; i<=MAX_PACKET_RECEPTION_SLOT; ++i) {
-		out_be32(CSR_MINIMAC_ADDR0+(i-1)*12, (int)(dev->pkt_buf+i)->buf);
-		out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
+	for (i = 0; i < MAX_PACKET_RECEPTION_SLOT; ++i) {
+		iowrite32be((unsigned int)dev->pkt_buf[i].buf, CSR_MINIMAC_ADDR0+i*12);
+		iowrite32be(MINIMAC_STATE_LOADED, CSR_MINIMAC_STATE0+i*12);
 	}
 
 	memcpy_toio(dev->pkt_buf->buf, preamble, 8);		/* TX buff preamble */
 
-	out_be32(CSR_MINIMAC_TXREMAINING, 0);
-	out_be32(CSR_MINIMAC_SETUP, 0);
+	iowrite32be(0, CSR_MINIMAC_TXREMAINING);
+	iowrite32be(0, CSR_MINIMAC_SETUP);
 
 	return 0;
 }
@@ -180,9 +180,9 @@ static int minimac_rx(struct net_device *dev, int budget)
 		count = 0;
 		for (i=1; i<=MAX_PACKET_RECEPTION_SLOT && received < budget ; ++i) {
 			flush_dcache_range(CSR_MINIMAC_STATE0,256);
-			state = in_be32(CSR_MINIMAC_STATE0+(i-1)*12);
+			state = ioread32be(CSR_MINIMAC_STATE0+(i-1)*12);
 			if ( state & MINIMAC_STATE_PENDING ) {
-				size = in_be32(CSR_MINIMAC_COUNT0+(i-1)*12);
+				size = ioread32be(CSR_MINIMAC_COUNT0+(i-1)*12);
 				if (size == 0) {
 				} else if (size < 64) {
 #ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
@@ -227,7 +227,7 @@ static int minimac_rx(struct net_device *dev, int budget)
 					++received;
 					++count;
 				}
-				out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_LOADED);
+				iowrite32be(MINIMAC_STATE_LOADED, CSR_MINIMAC_STATE0+(i-1)*12);
 			}
 		}
 		if (count == 0)
@@ -253,8 +253,8 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	struct minimac *tp = netdev_priv(dev);
 
 	flush_dcache_range(CSR_MINIMAC_SETUP,256);
-	if (in_be32(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST) {
-		out_be32(CSR_MINIMAC_SETUP, 0);
+	if (ioread32be(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST) {
+		iowrite32be(0, CSR_MINIMAC_SETUP);
 	}
 
 	disable_irq(dev->irq);
@@ -329,12 +329,12 @@ static int minimac_stop(struct net_device *dev)
 	free_irq(dev->irq, dev);
 	free_irq(dev->irq+1, dev);
 
-	for (i=1; i<=MAX_PACKET_RECEPTION_SLOT; ++i) {
-		out_be32(CSR_MINIMAC_STATE0+(i-1)*12, MINIMAC_STATE_EMPTY);
+	for (i = 0; i< MAX_PACKET_RECEPTION_SLOT; ++i) {
+		iowrite32be(MINIMAC_STATE_EMPTY, CSR_MINIMAC_STATE0+i*12);
 	}
 
-	out_be32(CSR_MINIMAC_SETUP, MINIMAC_SETUP_RXRST|MINIMAC_SETUP_TXRST);
-	out_be32(CSR_MINIMAC_TXREMAINING, 0);
+	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, CSR_MINIMAC_SETUP);
+	iowrite32be(0, CSR_MINIMAC_TXREMAINING);
 
 	return 0;
 }
@@ -351,7 +351,7 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	unsigned long fcs;
 	int len;
 
-	if (in_be32(CSR_MINIMAC_TXREMAINING) != 0) {
+	if (ioread32be(CSR_MINIMAC_TXREMAINING) != 0) {
 		return NETDEV_TX_BUSY;
 	}
 
@@ -372,8 +372,8 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	*((dest+len)+10) = (fcs & 0xff0000) >> 16;
 	*((dest+len)+11) = (fcs & 0xff000000) >> 24;
 
-	out_be32(CSR_MINIMAC_TXADR, (unsigned int)dest);
-	out_be32(CSR_MINIMAC_TXREMAINING, len+12);
+	iowrite32be(dest, CSR_MINIMAC_TXADR);
+	iowrite32be(len + 12, CSR_MINIMAC_TXREMAINING);
 	(tp->pkt_buf)->count = len;
 
 	netif_stop_queue(dev);
@@ -464,7 +464,7 @@ static int minimac_probe(struct platform_device *pdev)
 	}
 
 	/* GPIO switch*/
-	macadr[5] = in_be32(CSR_GPIO_IN) >> 5;
+	macadr[5] = ioread32be(CSR_GPIO_IN) >> 5;
 	/* store MAC address */
 	memcpy(netdev->dev_addr, macadr, IFHWADDRLEN);
 

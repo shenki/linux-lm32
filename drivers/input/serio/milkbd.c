@@ -38,9 +38,9 @@ MODULE_LICENSE("GPL");
 
 static int milkbd_write(struct serio *port, unsigned char val)
 {
-	while(in_be32(CSR_PS2_KEYBOARD_STATUS)&PS2_BUSY);
+	while(ioread32be(CSR_PS2_KEYBOARD_STATUS)&PS2_BUSY);
 
-	out_be32(CSR_PS2_KEYBOARD_DATA, val);
+	iowrite32be(val, CSR_PS2_KEYBOARD_DATA);
 
 	return 0;
 }
@@ -51,7 +51,7 @@ static irqreturn_t milkbd_rx(int irq, void *dev_id)
 	unsigned int byte;
 	int handled = IRQ_NONE;
 
-	byte = in_be32(CSR_PS2_KEYBOARD_DATA);
+	byte = ioread32be(CSR_PS2_KEYBOARD_DATA);
 	serio_interrupt(port, byte, 0);
 	handled = IRQ_HANDLED;
 

@@ -132,13 +132,13 @@ static int __devinit softusb_probe(struct platform_device *pdev)
 	unsigned int *usb_dmem = (unsigned int *)SOFTUSB_DMEM_BASE;
 	unsigned int *usb_pmem = (unsigned int *)SOFTUSB_PMEM_BASE;
 
-	if(!(in_be32(CSR_CAPABILITIES) & CAP_USB)) {
+	if(!(ioread32be(CSR_CAPABILITIES) & CAP_USB)) {
 		printk("USB: not supported by SoC, giving up.\n");
 		return -ENODEV;
 	}
 
 	printk("USB: loading Navre firmware\n");
-	out_be32(CSR_SOFTUSB_CONTROL, SOFTUSB_CONTROL_RESET);
+	iowrite32be(SOFTUSB_CONTROL_RESET, CSR_SOFTUSB_CONTROL);
 	for(i=0;i<SOFTUSB_DMEM_SIZE/4;i++)
 		usb_dmem[i] = 0;
 	for(i=0;i<SOFTUSB_PMEM_SIZE/2;i++)
@@ -148,7 +148,7 @@ static int __devinit softusb_probe(struct platform_device *pdev)
 		usb_pmem[i] = ((unsigned int)(input_firmware[2*i]))
 			|((unsigned int)(input_firmware[2*i+1]) << 8);
 	printk("USB: starting host controller\n");
-	out_be32(CSR_SOFTUSB_CONTROL, 0);
+	iowrite32be(0, CSR_SOFTUSB_CONTROL);
 
 	keyboard_consume = 0;
 

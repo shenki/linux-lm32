@@ -19,6 +19,7 @@
 #include <linux/clockchips.h>
 #include <linux/clocksource.h>
 #include <linux/timex.h>
+#include <linux/io.h>
 
 #include <asm/hw/interrupts.h>
 #include <asm/hw/sysctl.h>
