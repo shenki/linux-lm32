@@ -2,4 +2,4 @@
 # arch/lm32/mm/Makefile
 #
 
-obj-y += memory.o init.o
+obj-y += init.o
