@@ -30,6 +30,12 @@
 #define CSR_TIMER1_COMPARE	(0xe0001024)
 #define CSR_TIMER1_COUNTER	(0xe0001028)
 
+#define CSR_TIMER(id, reg) (0xe0001010 + (0x10 * (id)) + (reg))
+
+#define CSR_TIMER_CONTROL(id) CSR_TIMER(id, 0x0)
+#define CSR_TIMER_COMPARE(id) CSR_TIMER(id, 0x4)
+#define CSR_TIMER_COUNTER(id) CSR_TIMER(id, 0x8)
+
 #define TIMER_ENABLE		(0x01)
 #define TIMER_AUTORESTART	(0x02)
 

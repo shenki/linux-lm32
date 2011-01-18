@@ -49,7 +49,7 @@ config GENERIC_HARDIRQS
 
 config GENERIC_CLOCKEVENTS
 	bool
-	default n
+	default y
 
 config SELECT_MEMORY_MODEL
 	bool
@@ -78,6 +78,10 @@ config APM_EMULATION
 source "init/Kconfig"
 
 source "arch/lm32/Kconfig.cpu"
+
+source "kernel/time/Kconfig"
+
+source "kernel/Kconfig.hz"
 
 source "mm/Kconfig"
 

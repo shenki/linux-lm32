@@ -1,122 +1,164 @@
 /*
- * (C) Copyright 2007
- *     Theobroma Systems <www.theobroma-systems.com>
+ *  Copyright (C) 2011, Lars-Peter Clausen <lars@metafoo.de>
+ *  Clockevent and clocksource driver for the Milkymist sysctl timers
  *
- * See file CREDITS for list of people who contributed to this
- * project.
+ *  This program is free software; you can redistribute it and/or modify it
+ *  under  the terms of the GNU General  Public License as published by the
+ *  Free Software Foundation;  either version 2 of the License, or (at your
+ *  option) any later version.
  *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
+ *  You should have received a copy of the GNU General Public License along
+ *  with this program; if not, write to the Free Software Foundation, Inc.,
+ *  675 Mass Ave, Cambridge, MA 02139, USA.
  *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
  */
 
-/*
- * Based on
- *
- * linux/arch/m68knommu/kernel/time.c
- *
- *  Copyright (C) 1991, 1992, 1995  Linus Torvalds
- */
-
-#include <linux/errno.h>
-#include <linux/module.h>
-#include <linux/sched.h>
-#include <linux/kernel.h>
-#include <linux/param.h>
-#include <linux/string.h>
-#include <linux/mm.h>
-#include <linux/profile.h>
-#include <linux/time.h>
-#include <linux/timex.h>
 #include <linux/interrupt.h>
+#include <linux/kernel.h>
 
-#include <asm/io.h>
-#include <asm/irq.h>
-#include <asm/irq_regs.h>
-#include <asm/setup.h>
-#include <asm/uaccess.h>
-#include <asm/hw/milkymist.h>
+#include <linux/clockchips.h>
+#include <linux/clocksource.h>
+#include <linux/timex.h>
 
-#ifdef CONFIG_SMP
-extern void smp_local_timer_interrupt(void);
-#endif
+#include <asm/hw/interrupts.h>
+#include <asm/hw/sysctl.h>
 
-cycles_t lm32_cycles = 0;
+#define TIMER_CLOCKEVENT 0
+#define TIMER_CLOCKSOURCE 1
 
-static irqreturn_t timer_interrupt(int irq, void *timer_idx);
+static uint32_t milkymist_ticks_per_jiffy;
 
-/* irq action description */
-static struct irqaction lm32_core_timer_irqaction = {
-	.name = "LM32 Timer Tick",
-	.flags = IRQF_DISABLED,
-	.handler = timer_interrupt,
-};
-
-/*
- * timer_interrupt() needs to call the "do_timer()"
- * routine every clocktick
- */
-static irqreturn_t timer_interrupt(int irq, void *arg)
+static inline uint32_t milkymist_timer_get_counter(unsigned int timer)
 {
-	lm32_cycles += in_be32((u32 *)CSR_TIMER0_COMPARE);
-	write_seqlock(&xtime_lock);
-
-	do_timer(1);
-#ifndef CONFIG_SMP
-	update_process_times(user_mode(0));
-#endif
-
-#ifdef CONFIG_SMP
-	smp_local_timer_interrupt();
-	smp_send_timer();
-#endif
-
-	if (current->pid)
-		profile_tick(CPU_PROFILING);
-
-	write_sequnlock(&xtime_lock);
-	return(IRQ_HANDLED);
+	return ioread32be(CSR_TIMER_COUNTER(timer));
 }
 
-void time_init(void)
+static inline void milkymist_timer_set_counter(unsigned int timer, uint32_t value)
 {
-	lm32_systimer_program(1, cpu_frequency / HZ);
-
-	if( setup_irq(IRQ_SYSTMR, &lm32_core_timer_irqaction) )
-		panic("could not attach timer interrupt!");
-
-	lm32_irq_unmask(IRQ_SYSTMR);
+	iowrite32be(value, CSR_TIMER_COUNTER(timer));
 }
 
-static unsigned long get_time_offset(void)
+static inline uint32_t milkymist_timer_get_compare(unsigned int timer)
 {
-	return in_be32((u32 *)CSR_TIMER0_COUNTER)/(cpu_frequency / HZ);
+	return ioread32be(CSR_TIMER_COMPARE(timer));
+}
+
+static inline void milkymist_timer_set_compare(unsigned int timer, uint32_t value)
+{
+	iowrite32be(value, CSR_TIMER_COMPARE(timer));
+}
+
+static inline void milkymist_timer_disable(unsigned int timer)
+{
+	iowrite32be(0, CSR_TIMER_CONTROL(timer));
+}
+
+static inline void milkymist_timer_enable(unsigned int timer, bool periodic)
+{
+	uint32_t val = TIMER_ENABLE;
+	if (periodic);
+		val |= TIMER_AUTORESTART;
+	iowrite32be(val, CSR_TIMER_CONTROL(timer));
 }
 
 cycles_t get_cycles(void)
 {
-	return lm32_cycles +
-		in_be32(CSR_TIMER0_COUNTER);
+	return milkymist_timer_get_counter(TIMER_CLOCKSOURCE);
 }
 
-void lm32_systimer_program(int periodic, cycles_t cyc)
+static cycle_t milkymist_clocksource_read(struct clocksource *cs)
 {
-	/* stop timer */
-	out_be32(CSR_TIMER0_CONTROL,0);
-	/* reset/configure timer */
-	out_be32(CSR_TIMER0_COUNTER,0);
-	out_be32(CSR_TIMER0_COMPARE,(int)cyc);
-	/* start timer */
-	out_be32(CSR_TIMER0_CONTROL,periodic ? TIMER_ENABLE|TIMER_AUTORESTART : TIMER_ENABLE);
+	return get_cycles();
+}
+
+static struct clocksource milkymist_clocksource = {
+	.name = "milkymist-timer",
+	.rating = 200,
+	.read = milkymist_clocksource_read,
+	.mask = CLOCKSOURCE_MASK(32),
+	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
+};
+
+static irqreturn_t milkymist_clockevent_irq(int irq, void *devid)
+{
+	struct clock_event_device *cd = devid;
+
+	if (cd->mode != CLOCK_EVT_MODE_PERIODIC)
+		milkymist_timer_disable(TIMER_CLOCKEVENT);
+
+	cd->event_handler(cd);
+
+	return IRQ_HANDLED;
+}
+
+static void milkymist_clockevent_set_mode(enum clock_event_mode mode,
+	struct clock_event_device *cd)
+{
+	switch (mode) {
+	case CLOCK_EVT_MODE_PERIODIC:
+		milkymist_timer_disable(TIMER_CLOCKEVENT);
+		milkymist_timer_set_counter(TIMER_CLOCKEVENT, 0);
+		milkymist_timer_set_compare(TIMER_CLOCKEVENT, milkymist_ticks_per_jiffy);
+	case CLOCK_EVT_MODE_RESUME:
+		milkymist_timer_enable(TIMER_CLOCKEVENT, true);
+		break;
+	case CLOCK_EVT_MODE_ONESHOT:
+	case CLOCK_EVT_MODE_SHUTDOWN:
+		milkymist_timer_disable(TIMER_CLOCKEVENT);
+		break;
+	default:
+		break;
+	}
+}
+
+static int milkymist_clockevent_set_next(unsigned long evt,
+	struct clock_event_device *cd)
+{
+	milkymist_timer_set_counter(TIMER_CLOCKEVENT, 0);
+	milkymist_timer_set_compare(TIMER_CLOCKEVENT, evt);
+	milkymist_timer_enable(TIMER_CLOCKEVENT, false);
+
+	return 0;
+}
+
+static struct clock_event_device milkymist_clockevent = {
+	.name = "milkymist-timer",
+	.features = CLOCK_EVT_FEAT_PERIODIC,
+	.set_next_event = milkymist_clockevent_set_next,
+	.set_mode = milkymist_clockevent_set_mode,
+	.rating = 200,
+	.irq = IRQ_TIMER0,
+};
+
+static struct irqaction timer_irqaction = {
+	.handler	= milkymist_clockevent_irq,
+	.flags		= IRQF_TIMER,
+	.name		= "milkymist-timerirq",
+	.dev_id		= &milkymist_clockevent,
+};
+
+void __init time_init(void)
+{
+	int ret;
+
+	milkymist_ticks_per_jiffy = DIV_ROUND_CLOSEST(cpu_frequency, HZ);
+
+	clockevents_calc_mult_shift(&milkymist_clockevent, cpu_frequency, 5);
+	milkymist_clockevent.min_delta_ns = clockevent_delta2ns(100, &milkymist_clockevent);
+	milkymist_clockevent.max_delta_ns = clockevent_delta2ns(0xffff, &milkymist_clockevent);
+	milkymist_clockevent.cpumask = cpumask_of(0);
+
+	milkymist_timer_disable(TIMER_CLOCKSOURCE);
+	milkymist_timer_set_compare(TIMER_CLOCKSOURCE, 0xffffffff);
+	milkymist_timer_set_counter(TIMER_CLOCKSOURCE, 0);
+	milkymist_timer_enable(TIMER_CLOCKSOURCE, true);
+
+	clockevents_register_device(&milkymist_clockevent);
+
+	ret = clocksource_register_hz(&milkymist_clocksource, cpu_frequency);
+
+	if (ret)
+		printk(KERN_ERR "Failed to register clocksource: %d\n", ret);
+
+	setup_irq(IRQ_TIMER0, &timer_irqaction);
 }

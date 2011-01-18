@@ -32,11 +32,7 @@
 
 #endif /* __KERNEL__ */
 
-typedef unsigned long long cycles_t;
-
+typedef unsigned long cycles_t;
 cycles_t get_cycles(void);
-
-void lm32_systimer_ack(void);
-void lm32_systimer_program(int periodic, cycles_t cyc);
 
 #endif /*  _ASM_TIMEX_H */
