@@ -4,6 +4,10 @@ config LM32
 	select CPU_MICO32
 	select HAVE_GENERIC_HARDIRQS
 	select GENERIC_HARDIRQS_NO_DEPRECATED
+	select ARCH_REQUIRE_GPIOLIB
+
+config GENERIC_GPIO
+	bool
 
 config MMU
 	bool
