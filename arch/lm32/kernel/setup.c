@@ -61,6 +61,8 @@
 #include <asm/hw/milkymist.h>
 #endif
 
+unsigned int kernel_mode = PT_MODE_KERNEL;
+
 /* this is set first thing as the kernel is started
  * from the arguments to the kernel. */
 unsigned long asmlinkage _kernel_arg_cmdline; /* address of the commandline parameters */

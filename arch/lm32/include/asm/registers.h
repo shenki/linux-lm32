@@ -13,6 +13,9 @@
 #ifndef _ASM_REGISTERS_H
 #define _ASM_REGISTERS_H
 
+#define PT_MODE_KERNEL 1
+#define PT_MODE_USER 0
+
 #ifndef __ASSEMBLY__
 
 /* this struct defines the way the registers are stored on the
@@ -50,6 +53,7 @@ struct pt_regs {
   long     ra;
   long     ea;
   long     ba;
+  unsigned int pt_mode;
 };
 
 /* this defines the registers stored during an interrupt */

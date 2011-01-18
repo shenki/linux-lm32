@@ -28,6 +28,7 @@
 
 #ifdef __KERNEL__
 
+extern unsigned int kernel_mode;
 extern unsigned int cpu_frequency;
 extern unsigned int sdram_start;
 extern unsigned int sdram_size;

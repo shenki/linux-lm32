@@ -43,7 +43,7 @@
 #ifdef __KERNEL__
 #ifndef __ASSEMBLY__
 
-#define user_mode(regs) (get_fs() == USER_DS)
+#define user_mode(regs) ((regs)->pt_mode == PT_MODE_USER)
 #define instruction_pointer(regs) ((regs)->ea)
 #define profile_pc(regs) instruction_pointer(regs)
 extern void show_regs(struct pt_regs *);

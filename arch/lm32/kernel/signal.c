@@ -428,8 +428,12 @@ int do_signal(int retval, struct pt_regs *regs, int* handled)
 	return retval;
 }
 
-asmlinkage int manage_signals(int retval, struct pt_regs* regs) {
+asmlinkage int manage_signals(int retval, struct pt_regs* regs)
+{
 	unsigned long flags;
+
+	if (regs->pt_mode == PT_MODE_KERNEL)
+		return 0;
 
 	/* disable interrupts for sampling current_thread_info()->flags */
 	local_irq_save(flags);
@@ -472,10 +476,11 @@ asmlinkage int manage_signals(int retval, struct pt_regs* regs) {
 	return retval;
 }
 
-asmlinkage void manage_signals_irq(struct pt_regs* regs) {
+asmlinkage void manage_signals_irq(struct pt_regs* regs)
+{
 	unsigned long flags;
-	/* do not handle in atomic mode */
-	if (unlikely(in_atomic_preempt_off()) && unlikely(!current->exit_state))
+
+	if (regs->pt_mode == PT_MODE_KERNEL)
 		return;
 
 	/* disable interrupts for sampling current_thread_info()->flags */
@@ -484,9 +489,6 @@ asmlinkage void manage_signals_irq(struct pt_regs* regs) {
 	if( current_thread_info()->flags & _TIF_NEED_RESCHED ) {
 		/* schedule -> enables interrupts */
 		schedule();
-		
-		/* disable interrupts for sampling current_thread_info()->flags */
-		local_irq_disable();
 	}
 
 	local_irq_restore(flags);

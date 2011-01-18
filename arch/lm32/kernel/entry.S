@@ -7,6 +7,7 @@
 #include <asm/setup.h>
 #include <asm/segment.h>
 #include <asm/asm-offsets.h>
+#include <asm/registers.h>
 
 /* 
  * Exception vector table (see "LatticeMico32 Processor Reference Manual")
@@ -29,7 +30,7 @@
 
 /* exception vector for os-aware gdb and kernel signals */
 #define KERNEL_EXCEPTION_VECTOR(offset) \
-	addi	sp,sp,-128; \
+	addi	sp,sp,-132; \
 	sw		(sp+120), ra; \
 	calli	_save_syscall_frame; \
 	mvi		r1, offset; \
@@ -132,7 +133,7 @@ ENTRY(system_call)
 2:/* we now are on kernel stack and registers are untainted */
 
   /* save registers */
-	addi  sp, sp, -128
+	addi  sp, sp, -132
 	sw    (sp + 120), ra
 	calli _save_syscall_frame
 
@@ -224,14 +225,14 @@ ENTRY(system_call)
 	bi 2f; \
 1:/* already on kernel stack */ \
 	/* restore r9, r10 */ \
-	lw r9, (sp+0); \
-	lw r10, (sp+-4); \
+	lw r9, (sp+-4); \
+	lw r10, (sp+-8); \
 	/* no need to restore r11 as we did not use it */ \
 2:/* now for sure on kernel stack */
 
 _long_breakpoint_handler:
 	ENSURE_TO_BE_ON_KERNEL_STACK; \
-	addi	sp,sp,-128; \
+	addi	sp,sp,-132; \
 	calli	_save_syscall_frame; \
 	mvi		r1, 32; /* 32 = breakpoint magic offset */ \
 	addi	r2, sp, 4; \
@@ -358,7 +359,7 @@ ENTRY(sys_clone_wrapper)
 /* we therefore only save and restore the caller saved registers */
 /* (r1-r10, ra, ea because an interrupt could interrupt another one) */
 _long_interrupt_handler:
-	addi    sp, sp, -128
+	addi    sp, sp, -132
 	sw      (sp+120), ra
 	calli   _save_irq_frame
 
@@ -393,10 +394,22 @@ _save_irq_frame:
 	sw      (sp+44),  r10
 	/* ra (sp + 120) has already been written */
 	sw      (sp+124), ea
-	ret
+
+	mvhi r1, hi(kernel_mode)
+	ori r1, r1, lo(kernel_mode)
+	lw r2, (r1+0)
+	sw (sp+132), r2
+	mvi r2, PT_MODE_KERNEL
+	sw (r1+0), r2
+ret
 
 /* restore all caller saved registers saved in _save_irq_frame and return from exception */
 _restore_irq_frame_and_return:
+	lw r2, (sp+132)
+	mvhi r1, hi(kernel_mode)
+	ori r1, r1, lo(kernel_mode)
+	sw (r1+0), r2
+
 	lw      r1,  (sp+8);
 	lw      r2,  (sp+12);
 	lw      r3,  (sp+16);
@@ -409,11 +422,10 @@ _restore_irq_frame_and_return:
 	lw      r10, (sp+44);
 	lw      ra,  (sp+120)
 	lw      ea,  (sp+124)
-	addi    sp, sp, 128
+	addi    sp, sp, 132
 	eret
 
 _save_syscall_frame:
-	sw      (sp+4),   r0
 	sw      (sp+8),   r1
 	sw      (sp+12),  r2
 	sw      (sp+16),  r3
@@ -441,11 +453,18 @@ _save_syscall_frame:
 	sw      (sp+104), r25
 	sw      (sp+108), r26
 	sw      (sp+112), r27
-	addi     r7, sp, 128 /* we could store usp here */
+	addi     r7, sp, 132 /* we could store usp here */
 	sw      (sp+116), r7
 	/* ra (sp + 120) has already been written */
 	sw      (sp+124), ea
 	sw      (sp+128), ba
+
+	mvhi r11, hi(kernel_mode)
+	ori r11, r11, lo(kernel_mode)
+	lw r12, (r11+0)
+	sw (sp+132), r12
+	mvi r12, PT_MODE_KERNEL
+	sw (r11+0), r12
 	ret
 
 /************************/
@@ -469,6 +488,10 @@ _save_syscall_frame:
 
 #define RETURN_FROM_SYSCALL_OR_EXCEPTION(label, addr_register, return_instr) \
 label: \
+	lw r2, (sp+132); \
+	mvhi r1, hi(kernel_mode); \
+	ori r1, r1, lo(kernel_mode); \
+	sw (r1+0), r2; \
 	/* prepare switch to user stack but keep kernel stack pointer in r11 */ \
 	/* r9: scratch register */ \
 	/* r10: current = current_thread_info()->task */ \
@@ -479,10 +502,10 @@ label: \
 	lw r9, (r9+0); /* dereference lm32_current_thread */ \
 	lw r10, (r9+TI_TASK); /* load pointer to task */ \
 	/* set task->thread.which_stack to 1 (user stack) */ \
-	mvi r9, 1; \
+	mvi r9, TASK_USP - TASK_KSP; \
 	sw (r10+TASK_WHICH_STACK), r9; \
 	/* store ksp (after restore of frame) into task->thread.ksp */ \
-	addi r9, sp, 128; \
+	addi r9, sp, 132; \
 	sw (r10+TASK_KSP), r9; \
 	/* save sp into r11 */ \
 	mv r11, sp; \
@@ -539,10 +562,7 @@ RETURN_FROM_SYSCALL_OR_EXCEPTION(_restore_and_return_debug_exception,ea,bret)
  */
 ENTRY(resume)
 	/* store whole state to current stack (may be usp or ksp) */
-	addi sp, sp, -128
-	sw  (sp+4),   r0
-	sw  (sp+8),   r1
-	sw  (sp+12),  r2
+	addi sp, sp, -132
 	sw  (sp+16),  r3
 	sw  (sp+20),  r4
 	sw  (sp+24),  r5
@@ -568,42 +588,26 @@ ENTRY(resume)
 	sw  (sp+104), r25
 	sw  (sp+108), r26
 	sw  (sp+112), r27
-	addi r3, sp, 128 /* special case for stack pointer */
+	addi r3, sp, 132 /* special case for stack pointer */
 	sw  (sp+116), r3 /* special case for stack pointer */
 	sw	(sp+120), ra
-//	sw  (sp+124), ea
-//	sw  (sp+128), ba
+/*	sw  (sp+124), ea
+	sw  (sp+128), ba */
+
+
+	/* TODO: Aren't we always on kernel stack at this point? */
 
 	/* find out whether we are on kernel or user stack */
 	lw  r3, (r1 + TASK_WHICH_STACK)
-	be  r3, r0, 1f
+	add r3, r3, r1
+	sw  (r3 + TASK_KSP), sp
 
-	/* we are on user stack */
-	sw  (r1 + TASK_USP), sp
-	bi 2f
-
-1:/* we are on kernel stack */
-	sw  (r1 + TASK_KSP), sp
-
-2:/* we have stored stack pointer of prev */
-
-  /* restore next */
+	/* restore next */
 
 	/* find out whether we will be on kernel or user stack */
 	lw  r3, (r2 + TASK_WHICH_STACK)
-	be  r3, r0, 3f
-
-	/* we need user stack */
-	lw  sp, (r2 + TASK_USP)
-	bi 4f
-
-3:/* we need kernel stack */
-	lw  sp, (r2 + TASK_KSP)
-
-4:/* we have restored sp of next */
-
-	/* setup return value */
-	mv	r1, r2
+	add r3, r3, r2
+	lw  sp, (r3 + TASK_KSP)
 
 	lw  r2,  (sp+12)
 	lw  r3,  (sp+16)
@@ -633,16 +637,12 @@ ENTRY(resume)
 	lw  r27, (sp+112)
 	/* skip sp for now */
 	lw  ra,  (sp+120)
-//	lw  ea,  (sp+124)
-//	lw  ba,  (sp+128)
+/*	lw  ea,  (sp+124)
+	lw  ba,  (sp+128) */
 	/* Stack pointer must be restored last --- it will be updated */
 	lw  sp,  (sp+116)
 
 	ret
-
-/* extern asmlinkage void break_label(void); */
-ENTRY(break_label)
-	break
 
 .align 4
 ENTRY(_sys_call_table)

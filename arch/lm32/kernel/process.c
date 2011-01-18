@@ -127,7 +127,7 @@ void show_regs(struct pt_regs * regs)
 }
 
 
-void kernel_thread_helper(int reserved, int (*fn)(void*), void* arg)
+static void kernel_thread_helper(int reserved, int (*fn)(void*), void* arg)
 {
   /* Note: read copy_thread, kernel_thread and ret_from_fork to fully appreciate why the first argument is "reserved" */
 
@@ -151,6 +151,7 @@ int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
 	regs.r2 = (unsigned long)fn;
 	regs.r3 = (unsigned long)arg;
 	regs.r5 = (unsigned long)kernel_thread_helper;
+	regs.pt_mode = PT_MODE_KERNEL;
 	return do_fork(flags | CLONE_VM | CLONE_UNTRACED, 0, &regs, 0, NULL, NULL);
 }
 
@@ -193,8 +194,6 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 	return 0;
 }
 
-
-
 int copy_thread(unsigned long clone_flags,
 		unsigned long usp, unsigned long stk_size,
 		struct task_struct * p, struct pt_regs * regs)
@@ -202,7 +201,7 @@ int copy_thread(unsigned long clone_flags,
 	unsigned long child_tos = KSTK_TOS(p);
 	struct pt_regs *childregs;
 
-	if (regs->r5 == (unsigned long)kernel_thread_helper) {
+	if (!user_mode(regs)) {
 		/* kernel thread */
 
 		if( usp != 0 )
@@ -210,11 +209,10 @@ int copy_thread(unsigned long clone_flags,
 
 		/* childregs = full task switch frame on kernel stack of child */
 		childregs = (struct pt_regs *)(child_tos) - 1;
-
 		*childregs = *regs;
 
 		childregs->r4 = 0; /* child gets zero as return value */
-		regs->r4 = p->pid; /* parent gets child pid as return value */ 
+		regs->r4 = p->pid; /* parent gets child pid as return value */
 
 		/* return via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
@@ -272,8 +270,6 @@ int copy_thread(unsigned long clone_flags,
 		 * syscall frame */
 		childregs->sp = (unsigned long)childsyscallregs - 4;
 
-		put_task_struct(p);
-
 		/*printk("copy_thread2: ->pid=%d p=%lx regs=%lx childregs=%lx r5=%lx ra=%lx "
 				"dsf=%lx p->thread.ksp=%lx p->thread.usp=%lx\n",
 				p->pid, p, regs, childregs, childregs->r5, childregs->ra,
@@ -302,6 +298,7 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 	regs->sp = usp;
 	current->thread.usp = usp;
 	regs->fp = current->mm->start_data;
+	regs->pt_mode = PT_MODE_USER;
 
 	//printk("start_thread: current=%lx usp=%lx\n", current, usp);
 }
