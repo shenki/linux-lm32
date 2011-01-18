@@ -37,22 +37,15 @@
  * #defines from the assembly-language output.
  */
 
-#include <linux/stddef.h>
+#include <linux/kbuild.h>
+
 #include <linux/sched.h>
-#include <linux/kernel_stat.h>
-#include <linux/ptrace.h>
-#include <linux/hardirq.h>
-#include <asm/irq.h>
+#include <asm/processor.h>
 #include <asm/thread_info.h>
 
-#define DEFINE(sym, val) \
-        asm volatile("\n->" #sym " %0 " #val : : "i" (val))
-
-#define BLANK() asm volatile("\n->" : : )
-
-int main(void)
+void output_task_struct_defines(void)
 {
-	/* offsets into the task struct */
+	COMMENT("offsets into the task struct");
 	DEFINE(TASK_STATE, offsetof(struct task_struct, state));
 	DEFINE(TASK_FLAGS, offsetof(struct task_struct, flags));
 	DEFINE(TASK_PTRACE, offsetof(struct task_struct, ptrace));
@@ -62,25 +55,16 @@ int main(void)
 	DEFINE(TASK_MM, offsetof(struct task_struct, mm));
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
-	/* offsets into the thread struct in the task struct*/
+	COMMENT("offsets into the thread struct in the task struct.");
 	DEFINE(TASK_KSP, offsetof(struct task_struct, thread.ksp));
 	DEFINE(TASK_USP, offsetof(struct task_struct, thread.usp));
 	DEFINE(TASK_WHICH_STACK, offsetof(struct task_struct, thread.which_stack));
+	BLANK();
+}
 
-#ifndef	CONFIG_GENERIC_HARDIRQS
-	/* offsets into the kernel_stat struct */
-	DEFINE(STAT_IRQ, offsetof(struct kernel_stat, irqs));
-#endif
-
-	/* offsets into the irq_cpustat_t struct */
-	DEFINE(CPUSTAT_SOFTIRQ_PENDING, offsetof(irq_cpustat_t, __softirq_pending));
-
-	/* offsets into the thread struct */
-	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
-	DEFINE(THREAD_USP, offsetof(struct thread_struct, usp));
-	DEFINE(THREAD_WHICH_STACK, offsetof(struct thread_struct, which_stack));
-
-	/* offsets into the pt_regs */
+void output_ptreg_defines(void)
+{
+	COMMENT("LM32 pt_regs offsets.");
 	DEFINE(PT_R0, offsetof(struct pt_regs, r0));
 	DEFINE(PT_R1, offsetof(struct pt_regs, r1));
 	DEFINE(PT_R2, offsetof(struct pt_regs, r2));
@@ -113,20 +97,28 @@ int main(void)
 	DEFINE(PT_RA, offsetof(struct pt_regs, ra));
 	DEFINE(PT_EA, offsetof(struct pt_regs, ea));
 	DEFINE(PT_BA, offsetof(struct pt_regs, ba));
+	DEFINE(PT_MODE, offsetof(struct pt_regs, pt_mode));
+	BLANK();
+}
 
-#ifndef	CONFIG_GENERIC_HARDIRQS
-	/* offsets into the kernel_stat struct */
-	DEFINE(STAT_IRQ, offsetof(struct kernel_stat, irqs));
-#endif
+void output_thread_info_defines(void)
+{
+	COMMENT("Offsets in thread_info structure.");
+	DEFINE(TI_TASK, offsetof(struct thread_info, task));
+	DEFINE(TI_EXECDOMAIN, offsetof(struct thread_info, exec_domain));
+	DEFINE(TI_FLAGS, offsetof(struct thread_info, flags));
+	DEFINE(TI_CPU, offsetof(struct thread_info, cpu));
+	DEFINE(_THREAD_SIZE, THREAD_SIZE);
+	BLANK();
+}
 
-	/* signal defines */
-	DEFINE(SIGSEGV, SIGSEGV);
-	DEFINE(SEGV_MAPERR, SEGV_MAPERR);
-	DEFINE(SIGTRAP, SIGTRAP);
-	DEFINE(TRAP_TRACE, TRAP_TRACE);
-
-	DEFINE(PT_PTRACED, PT_PTRACED);
-	DEFINE(PT_DTRACE, PT_DTRACE);
+int output_thread_struct_defines(void)
+{
+	COMMENT("offsets into the thread struct");
+	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
+	DEFINE(THREAD_USP, offsetof(struct thread_struct, usp));
+	DEFINE(THREAD_WHICH_STACK, offsetof(struct thread_struct, which_stack));
+	BLANK();
 
 	DEFINE(THREAD_SIZE, THREAD_SIZE);
 
