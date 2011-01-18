@@ -20,7 +20,9 @@
 
 #ifndef __ASSEMBLY__
 
-typedef unsigned long mm_segment_t;
+typedef struct {
+	unsigned long seg;
+} mm_segment_t;
 
 /*
  * low level task data.

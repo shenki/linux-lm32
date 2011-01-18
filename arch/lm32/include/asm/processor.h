@@ -46,7 +46,7 @@
  * User space process size: 3.75GB. This is hardcoded into a few places,
  * so don't change it unless you know what you are doing.
  */
-#define TASK_SIZE	(0xF0000000UL)
+#define TASK_SIZE	(0xF0000000)
 
 /*
  * This decides where the kernel will search for a free chunk of vm
