@@ -1,2 +1,1 @@
-/* keep me */
-
+#include <asm-generic/auxvec.h>

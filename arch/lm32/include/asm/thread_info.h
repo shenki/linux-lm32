@@ -9,7 +9,6 @@
 #define _ASM_LM32_THREAD_INFO_H
 
 #include <asm/page.h>
-#include <asm/segment.h>
 
 #ifdef __KERNEL__
 
@@ -20,6 +19,14 @@
 #define THREAD_SIZE		8192	/* 2 pages */
 
 #ifndef __ASSEMBLY__
+
+typedef unsigned long mm_segment_t;
+
+#define USER_DS		(0x5)
+#define KERNEL_DS	(0xA)
+
+#define segment_eq(a,b)	((a) == (b))
+
 
 /*
  * low level task data.
@@ -32,7 +39,7 @@ struct thread_info {
 	int		   cpu;			/* cpu we're on */
 	int		   preempt_count;	/* 0 => preemptable, <0 => BUG */
 	struct restart_block restart_block;
-	mm_segment_t	mem_seg; /* USER_DS if user mode thread, KERNEL_DS if kernel mode thread */
+	mm_segment_t mem_seg;
 };
 
 /*

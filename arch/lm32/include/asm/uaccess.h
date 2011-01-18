@@ -32,7 +32,6 @@
 #include <linux/string.h>
 
 #include <asm/thread_info.h>
-#include <asm/segment.h>
 //#include <asm-generic/uaccess.h>
 //#include <asm-generic/sections.h>
 

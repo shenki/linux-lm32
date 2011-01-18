@@ -6,6 +6,8 @@
 #ifndef _LM32_ASM_PGTABLE_H
 #define _LM32_ASM_PGTABLE_H
 
+/* TODO: #include <asm-generic/pgtable.h> */
+
 #include <asm-generic/4level-fixup.h>
 
 #include <asm/page.h>

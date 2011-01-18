@@ -6,6 +6,8 @@
 #ifndef _LM32_ASM_IO_H
 #define _LM32_ASM_IO_H
 
+/* TODO: #include <asm-generic/io.h> */
+
 #ifdef __KERNEL__
 
 #ifndef __ASSEMBLY__
