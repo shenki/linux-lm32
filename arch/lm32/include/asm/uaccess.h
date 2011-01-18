@@ -185,9 +185,14 @@ clear_user(void *to, unsigned long n)
 
 #define __clear_user clear_user
 
+#define USER_DS		(0x5)
+#define KERNEL_DS	(0xA)
+
+#define segment_eq(a,b)	((a) == (b))
+
 static inline mm_segment_t get_fs(void)
 {
-    return current_thread_info()->mem_seg;
+    return current_thread_info()->addr_limit;
 }
 
 static inline mm_segment_t get_ds(void)
@@ -198,7 +203,7 @@ static inline mm_segment_t get_ds(void)
 
 static inline void set_fs(mm_segment_t val)
 {
-    current_thread_info()->mem_seg = val;
+    current_thread_info()->addr_limit = val;
 }
 
 #endif /* _LM32_ASM_UACCESS_H */

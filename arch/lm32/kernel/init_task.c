@@ -1,50 +1,15 @@
-/*
- * (C) Copyright 2007
- *     Theobroma Systems <www.theobroma-systems.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- */
-
-/*
- * Based on
- *
- * linux/arch/arm/kernel/init_task.c
- */
 #include <linux/mm.h>
 #include <linux/module.h>
-#include <linux/fs.h>
 #include <linux/sched.h>
-#include <linux/init.h>
 #include <linux/init_task.h>
 #include <linux/mqueue.h>
 #include <linux/hardirq.h>
 
+#include <asm/thread_info.h>
 #include <asm/uaccess.h>
-#include <asm/pgtable.h>
 
-//static struct fs_struct init_fs = INIT_FS;
-//static struct files_struct init_files = INIT_FILES;
 static struct signal_struct init_signals = INIT_SIGNALS(init_signals);
 static struct sighand_struct init_sighand = INIT_SIGHAND(init_sighand);
-//struct mm_struct init_mm = INIT_MM(init_mm);
-
-EXPORT_SYMBOL(init_mm);
 
 /*
  * Initial thread structure.
@@ -57,7 +22,19 @@ EXPORT_SYMBOL(init_mm);
  * The things we do for performance..
  */
 union thread_union init_thread_union __init_task_data =
-		{ INIT_THREAD_INFO(init_task) };
+{
+{
+	.task =		&init_task,
+	.exec_domain =	&default_exec_domain,
+	.flags =	0,
+	.cpu =		0,
+	.preempt_count = INIT_PREEMPT_COUNT,
+	.restart_block	= {
+		.fn = do_no_restart_syscall,
+	},
+	.addr_limit = KERNEL_DS,
+}
+};
 
 /*
  * Initial task structure.
@@ -65,5 +42,4 @@ union thread_union init_thread_union __init_task_data =
  * All other task structs will be allocated on slabs in fork.c
  */
 struct task_struct init_task = INIT_TASK(init_task);
-
 EXPORT_SYMBOL(init_task);
