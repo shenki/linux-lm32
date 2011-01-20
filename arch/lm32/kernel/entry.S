@@ -314,7 +314,6 @@ _long_interrupt_handler:
 4:
 	andi	r4, r3, 0x1
 	bne		r4, r0, 5f
-	sri		r3, r3, 1
 	addi	r1, r1, 1
 5:
 
