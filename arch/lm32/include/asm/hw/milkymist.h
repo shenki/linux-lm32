@@ -41,9 +41,6 @@
 #include <asm/hw/tmu.h>
 #include <asm/hw/uart.h>
 #include <asm/hw/vga.h>
-
-#if defined(CONFIG_SERIO_MILKBD) || defined(CONFIG_SERIO_MILKMOUSE)
 #include <asm/hw/ps2.h>
-#endif
 
 #endif
