@@ -25,18 +25,6 @@ config RWSEM_GENERIC_SPINLOCK
 	bool
 	default y
 
-config GENERIC_FIND_NEXT_BIT
-	bool
-	default y
-
-config GENERIC_HWEIGHT
-	bool
-	default y
-
-config GENERIC_CALIBRATE_DELAY
-	bool
-	default y
-
 config GENERIC_ALLOCATOR
 	bool
 	default y
@@ -45,7 +33,23 @@ config GENERIC_BUG
 	bool
 	default y
 
+config GENERIC_CALIBRATE_DELAY
+	bool
+	default y
+
 config GENERIC_CLOCKEVENTS
+	bool
+	default y
+
+config GENERIC_CSUM
+	bool
+	default y
+
+config GENERIC_FIND_NEXT_BIT
+	bool
+	default y
+
+config GENERIC_HWEIGHT
 	bool
 	default y
 
