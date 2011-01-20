@@ -17,9 +17,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
- */
-
-/*
+ *
  * Based on
  *
  * arch/mips/kernel/early_printk.c
@@ -31,23 +29,30 @@
  * Copyright (C) 2007 MIPS Technologies, Inc.
  *   written by Ralf Baechle (ralf@linux-mips.org)
  */
+
 #include <linux/console.h>
 #include <linux/init.h>
 #include <linux/string.h>
-#include <asm/setup.h>
 #include <asm/irq.h>
+#include <linux/io.h>
 #include <asm/hw/milkymist.h>
 
-static void early_console_putc (char c)
+static void __init early_console_putc(char c)
 {
-	out_be32((u32 *)CSR_UART_RXTX,c);
-	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
+	unsigned int timeout = 1000;
+	uint32_t pending;
+
+	iowrite32be(c, CSR_UART_RXTX);
+
+	do {
+		pending = lm32_irq_pendig();
+	} while (pending & BIT(IRQ_UARTTX) && --timeout);
+
 	lm32_irq_ack(IRQ_UARTTX);
 }
 
-// write string to console
-static void
-early_console_write(struct console *con, const char *s, unsigned n)
+static void __init early_console_write(struct console *con, const char *s,
+	unsigned n)
 {
 	while (n-- && *s) {
 		early_console_putc(*s);
@@ -55,31 +60,20 @@ early_console_write(struct console *con, const char *s, unsigned n)
 	}
 }
 
-// setup console
-static int
-early_console_setup(struct console *con, char *s)
-{
-	if( s )
-		early_console_write(con, s, strlen(s));
-
-	return 0;
-}
-
-static struct console early_console = {
+static struct console early_console __initdata = {
 	.name	= "early",
 	.write	= early_console_write,
-	.setup = early_console_setup,
 	.flags	= CON_PRINTBUFFER | CON_BOOT,
 	.index	= -1
 };
 
-static int early_console_initialized;
+static bool early_console_initialized __initdata;
 
-void setup_early_printk(void)
+void __init setup_early_printk(void)
 {
 	if (early_console_initialized)
 		return;
-	early_console_initialized = 1;
+	early_console_initialized = true;
 
 	register_console(&early_console);
 }
