@@ -178,32 +178,30 @@ static int minimac_rx(struct net_device *dev, int budget)
 
 	while (netif_running(dev) && received < budget ) {
 		count = 0;
-		for (i=1; i<=MAX_PACKET_RECEPTION_SLOT && received < budget ; ++i) {
-			flush_dcache_range(CSR_MINIMAC_STATE0,256);
+		for (i = 1; i <= MAX_PACKET_RECEPTION_SLOT && received < budget ; ++i) {
+			flush_dcache_range(CSR_MINIMAC_STATE0, 256);
 			state = ioread32be(CSR_MINIMAC_STATE0+(i-1)*12);
-			if ( state & MINIMAC_STATE_PENDING ) {
+			if (state & MINIMAC_STATE_PENDING) {
 				size = ioread32be(CSR_MINIMAC_COUNT0+(i-1)*12);
 				if (size == 0) {
 				} else if (size < 64) {
-#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-					dev_err(&dev->dev, "rx: frame too short(%d)\n", size);
-#endif
+					dev_dbg(&dev->dev, "rx: frame too short(%d)\n", size);
+
 					dev->stats.rx_errors++;
 					dev->stats.rx_length_errors++;
 					++received;
 					++count;
-				} else if ( size > MAX_ETH_FRAME_SIZE ) {
-#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-					dev_err(&dev->dev, "rx: frame too long(%d)\n", size);
-#endif
+				} else if (size > MAX_ETH_FRAME_SIZE ) {
+					dev_dbg(&dev->dev, "rx: frame too long(%d)\n", size);
+
 					dev->stats.rx_errors++;
 					dev->stats.rx_length_errors++;
 					++received;
 					++count;
 				} else {
- 					src = phys_to_virt( (tp->pkt_buf+i)->buf );
+ 					src = phys_to_virt(tp->pkt_buf[i].buf);
 					size = get_frame(src, size );
-					if ( size > 0 ) {
+					if (size > 0) {
 						skb = netdev_alloc_skb_ip_align(dev, size);
 						if (likely(skb)) {
 							skb_copy_to_linear_data (skb, src+8, size);
@@ -217,12 +215,11 @@ static int minimac_rx(struct net_device *dev, int budget)
 								dev_warn(&dev->dev, "Memory squeeze, dropping packet\n");
 							dev->stats.rx_dropped++;
 						}
-					} else if ( size == -2 ) {
+					} else if (size == -2) {
 						dev->stats.rx_errors++;
 						dev->stats.rx_crc_errors++;
-#ifdef CONFIG_DEBUG_MILKYMIST_MINIMAC
-						dev_err(&dev->dev, "rx: wrong CRC\n");
-#endif
+						dev_dbg(&dev->dev, "rx: wrong CRC\n");
+
 					}
 					++received;
 					++count;
@@ -252,12 +249,11 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	struct net_device *dev = (struct net_device *)dev_id;
 	struct minimac *tp = netdev_priv(dev);
 
-	flush_dcache_range(CSR_MINIMAC_SETUP,256);
-	if (ioread32be(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST) {
+	flush_dcache_range(CSR_MINIMAC_SETUP, 256);
+	if (ioread32be(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST)
 		iowrite32be(0, CSR_MINIMAC_SETUP);
-	}
 
-	disable_irq(dev->irq);
+	disable_irq_nosync(dev->irq);
 
 	napi_schedule(&tp->napi);
 
@@ -304,11 +300,13 @@ static int minimac_open(struct net_device *dev)
 
 	ret = request_irq(dev->irq, minimac_interrupt_rx, 0, "milkymist_minimac RX", dev);
 	if (ret)
-		return -1;
+		return ret;
 
-	ret = request_irq((dev->irq)+1, minimac_interrupt_tx, IRQF_DISABLED, "milkymist_minimac TX", dev);
-	if (ret)
-		return -1;
+	ret = request_irq((dev->irq)+1, minimac_interrupt_tx, 0, "milkymist_minimac TX", dev);
+	if (ret) {
+		free_irq(dev->irq, dev);
+		return ret;
+	}
 
 	minimac_reset(tp);
 	netif_start_queue(dev);
@@ -329,9 +327,8 @@ static int minimac_stop(struct net_device *dev)
 	free_irq(dev->irq, dev);
 	free_irq(dev->irq+1, dev);
 
-	for (i = 0; i< MAX_PACKET_RECEPTION_SLOT; ++i) {
+	for (i = 0; i < MAX_PACKET_RECEPTION_SLOT; ++i)
 		iowrite32be(MINIMAC_STATE_EMPTY, CSR_MINIMAC_STATE0+i*12);
-	}
 
 	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, CSR_MINIMAC_SETUP);
 	iowrite32be(0, CSR_MINIMAC_TXREMAINING);
@@ -351,9 +348,8 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	unsigned long fcs;
 	int len;
 
-	if (ioread32be(CSR_MINIMAC_TXREMAINING) != 0) {
+	if (ioread32be(CSR_MINIMAC_TXREMAINING) != 0)
 		return NETDEV_TX_BUSY;
-	}
 
 	spin_lock_irq(&tp->lock);
 
@@ -362,15 +358,15 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	dest = phys_to_virt(tp->pkt_buf->buf);
 	memcpy_toio(dest+8, skb->data, len);
 
-	if (len<60)
-		len=60;
+	if (len < 60)
+		len = 60;
 
 	/* CRC-32 */
-	fcs = crc32(dest+8, len);
-	*((dest+len)+ 8) = (fcs & 0xff);
-	*((dest+len)+ 9) = (fcs & 0xff00) >> 8;
-	*((dest+len)+10) = (fcs & 0xff0000) >> 16;
-	*((dest+len)+11) = (fcs & 0xff000000) >> 24;
+	fcs = crc32(dest + 8, len);
+	(dest+len)[8] = (fcs & 0xff);
+	(dest+len)[9] = (fcs & 0xff00) >> 8;
+	(dest+len)[10] = (fcs & 0xff0000) >> 16;
+	(dest+len)[11] = (fcs & 0xff000000) >> 24;
 
 	iowrite32be(dest, CSR_MINIMAC_TXADR);
 	iowrite32be(len + 12, CSR_MINIMAC_TXREMAINING);
@@ -439,7 +435,7 @@ static int minimac_probe(struct platform_device *pdev)
 		ret = -ENXIO;
 		goto free;
 	}
-	netdev->mem_end   = netdev->mem_start + buffer_size;
+	netdev->mem_end = netdev->mem_start + buffer_size;
 
 	/* obtain device IRQ number */
 	res = platform_get_resource(pdev, IORESOURCE_IRQ, 0);
