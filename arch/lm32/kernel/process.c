@@ -295,7 +295,9 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 	regs->r1 = stack[0];
 	regs->r2 = stack[1];
 	regs->r3 = stack[2];
+#ifdef CONFIG_BINFMT_ELF_FDPIC
 	regs->r7 = current->mm->context.exec_fdpic_loadmap;
+#endif
 	regs->sp = usp;
 	current->thread.usp = usp;
 	regs->fp = current->mm->start_data;
