@@ -51,6 +51,7 @@
 #include <linux/hardirq.h>
 
 #include <asm/uaccess.h>
+#include <asm/ucontext.h>
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
 #include <asm/thread_info.h>
@@ -68,6 +69,7 @@ int do_signal(int retval, struct pt_regs *regs, int* handled);
  * Atomically swap in the new signal mask, and wait for a signal.
  */
 
+#ifdef MW_UNDEFINED
 asmlinkage int
 sys_rt_sigsuspend(sigset_t *unewset, size_t sigsetsize, struct pt_regs *regs)
 {
@@ -94,6 +96,7 @@ sys_rt_sigsuspend(sigset_t *unewset, size_t sigsetsize, struct pt_regs *regs)
 			return -EINTR;
 	}
 }
+#endif
 
 asmlinkage int 
 sys_sigaction(int sig, const struct old_sigaction *act,
@@ -145,12 +148,18 @@ struct sigframe
 	unsigned long tramp[2];	/* signal trampoline */
 };
 
-static int
-restore_sigcontext(struct pt_regs *regs, struct sigcontext *sc, int *rval_p)
+struct rt_sigframe {
+	struct siginfo info;
+	struct ucontext uc;
+	unsigned long tramp[2]; /* signal trampoline */
+};
+
+static int restore_sigcontext(struct pt_regs *regs,
+				struct sigcontext __user *sc, int *rval_p)
 {
 	unsigned int err = 0;
 
-#define COPY(x)		err |= __get_user(regs->x, &sc->regs.x)
+#define COPY(x)		{err |= __get_user(regs->x, &sc->regs.x); }
 	COPY(r0);	COPY(r1);	COPY(r2);	COPY(r3);
 	COPY(r4);	COPY(r5);	COPY(r6);	COPY(r7);
 	COPY(r8);	COPY(r9);	COPY(r10);	COPY(r11);
@@ -166,9 +175,11 @@ restore_sigcontext(struct pt_regs *regs, struct sigcontext *sc, int *rval_p)
 	return err;
 }
 
-asmlinkage int sys_sigreturn(struct pt_regs *regs)
+asmlinkage int sys_rt_sigreturn(struct pt_regs *regs)
 {
-	struct sigframe *frame = (struct sigframe *)(current->thread.usp+4);
+#if 0
+	struct rt_sigframe __user *frame =
+		(struct rt_sigframe __user *)(current->thread.usp+4);
 	sigset_t set;
 	int rval = 0;
 
@@ -198,6 +209,7 @@ asmlinkage int sys_sigreturn(struct pt_regs *regs)
 
 badframe:
 	force_sig(SIGSEGV, current);
+#endif
 	return 0;
 }
 
@@ -210,7 +222,7 @@ setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
 {
 	int err = 0;
 
-#define COPY(x)		err |= __put_user(regs->x, &sc->regs.x)
+#define COPY(x)		{err |= __put_user(regs->x, &sc->regs.x); }
 	COPY(r0);	COPY(r1);	COPY(r2);	COPY(r3);
 	COPY(r4);	COPY(r5);	COPY(r6);	COPY(r7);
 	COPY(r8);	COPY(r9);	COPY(r10);	COPY(r11);
@@ -229,7 +241,7 @@ setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
 /*
  * Determine which stack to use..
  */
-static inline void *
+static inline void __user *
 get_sigframe(struct k_sigaction *ka, struct pt_regs *regs, size_t frame_size)
 {
 	/* Per default use user stack of userspace process */
@@ -239,7 +251,7 @@ get_sigframe(struct k_sigaction *ka, struct pt_regs *regs, size_t frame_size)
 		/* use stack set by sigaltstack */
 		sp = current->sas_ss_sp + current->sas_ss_size;
 
-	return (void *)((sp - frame_size) & -8UL);
+	return (void __user *)((sp - frame_size) & -8UL);
 }
 
 static int setup_frame(int sig, struct k_sigaction *ka,
@@ -271,7 +283,7 @@ static int setup_frame(int sig, struct k_sigaction *ka,
 	/* Set up to return from userspace. */
 
 	/* mvi  r8, __NR_sigreturn = addi  r8, r0, __NR_sigreturn */
-	err |= __put_user(0x34080000 | __NR_sigreturn, &frame->tramp[0]);
+	err |= __put_user(0x34080000 | __NR_rt_sigreturn, &frame->tramp[0]);
 
 	/* scall */
 	err |= __put_user(0xac000007, &frame->tramp[1]);

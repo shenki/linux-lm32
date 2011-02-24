@@ -40,6 +40,22 @@
 #include <asm/unistd.h>
 
 
+asmlinkage long
+sys_mmap2(unsigned long addr, unsigned long len, unsigned long prot,
+	unsigned long flags, unsigned long fd, unsigned long pgoff)
+{
+	return sys_mmap_pgoff(addr, len, prot, flags, fd, pgoff);
+}
+
+asmlinkage long
+sys_mmap(unsigned long addr, unsigned long len, unsigned long prot,
+	unsigned long flags, unsigned long fd, off_t offset)
+{
+	if (unlikely(offset & ~PAGE_MASK))
+		return -EINVAL;
+	return sys_mmap_pgoff(addr, len, prot, flags, fd, offset >> PAGE_SHIFT);
+}
+
 int kernel_execve(const char *filename, const char *const argv[], const char *const envp[])
 {
     register unsigned int  r_syscall	asm("r8") = __NR_execve; 
@@ -103,91 +119,3 @@ asmlinkage int sys_lm32_clone(
 	return ret;
 }
 
-static inline unsigned long
-do_mmap2 (unsigned long addr, size_t len,
-	 unsigned long prot, unsigned long flags,
-	 unsigned long fd, unsigned long pgoff)
-{
-	struct file * file = NULL;
-	int ret = -EBADF;
-
-	flags &= ~(MAP_EXECUTABLE | MAP_DENYWRITE);
-	if (! (flags & MAP_ANONYMOUS)) {
-		if (!(file = fget (fd)))
-			goto out;
-	}
-	
-	down_write (&current->mm->mmap_sem);
-	ret = do_mmap_pgoff (file, addr, len, prot, flags, pgoff);
-	up_write (&current->mm->mmap_sem);
-	if (file)
-		fput (file);
-out:
-	return ret;
-}
-
-unsigned long sys_mmap2 (unsigned long addr, size_t len,
-			unsigned long prot, unsigned long flags,
-			unsigned long fd, unsigned long pgoff)
-{
-	return do_mmap2 (addr, len, prot, flags, fd, pgoff);
-}
-
-asmlinkage void lm32_debug_syscall(
-		unsigned long p1,
-		unsigned long p2,
-		unsigned long p3,
-		unsigned long p4,
-		unsigned long p5,
-		unsigned long p6,
-		struct pt_regs* regs,
-		unsigned long syscallno)
-{
-	switch( syscallno ) {
-		case __NR_write:
-		case __NR_read:
-		case __NR_nanosleep:
-		case __NR_close:
-		case __NR_access:
-			/* do not debug those syscalls */
-			break;
-
-		default:
-			printk("Syscall: %lu (%lx, %lx, %lx, %lx, %lx, %lx) [regs = %lx]\n",
-					syscallno, p1, p2, p3, p4, p5, p6, (unsigned long)regs);
-			break;
-	}
-}
-
-asmlinkage void lm32_debug_syscall_ret(int retval, unsigned long syscallno, struct pt_regs* regs)
-{
-	switch( syscallno ) {
-		case __NR_write:
-		case __NR_read:
-		case __NR_nanosleep:
-		case __NR_access:
-		default:
-			/* do not debug those syscalls except for errors */
-
-			/* do not debug ECHILD for wait() */
-			if( syscallno == __NR_wait4 && retval == -10 )
-				break;
-			if( retval < 0 )
-				printk("ERROR: syscall %lu returned %d\n", syscallno, retval);
-			break;
-
-		case __NR_close:
-			/* do not even debug those syscalls for errors because busybox often
-			 * "cleanups" by closing several hundred never opened fd's */
-			break;
-
-		case __NR_pause:
-			printk("syscall %lu returned %d and ea=%lx\n", syscallno, retval, regs->ea);
-			break;
-			/*
-		default:
-			printk("syscall %lu returned %d\n", syscallno, retval);
-			break;
-			*/
-	}
-}
