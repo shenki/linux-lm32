@@ -9,7 +9,7 @@
 #include <asm/page.h>
 	
 OUTPUT_ARCH(lm32)
-ENTRY(stext)
+ENTRY(_stext)
 
 #define	TEXT_OFFSET	CONFIG_TEXT_OFFSET
 

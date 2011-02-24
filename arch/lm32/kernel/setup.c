@@ -56,6 +56,7 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include <asm/thread_info.h>
+#include <asm/sections.h>
 
 #ifdef CONFIG_PLAT_MILKYMIST
 #include <asm/hw/milkymist.h>
@@ -69,7 +70,7 @@ unsigned long asmlinkage _kernel_arg_cmdline; /* address of the commandline para
 unsigned long asmlinkage _kernel_arg_initrd_start;
 unsigned long asmlinkage _kernel_arg_initrd_end;
 
-char __initdata command_line[COMMAND_LINE_SIZE];
+static char __initdata cmd_line[COMMAND_LINE_SIZE];
 
 
 /* from mm/init.c */
@@ -77,8 +78,25 @@ extern void bootmem_init(void);
 extern void paging_init(void);
 
 unsigned int cpu_frequency;
-unsigned int sdram_start;
-unsigned int sdram_size;
+//unsigned int sdram_start;
+//unsigned int sdram_size;
+
+void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
+		unsigned long p_initrd_end)
+{
+	/* clear bss section */
+	memset(__bss_start, 0, __bss_stop - __bss_start);
+
+#ifndef CONFIG_CMDLINE_BOOL
+	if (cmdline) {
+		strlcpy(cmd_line, cmdline, COMMAND_LINE_SIZE);
+	}
+#else
+	strlcpy(cmd_line, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
+#endif
+	initrd_start = p_initrd_start;
+	initrd_end = p_initrd_end;
+}
 
 void __init setup_arch(char **cmdline_p)
 {
@@ -88,23 +106,15 @@ void __init setup_arch(char **cmdline_p)
 	lm32_current_thread = (struct thread_info*)&init_thread_union;
 
 	cpu_frequency = (unsigned long)CONFIG_CPU_CLOCK;
-	sdram_start = (unsigned long)CONFIG_MEMORY_START;
-	sdram_size = (unsigned long)CONFIG_MEMORY_SIZE;
+	//sdram_start = (unsigned long)CONFIG_MEMORY_START;
+	//sdram_size = (unsigned long)CONFIG_MEMORY_SIZE;
 
-	/* Keep a copy of command line */
-	*cmdline_p = (char*)_kernel_arg_cmdline;
-
-
-#if defined(CONFIG_BOOTPARAM)
-	/* CONFIG_CMDLINE should override all */
-	strncpy(*cmdline_p, CONFIG_BOOTPARAM_STRING, COMMAND_LINE_SIZE);
-#endif
-
+	/* Save unparsed command line copy for /proc/cmdline */
 	memcpy(boot_command_line, *cmdline_p, COMMAND_LINE_SIZE);
-	boot_command_line[COMMAND_LINE_SIZE-1] = 0;
+	*cmdline_p = cmd_line;
 
 #ifdef CONFIG_DUMMY_CONSOLE
-        conswitchp = &dummy_con;
+	conswitchp = &dummy_con;
 #endif
 
 #ifdef CONFIG_EARLY_PRINTK

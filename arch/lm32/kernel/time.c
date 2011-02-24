@@ -142,9 +142,9 @@ void __init time_init(void)
 {
 	int ret;
 
-	milkymist_ticks_per_jiffy = DIV_ROUND_CLOSEST(cpu_frequency, HZ);
+	milkymist_ticks_per_jiffy = DIV_ROUND_CLOSEST(CONFIG_CPU_CLOCK, HZ);
 
-	clockevents_calc_mult_shift(&milkymist_clockevent, cpu_frequency, 5);
+	clockevents_calc_mult_shift(&milkymist_clockevent, CONFIG_CPU_CLOCK, 5);
 	milkymist_clockevent.min_delta_ns = clockevent_delta2ns(100, &milkymist_clockevent);
 	milkymist_clockevent.max_delta_ns = clockevent_delta2ns(0xffff, &milkymist_clockevent);
 	milkymist_clockevent.cpumask = cpumask_of(0);
@@ -156,7 +156,7 @@ void __init time_init(void)
 
 	clockevents_register_device(&milkymist_clockevent);
 
-	ret = clocksource_register_hz(&milkymist_clocksource, cpu_frequency);
+	ret = clocksource_register_hz(&milkymist_clocksource, CONFIG_CPU_CLOCK);
 
 	if (ret)
 		printk(KERN_ERR "Failed to register clocksource: %d\n", ret);

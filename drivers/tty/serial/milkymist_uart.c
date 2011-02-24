@@ -358,6 +358,8 @@ static struct console milkymist_console = {
 /*
  * Early console initialization
  */
+/* TODO remove this extern */
+extern struct platform_device* milkymistuart_default_console_device;
 static int __init milkymist_early_console_init(void)
 {
 	add_preferred_console(MILKYMISTUART_DEVICENAME, milkymistuart_default_console_device->id, NULL);
@@ -405,7 +407,7 @@ static struct uart_port* __devinit milkymistuart_init_port(struct platform_devic
 	port->iobase = 0x0;
 	port->membase = (void __iomem*)CSR_UART_RXTX;
 	port->irq = IRQ_UARTRX;
-	port->uartclk = cpu_frequency;
+	port->uartclk = CONFIG_CPU_CLOCK;
 	port->flags = UPF_SKIP_TEST | UPF_BOOT_AUTOCONF; // TODO perhaps this is not completely correct
 	port->iotype = UPIO_PORT; // TODO perhaps this is not completely correct
 	port->regshift = 0;

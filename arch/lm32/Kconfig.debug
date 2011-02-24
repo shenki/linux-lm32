@@ -2,12 +2,29 @@ menu "Kernel hacking"
 
 source "lib/Kconfig.debug"
 
-config BOOTPARAM
-	bool 'Compiled-in Kernel Boot Parameter'
+config CMDLINE_BOOL
+	bool "Built-in kernel command line"
+	default n
+	help
+	  For most systems, it is firmware or second stage bootloader that
+	  by default specifies the kernel command line options.  However,
+	  it might be necessary or advantageous to override the default kernel
+	  command line.  For such cases, this option allows you to hardcode
+	  your own command line options directly into the kernel.  For that,
+	  you should choose 'Y' here, and fill in the extra boot arguments in
+	  CONFIG_CMDLINE.
 
-config BOOTPARAM_STRING
-	string 'Kernel Boot Parameter'
-	default 'console=ttyS0,19200'
-	depends on BOOTPARAM
+config CMDLINE
+	string "Default kernel command string"
+	depends on CMDLINE_BOOL
+	default ""
+	help
+	  On some platforms, there is currently no way for the boot loader to
+	  pass arguments to the kernel.  For these platforms you can supply
+	  some command-line options at build time by entering them here.  In
+	  other cases you can specify kernel args so that you don't have to set
+	  them up in board prom initialization routines.
+	  
+	  For more information, see the CMDLINE_BOOL option.
 
 endmenu

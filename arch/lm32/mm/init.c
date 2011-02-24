@@ -62,8 +62,8 @@ void __init bootmem_init(void)
 	/*
 	 * Init memory
 	 */
-	physical_memory_start = sdram_start;
-	physical_memory_end = sdram_start+sdram_size;
+	physical_memory_start = CONFIG_MEMORY_START;
+	physical_memory_end = CONFIG_MEMORY_START + CONFIG_MEMORY_SIZE;
 	if( ((unsigned long)_end < physical_memory_start) || ((unsigned long)_end > physical_memory_end) )
 		printk("BUG: your kernel is not located in the ddr sdram");
 	/* start after kernel code */
@@ -99,11 +99,9 @@ void __init bootmem_init(void)
 	 * reserve initrd boot memory
 	 */
 #ifdef CONFIG_BLK_DEV_INITRD
-	if(_kernel_arg_initrd_start) {
-		unsigned long reserve_start = _kernel_arg_initrd_start & PAGE_MASK;
-		unsigned long reserve_end = (_kernel_arg_initrd_end + PAGE_SIZE-1) & PAGE_MASK;
-		initrd_start = _kernel_arg_initrd_start;
-		initrd_end = _kernel_arg_initrd_end;
+	if (initrd_start) {
+		unsigned long reserve_start = initrd_start & PAGE_MASK;
+		unsigned long reserve_end = (initrd_end + PAGE_SIZE-1) & PAGE_MASK;
 		printk("reserving initrd memory: %lx size %lx\n", reserve_start, reserve_end-reserve_start);
 		reserve_bootmem(reserve_start, reserve_end-reserve_start, BOOTMEM_DEFAULT);
 	}
@@ -160,7 +158,7 @@ void __init mem_init(void)
 	unsigned long start_mem = memory_start;
 	unsigned long end_mem   = memory_end;
 	/* TODO: use more of hardware setup to initialize memory */
-	unsigned long ramlen = sdram_size;
+	unsigned long ramlen = CONFIG_MEMORY_SIZE;
 
 #ifdef DEBUG
 	printk(KERN_DEBUG "Mem_init: start=%lx, end=%lx\n", start_mem, end_mem);
