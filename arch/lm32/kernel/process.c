@@ -161,29 +161,6 @@ void flush_thread(void)
 	set_fs(USER_DS);
 }
 
-
-/*
- * sys_execve() executes a new program.
- */
-asmlinkage int sys_execve(const char __user *name,
-			  const char __user *const __user *argv,
-			  const char __user *const __user *envp, struct pt_regs* regs)
-{
-	int error;
-	char * filename;
-
-	lock_kernel();
-	filename = getname(name);
-	error = PTR_ERR(filename);
-	if (IS_ERR(filename))
-		goto out;
-	error = do_execve(filename, argv, envp, regs);
-	putname(filename);
-out:
-	unlock_kernel();
-	return error;
-}
-
 /* no stack unwinding */
 unsigned long get_wchan(struct task_struct *p)
 {
@@ -283,18 +260,12 @@ int copy_thread(unsigned long clone_flags,
 /* start userspace thread */
 void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 {
-	unsigned long *stack;
-
 	set_fs(USER_DS);
 
 	memset(regs, 0, sizeof(regs));
 
-	stack = (unsigned long *)usp;
 	/* -4 because we will add 4 later in ret_from_syscall */
 	regs->ea = pc - 4;
-	regs->r1 = stack[0];
-	regs->r2 = stack[1];
-	regs->r3 = stack[2];
 #ifdef CONFIG_BINFMT_ELF_FDPIC
 	regs->r7 = current->mm->context.exec_fdpic_loadmap;
 #endif

@@ -56,29 +56,44 @@ sys_mmap(unsigned long addr, unsigned long len, unsigned long prot,
 	return sys_mmap_pgoff(addr, len, prot, flags, fd, offset >> PAGE_SHIFT);
 }
 
+asmlinkage int lm32_execve(const char __user *ufilename,
+                           const char __user *const __user *uargv,
+                           const char __user *const __user *uenvp,
+                           struct pt_regs *regs)
+{
+	int error;
+	char *filename;
+
+	filename = getname(ufilename);
+	error = PTR_ERR(filename);
+	if (IS_ERR(filename))
+		goto out;
+
+	error = do_execve(filename, uargv, uenvp, regs);
+	putname(filename);
+out:
+	return error;
+}
+
 int kernel_execve(const char *filename, const char *const argv[], const char *const envp[])
 {
-    register unsigned int  r_syscall	asm("r8") = __NR_execve; 
-    register long          r_a          asm("r1") = (unsigned long)filename; 
-    register long          r_b          asm("r2") = (unsigned long)argv; 
-    register long          r_c          asm("r3") = (unsigned long)envp; 
-             long          __res; 
+    register unsigned long _r8 asm("r8") = __NR_execve; 
+    register unsigned long _r1 asm("r1") = (unsigned long)filename; 
+    register unsigned long _r2 asm("r2") = (unsigned long)argv; 
+    register unsigned long _r3 asm("r3") = (unsigned long)envp; 
 
-    asm volatile ( "scall\n" 
-		   "mv %0, r1\n" 
-		   : "=r"(__res) 
-		   : "r"(r_syscall), 
-		     "r"(r_a), "r"(r_b), "r"(r_c) );
+	__asm__ __volatile__ ("scall\n"
+			: "=r"(_r1)
+			: "r"(_r8),
+			  "0"(_r1), "r"(_r2), "r"(_r3) );
 
-    if(__res >=(unsigned long) -4095) {
-      __res = (unsigned long) -1;
+    if(_r1 >=(unsigned long) -4095) {
+      _r1 = (unsigned long) -1;
     }
-    return (long) __res;
+
+    return (int) _r1;
 }
 EXPORT_SYMBOL(kernel_execve);
-
-
-extern asmlinkage int sys_execve(char *name, char **argv, char **envp, struct pt_regs* regs);
 
 asmlinkage int sys_lm32_vfork(struct pt_regs *regs, unsigned long ra_in_syscall)
 {
