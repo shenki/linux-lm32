@@ -35,17 +35,11 @@
 #include <linux/module.h>
 
 #include <asm/system.h>
-#include <asm/traps.h>
-
-extern unsigned long  reset_handler;
+#include <asm/sections.h>
 
 void __init trap_init(void)
 {
-  void*  exception_vectors = &reset_handler;
-
-	if( ((unsigned long)&reset_handler % 256) != 0 )
-		printk(KERN_ERR "exception vectors are not aligned to 256 bytes!\n");
-  asm volatile ( "wcsr EBA, %0" : : "r"(exception_vectors) );
+	__asm__ __volatile__("wcsr EBA, %0" : : "r"(__exception_text_start));
 }
 
 int kstack_depth_to_print = 48;
