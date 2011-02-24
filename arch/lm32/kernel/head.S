@@ -3,7 +3,7 @@
 #include <asm/thread_info.h>
 
 __INIT
-ENTRY(_stext)
+ENTRY(_start)
 	xor	r0, r0, r0      /* clear r0 */
 	wcsr	IE, r0          /* disable interrupts */
 	wcsr	IM, r0
