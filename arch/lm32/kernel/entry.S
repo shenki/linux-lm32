@@ -7,7 +7,7 @@
 #include <asm/setup.h>
 #include <asm/segment.h>
 #include <asm/asm-offsets.h>
-#include <asm/registers.h>
+#include <asm/ptrace.h>
 
 /* 
  * Exception vector table (see "LatticeMico32 Processor Reference Manual")

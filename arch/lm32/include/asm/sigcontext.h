@@ -21,10 +21,11 @@
  * MA 02111-1307 USA
  */
 
-#ifndef __ASM_LM32_SIGCONTEXT_H
-#define __ASM_LM32_SIGCONTEXT_H
+#ifndef _ASM_LM32_SIGCONTEXT_H
+#define _ASM_LM32_SIGCONTEXT_H
 
-#include <asm/registers.h>
+/* FIXME should be linux/ptrace.h */
+#include <asm/ptrace.h>
 
 /*
  * Signal context structure - contains all info to do with the state
@@ -34,16 +35,6 @@
 struct sigcontext {
 	struct pt_regs regs;
 	unsigned long oldmask;
-	/* TODO
-  unsigned long exception_no;
-  unsigned long sc_pc;
-  unsigned long sc_regs[32];
-  unsigned long sc_EBA;
-  unsigned long sc_DEBA;
-  unsigned long sc_IM;
-  unsigned long sc_IP;
-	*/
 };
 
-
-#endif
+#endif /* _ASM_LM32_SIGCONTEXT_H */

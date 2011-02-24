@@ -29,7 +29,6 @@
 #include <linux/user.h>
 #include <linux/signal.h>
 
-#include <asm/registers.h>
 #include <asm/uaccess.h>
 
 void ptrace_disable(struct task_struct *child)

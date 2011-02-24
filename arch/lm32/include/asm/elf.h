@@ -21,11 +21,10 @@
  * MA 02111-1307 USA
  */
 
-#ifndef _LM32_ASM_ELF_H
-#define _LM32_ASM_ELF_H
+#ifndef _ASM_LM32_ELF_H
+#define _ASM_LM32_ELF_H
 
-#include <asm/registers.h>
-#include <asm/user.h>
+#include <linux/ptrace.h>
 
 /*
  * ELF register definitions..
@@ -53,17 +52,20 @@
 #define R_LM32_GNU_VTINHERIT             9
 #define R_LM32_GNU_VTENTRY               10
 
+/* ELF register definitions */
 typedef unsigned long elf_greg_t;
 
 #define ELF_NGREG (sizeof(struct pt_regs) / sizeof(elf_greg_t))
 typedef elf_greg_t elf_gregset_t[ELF_NGREG];
 
-typedef struct fp_regs elf_fpregset_t;
+/* LM32 does not have fp regs */
+typedef unsigned long elf_fpreg_t;
+typedef elf_fpreg_t   elf_fpregset_t;
 
 /*
  * This is used to ensure we don't load something for the wrong architecture.
  */
-#define elf_check_arch(x) (((x)->e_machine == EM_LM32)||((x)->e_machine == EM_LM32_OLD))
+#define elf_check_arch(x) (((x)->e_machine == EM_LM32) || ((x)->e_machine == EM_LM32_OLD))
 #define elf_check_fdpic(x) (1)
 #define elf_check_const_displacement(x) (1)
 

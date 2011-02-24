@@ -35,7 +35,6 @@
 #include <linux/module.h>
 
 #include <asm/system.h>
-#include <asm/registers.h>
 #include <asm/traps.h>
 
 extern unsigned long  reset_handler;

@@ -21,11 +21,67 @@
  * MA 02111-1307 USA
  */
 
-#ifndef _LM32_ASM_PTRACE_H
-#define _LM32_ASM_PTRACE_H
+#ifndef _ASM_LM32_PTRACE_H
+#define _ASM_LM32_PTRACE_H
 
-#include <asm/registers.h>
+#define PT_MODE_KERNEL 1
+#define PT_MODE_USER   0
 
+#ifndef __ASSEMBLY__
+
+typedef unsigned long lm32_reg_t;
+
+struct pt_regs {
+	lm32_reg_t r0;
+	lm32_reg_t r1;
+	lm32_reg_t r2;
+	lm32_reg_t r3;
+	lm32_reg_t r4;
+	lm32_reg_t r5;
+	lm32_reg_t r6;
+	lm32_reg_t r7;
+	lm32_reg_t r8;
+	lm32_reg_t r9;
+	lm32_reg_t r10;
+	lm32_reg_t r11;
+	lm32_reg_t r12;
+	lm32_reg_t r13;
+	lm32_reg_t r14;
+	lm32_reg_t r15;
+	lm32_reg_t r16;
+	lm32_reg_t r17;
+	lm32_reg_t r18;
+	lm32_reg_t r19;
+	lm32_reg_t r20;
+	lm32_reg_t r21;
+	lm32_reg_t r22;
+	lm32_reg_t r23;
+	lm32_reg_t r24;
+	lm32_reg_t r25;
+	lm32_reg_t gp;
+	lm32_reg_t fp;
+	lm32_reg_t sp;
+	lm32_reg_t ra;
+	lm32_reg_t ea;
+	lm32_reg_t ba;
+	unsigned int pt_mode;
+};
+
+#ifdef __KERNEL__
+#define user_mode(regs) ((regs)->pt_mode == PT_MODE_USER)
+
+#define instruction_pointer(regs) ((regs)->ea)
+#define profile_pc(regs) instruction_pointer(regs)
+
+void show_regs(struct pt_regs *);
+
+#else /* !__KERNEL__ */
+
+/* TBD (gdbserver/ptrace) */
+
+#endif /* !__KERNEL__ */
+
+/* FIXME: remove this ? */
 /* Arbitrarily choose the same ptrace numbers as used by the Sparc code. */
 #define PTRACE_GETREGS            12
 #define PTRACE_SETREGS            13
@@ -40,15 +96,6 @@
 #define PT_TEXT_END_ADDR	51
 #define PT_DATA_ADDR	52
 
-#ifdef __KERNEL__
-#ifndef __ASSEMBLY__
+#endif /* !__ASSEMBLY__ */
 
-#define user_mode(regs) ((regs)->pt_mode == PT_MODE_USER)
-#define instruction_pointer(regs) ((regs)->ea)
-#define profile_pc(regs) instruction_pointer(regs)
-extern void show_regs(struct pt_regs *);
-
-#endif
-#endif
-
-#endif /* _LM32_PTRACE_H */
+#endif /* _ASM_LM32_PTRACE_H */
