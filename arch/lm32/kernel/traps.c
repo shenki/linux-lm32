@@ -46,10 +46,6 @@ void __init trap_init(void)
 	if( ((unsigned long)&reset_handler % 256) != 0 )
 		printk(KERN_ERR "exception vectors are not aligned to 256 bytes!\n");
   asm volatile ( "wcsr EBA, %0" : : "r"(exception_vectors) );
-#ifndef LM32_HW_JTAG
-	// set DEBA so that we can catch breakpoints in linux
-  asm volatile ( "wcsr DEBA, %0" : : "r"(exception_vectors) );
-#endif
 }
 
 int kstack_depth_to_print = 48;

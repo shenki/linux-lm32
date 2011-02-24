@@ -13,21 +13,6 @@
  * Exception vector table (see "LatticeMico32 Processor Reference Manual")
  */
 
-#undef LM32_DEBUG_SYSCALL_CALL
-#undef LM32_DEBUG_SYSCALL_RET
-/* #undef LM32_BREAK_ON_SYSCALL /**/
-/* #define LM32_BREAK_ON_SYSCALL 190 /**/
-
-#define HW_JTAG_EXCEPTION_VECTOR(offset) \
-	rcsr  r7, DEBA; \
-	addi  r7, r7, offset; \
-	b     r7 ; \
-	nop ; \
-	nop ; \
-	nop ; \
-	nop ; \
-	nop
-
 /* exception vector for os-aware gdb and kernel signals */
 #define KERNEL_EXCEPTION_VECTOR(offset) \
 	addi	sp,sp,-132; \
@@ -45,9 +30,6 @@ ENTRY(reset_handler)
 	KERNEL_EXCEPTION_VECTOR(0)
 
 ENTRY(breakpoint_handler)
-#ifdef LM32_HW_JTAG
-	HW_JTAG_EXCEPTION_VECTOR(32)
-#else
 	bi _long_breakpoint_handler
 	nop
 	nop
@@ -57,24 +39,15 @@ ENTRY(breakpoint_handler)
 	nop
 	nop
 	nop
-#endif
 
 ENTRY(instruction_bus_error_handler)
-#ifdef LM32_HW_JTAG
-	HW_JTAG_EXCEPTION_VECTOR(64)
-#else
 	KERNEL_EXCEPTION_VECTOR(64)
-#endif
 
 ENTRY(watchpoint_handler)
-	HW_JTAG_EXCEPTION_VECTOR(96)
+	KERNEL_EXCEPTION_VECTOR(96)
 
 ENTRY(data_bus_error_handler)
-#ifdef LM32_HW_JTAG
-	HW_JTAG_EXCEPTION_VECTOR(128)
-#else
 	KERNEL_EXCEPTION_VECTOR(128)
-#endif
 
 ENTRY(divide_by_zero_handler)
 	KERNEL_EXCEPTION_VECTOR(160)
@@ -95,13 +68,6 @@ ENTRY(system_call)
 	sw (sp+0), r9 /* needed for various */
 	sw (sp+-4), r10 /* needed for current = current_thread_info()->task */
 	sw (sp+-8), r11 /* needed for user stack pointer, if switching */
-
-#ifdef LM32_BREAK_ON_SYSCALL
-	mvi r9, LM32_BREAK_ON_SYSCALL /* only break in this syscall no */
-	bne r8, r9, 7f
-	break
-7:
-#endif
 
 	/* test if already on kernel stack: test current_thread_info->task->which_stack */
 	mvhi r9, hi(lm32_current_thread)
@@ -141,24 +107,6 @@ ENTRY(system_call)
 	addi  r7, sp, 4
 	#addi  r4, sp, 4
 
-#ifdef LM32_DEBUG_SYSCALL_CALL
-	/* call debug */
-	calli lm32_debug_syscall
-	/* restore caller saved registers */
-	lw    r1, (sp+8) 
-	lw    r2, (sp+12) 
-	lw    r3, (sp+16) 
-	lw    r4, (sp+20) 
-	lw    r5, (sp+24) 
-	lw    r6, (sp+28) 
-	addi  r7, sp, 4
-	lw    r8, (sp+36) 
-	lw    r9, (sp+40) 
-	lw    r10,(sp+44)
-	lw    ra, (sp+120)
-	/* end debug */
-#endif
-
 	/* r8 always holds the syscall number */
 	/* check if syscall number is valid */
 	mvi r9, __NR_syscalls
@@ -176,20 +124,9 @@ ENTRY(system_call)
 	calli manage_signals
 	sw (sp+8), r1 /* store return value into pt_regs */
 
-#ifdef LM32_DEBUG_SYSCALL_RET
-	/* debug syscall return value */
-	lw r2,  (sp+36) /* get saved syscall no from sp+36 for debug */
-	addi  r3, sp, 4
-#endif
-
 	bi      _restore_and_return_exception
 
 .badsyscall:
-#ifdef LM32_DEBUG_SYSCALL_RET
-	mvi r1, -ENOSYS
-	mv r2, r8
-	addi  r3, sp, 4
-#endif
 	mvi r1, -ENOSYS
 
 	bi      _restore_and_return_exception
@@ -242,16 +179,6 @@ _long_breakpoint_handler:
 /* exception return paths */
 /**************************/
 
-#ifdef LM32_DEBUG_SYSCALL_RET
-#define EXCEPTION_RETURN_PATH_DEBUG \
-	/* debug syscall return value */ \
-	mvi r2, 0; \
-	addi  r3, sp, 4; \
-	calli lm32_debug_syscall_ret; /* debug */
-#else
-#define EXCEPTION_RETURN_PATH_DEBUG
-#endif
-
 /* return path for debug or non-debug exceptions */
 #define EXCEPTION_RETURN_PATH(label, branch_to) \
 label: \
@@ -261,7 +188,6 @@ label: \
 	sw (sp+36), r0; \
 	calli manage_signals; \
 	sw (sp+8), r1; /* store return value into pt_regs */ \
-	EXCEPTION_RETURN_PATH_DEBUG \
 	bi branch_to
 
 EXCEPTION_RETURN_PATH(_return_from_exception, _restore_and_return_exception)
@@ -490,16 +416,6 @@ _save_syscall_frame:
 /************************/
 
 
-#ifdef LM32_BREAK_ON_SYSCALL
-#define RETURN_FROM_SYSCALL_OR_EXCEPTION_BREAK \
-	mvi ra, LM32_BREAK_ON_SYSCALL; /* only break in this syscall no */ \
-	bne ra, r8, 1f; \
-	break; \
-1:
-#else
-#define RETURN_FROM_SYSCALL_OR_EXCEPTION_BREAK
-#endif
-
 /* Restore all registers from syscall */
 /* all interrupts are disabled upon entry */
 /* we are on the kernel stack upon entry */
@@ -559,7 +475,6 @@ label: \
 	lw      r26, (r11+108); \
 	lw      r27, (r11+112); \
 	/* skip sp as it was retrieved from TASK_USP */ \
-	RETURN_FROM_SYSCALL_OR_EXCEPTION_BREAK \
 	lw      ra,  (r11+120); \
 	lw      ea,  (r11+124); \
 	lw      ba,  (r11+128); \
