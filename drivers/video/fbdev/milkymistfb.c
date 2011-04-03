@@ -15,6 +15,7 @@
 #include <linux/platform_device.h>
 
 #include <asm/uaccess.h>
+#include <asm/io.h>
 #include <linux/fb.h>
 #include <linux/init.h>
 
@@ -550,7 +551,7 @@ static int __devinit milkymistfb_probe(struct platform_device *dev)
 	info->screen_base = (char __iomem *)videomemory;
 	info->fbops = &milkymistfb_ops;
 
-	out_be32(CSR_VGA_RESET,1);
+	iowrite32be(VGA_RESET, CSR_VGA_RESET);
 	vga = (struct csr_vga *)&milkymistfb_predefined[milkymistfb_def_mode].vga;
 	milkymistfb_def_mode = 1;
 
@@ -578,18 +579,18 @@ static int __devinit milkymistfb_probe(struct platform_device *dev)
 		info->node,
 		milkymistfb_predefined[milkymistfb_def_mode].name);
 
-	out_be32(CSR_VGA_BASEADDRESS,(unsigned int)videomemory);
-	out_be32(CSR_VGA_HRES,vga->csr_vga_hres);
-	out_be32(CSR_VGA_HSYNC_START,vga->csr_vga_hsync_start);
-	out_be32(CSR_VGA_HSYNC_END,vga->csr_vga_hsync_end);
-	out_be32(CSR_VGA_HSCAN,vga->csr_vga_hscan);
-	out_be32(CSR_VGA_VRES,vga->csr_vga_vres);
-	out_be32(CSR_VGA_VSYNC_START,vga->csr_vga_vsync_start);
-	out_be32(CSR_VGA_VSYNC_END,vga->csr_vga_vsync_end);
-	out_be32(CSR_VGA_VSCAN,vga->csr_vga_vscan);
-	out_be32(CSR_VGA_BURST_COUNT,(vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64));
-	out_be32(CSR_VGA_RESET,0);
-       
+	iowrite32be((unsigned int)videomemory, CSR_VGA_BASEADDRESS);
+	iowrite32be(vga->csr_vga_hres, CSR_VGA_HRES);
+	iowrite32be(vga->csr_vga_hsync_start, CSR_VGA_HSYNC_START);
+	iowrite32be(vga->csr_vga_hsync_end, CSR_VGA_HSYNC_END);
+	iowrite32be(vga->csr_vga_hscan, CSR_VGA_HSCAN);
+	iowrite32be(vga->csr_vga_vres, CSR_VGA_VRES);
+	iowrite32be(vga->csr_vga_vsync_start, CSR_VGA_VSYNC_START);
+	iowrite32be(vga->csr_vga_vsync_end, CSR_VGA_VSYNC_END);
+	iowrite32be(vga->csr_vga_vscan, CSR_VGA_VSCAN);
+	iowrite32be((vga->csr_vga_hres*vga->csr_vga_vres*16)/(4*64), CSR_VGA_BURST_COUNT);
+	iowrite32be(0, CSR_VGA_RESET);
+
 	return 0;
 err2:
 	fb_dealloc_cmap(&info->cmap);
@@ -604,7 +605,7 @@ static int milkymistfb_remove(struct platform_device *dev)
 {
 	struct fb_info *info = platform_get_drvdata(dev);
 
-	out_be32(CSR_VGA_RESET,VGA_RESET);
+	iowrite32be(VGA_RESET, CSR_VGA_RESET);
 
 	if (info) {
 		unregister_framebuffer(info);
