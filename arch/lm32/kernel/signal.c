@@ -65,81 +65,13 @@ asmlinkage int manage_signals(int retval, struct pt_regs* regs);
 
 int do_signal(int retval, struct pt_regs *regs, int* handled);
 
-/*
- * Atomically swap in the new signal mask, and wait for a signal.
- */
-
-#ifdef MW_UNDEFINED
-asmlinkage int
-sys_rt_sigsuspend(sigset_t *unewset, size_t sigsetsize, struct pt_regs *regs)
-{
-	sigset_t saveset, newset;
-
-	if (sigsetsize != sizeof(sigset_t))
-		return -EINVAL;
-
-	if (copy_from_user(&newset, unewset, sizeof(newset)))
-		return -EFAULT;
-	sigdelsetmask(&newset, ~_BLOCKABLE);
-	spin_lock_irq(&current->sighand->siglock);
-	saveset = current->blocked;
-	current->blocked = newset;
-	recalc_sigpending();
-	spin_unlock_irq(&current->sighand->siglock);
-
-	while (1) {
-		int handled = 0;
-		current->state = TASK_INTERRUPTIBLE;
-		schedule();
-		do_signal(-ERESTARTNOHAND, regs, &handled);
-		if( handled )
-			return -EINTR;
-	}
-}
-#endif
-
-asmlinkage int 
-sys_sigaction(int sig, const struct old_sigaction *act,
-	      struct old_sigaction *oact)
-{
-	struct k_sigaction new_ka, old_ka;
-	int ret;
-
-	if (act) {
-		old_sigset_t mask;
-		if (!access_ok(VERIFY_READ, act, sizeof(*act)) ||
-		    __get_user(new_ka.sa.sa_handler, &act->sa_handler) ||
-		    __get_user(new_ka.sa.sa_restorer, &act->sa_restorer))
-			return -EFAULT;
-		__get_user(new_ka.sa.sa_flags, &act->sa_flags);
-		__get_user(mask, &act->sa_mask);
-		siginitset(&new_ka.sa.sa_mask, mask);
-	}
-
-	ret = do_sigaction(sig, act ? &new_ka : NULL, oact ? &old_ka : NULL);
-
-	if (!ret && oact) {
-		if (!access_ok(VERIFY_WRITE, oact, sizeof(*oact)) ||
-		    __put_user(old_ka.sa.sa_handler, &oact->sa_handler) ||
-		    __put_user(old_ka.sa.sa_restorer, &oact->sa_restorer))
-			return -EFAULT;
-		__put_user(old_ka.sa.sa_flags, &oact->sa_flags);
-		__put_user(old_ka.sa.sa_mask.sig[0], &oact->sa_mask);
-	}
-
-	return ret;
-}
-
 asmlinkage int
 sys_sigaltstack(const stack_t *uss, stack_t *uoss,
-		struct pt_regs *regs)
+               struct pt_regs *regs)
 {
-	return do_sigaltstack(uss, uoss, current->thread.usp);
+       return do_sigaltstack(uss, uoss, current->thread.usp);
 }
 
-/*
- * Do a signal return; undo the signal stack.
- */
 
 struct sigframe
 {
@@ -216,8 +148,7 @@ badframe:
 /*
  * Set up a signal frame.
  */
-static int
-setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
+static int setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
 		 unsigned long mask)
 {
 	int err = 0;
@@ -241,13 +172,13 @@ setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
 /*
  * Determine which stack to use..
  */
-static inline void __user *
-get_sigframe(struct k_sigaction *ka, struct pt_regs *regs, size_t frame_size)
+static inline void __user *get_sigframe(struct k_sigaction *ka,
+		struct pt_regs *regs, size_t frame_size)
 {
 	/* Per default use user stack of userspace process */
 	unsigned long sp = current->thread.usp;
 
-	if ((ka->sa.sa_flags & SA_ONSTACK) != 0 && ! sas_ss_flags(sp))
+	if ((ka->sa.sa_flags & SA_ONSTACK) != 0 && !sas_ss_flags(sp))
 		/* use stack set by sigaltstack */
 		sp = current->sas_ss_sp + current->sas_ss_size;
 
@@ -282,7 +213,7 @@ static int setup_frame(int sig, struct k_sigaction *ka,
 
 	/* Set up to return from userspace. */
 
-	/* mvi  r8, __NR_sigreturn = addi  r8, r0, __NR_sigreturn */
+	/* mvi  r8, __NR_rt_sigreturn = addi  r8, r0, __NR_sigreturn */
 	err |= __put_user(0x34080000 | __NR_rt_sigreturn, &frame->tramp[0]);
 
 	/* scall */
@@ -290,7 +221,7 @@ static int setup_frame(int sig, struct k_sigaction *ka,
 
 	if (err)
 		goto give_sigsegv;
-	
+
 	/* flush instruction cache */
 	asm volatile("nop");
 	asm volatile("nop");
@@ -330,13 +261,8 @@ give_sigsegv:
 	return -1;
 }
 
-/*
- * OK, we're invoking a handler
- */	
-
-static int
-handle_signal(int retval, unsigned long sig, siginfo_t *info, struct k_sigaction *ka,
-	      sigset_t *oldset,	struct pt_regs * regs)
+static int handle_signal(int retval, unsigned long sig, siginfo_t *info,
+		struct k_sigaction *ka, sigset_t *oldset, struct pt_regs *regs)
 {
 	/* Are we from a system call? */
 	if (regs->r8) {
@@ -389,7 +315,7 @@ handle_signal(int retval, unsigned long sig, siginfo_t *info, struct k_sigaction
  * the kernel can handle, and then we build all the user-level signal handling
  * stack-frames in one go after that.
  */
-int do_signal(int retval, struct pt_regs *regs, int* handled)
+int do_signal(int retval, struct pt_regs *regs, int *handled)
 {
 	siginfo_t info;
 	int signr;
@@ -440,7 +366,7 @@ int do_signal(int retval, struct pt_regs *regs, int* handled)
 	return retval;
 }
 
-asmlinkage int manage_signals(int retval, struct pt_regs* regs)
+asmlinkage int manage_signals(int retval, struct pt_regs *regs)
 {
 	unsigned long flags;
 
@@ -488,7 +414,7 @@ asmlinkage int manage_signals(int retval, struct pt_regs* regs)
 	return retval;
 }
 
-asmlinkage void manage_signals_irq(struct pt_regs* regs)
+asmlinkage void manage_signals_irq(struct pt_regs *regs)
 {
 	unsigned long flags;
 
