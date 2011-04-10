@@ -284,7 +284,7 @@ _long_interrupt_handler:
 	 * although interrupts are disabled */
 	rcsr	r1, IE
 	andi	r1, r1, 0x2
-	be		r1, r0, 5f
+	be		r1, r0, 6f
 
 	rcsr    r3, IP
 	rcsr    r4, IM
@@ -321,7 +321,7 @@ _long_interrupt_handler:
 	calli   asm_do_IRQ
 	addi    r1, sp, 4
 	calli   manage_signals_irq
-5:
+6:
 	bi      _restore_irq_frame_and_return
 
 _save_irq_frame:
