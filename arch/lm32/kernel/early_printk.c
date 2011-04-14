@@ -45,7 +45,7 @@ static void __init early_console_putc(char c)
 	iowrite32be(c, CSR_UART_RXTX);
 
 	do {
-		pending = lm32_irq_pendig();
+		pending = lm32_irq_pending();
 	} while (pending & BIT(IRQ_UARTTX) && --timeout);
 
 	lm32_irq_ack(IRQ_UARTTX);
