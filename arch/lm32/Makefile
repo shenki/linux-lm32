@@ -36,6 +36,38 @@ KBUILD_CFLAGS += $(cflags-y)
 
 OBJCOPYFLAGS	:=-O binary -R .note -R .comment -S
 
+ASM_GENERATED_DIR	:= $(srctree)/arch/lm32/include/generated
+LINUXINCLUDE		+= -I$(ASM_GENERATED_DIR)
+
+ASM_GENERIC_HEADERS	:= atomic.h auxvec.h
+ASM_GENERIC_HEADERS	+= bitsperlong.h bug.h bugs.h
+ASM_GENERIC_HEADERS	+= cache.h checksum.h cmpxchg.h cmpxchg-local.h cputime.h current.h
+ASM_GENERIC_HEADERS	+= device.h div64.h dma.h
+ASM_GENERIC_HEADERS	+= emergency-restart.h errno.h
+ASM_GENERIC_HEADERS	+= fb.h fcntl.h futex.h
+ASM_GENERIC_HEADERS	+= hardirq.h hw_irq.h
+ASM_GENERIC_HEADERS	+= ioctl.h ioctls.h io.h ipcbuf.h irq_regs.h
+ASM_GENERIC_HEADERS	+= kdebug.h kmap_types.h
+ASM_GENERIC_HEADERS	+= linkage.h local.h
+ASM_GENERIC_HEADERS	+= mman.h mmu_context.h module.h msgbuf.h
+ASM_GENERIC_HEADERS	+= param.h pci.h percpu.h pgalloc.h poll.h posix_types.h
+ASM_GENERIC_HEADERS	+= resource.h
+ASM_GENERIC_HEADERS	+= scatterlist.h segment.h sembuf.h setup.h shmbuf.h
+ASM_GENERIC_HEADERS	+= shmparam.h siginfo.h signal.h socket.h sockios.h statfs.h
+ASM_GENERIC_HEADERS	+= stat.h string.h swab.h syscalls.h
+ASM_GENERIC_HEADERS	+= termbits.h termios.h tlbflush.h topology.h types.h
+ASM_GENERIC_HEADERS	+= ucontext.h unaligned.h user.h
+
+archprepare:
+ifneq ($(ASM_GENERATED_DIR), $(wildcard $(ASM_GENERATED_DIR)))
+	$(Q)mkdir -p $(ASM_GENERATED_DIR)/asm
+	$(Q)$(foreach a, $(ASM_GENERIC_HEADERS),	\
+		echo '#include <asm-generic/$a>'	\
+			> $(ASM_GENERATED_DIR)/asm/$a; )
+endif
+
+MRPROPER_DIRS += $(ASM_GENERATED_DIR)
+
 head-y := arch/lm32/kernel/head.o arch/lm32/kernel/init_task.o
 
 core-y	+= arch/lm32/

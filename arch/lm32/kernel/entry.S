@@ -6,7 +6,7 @@
 #include <asm/errno.h>
 #include <asm/setup.h>
 #include <asm/segment.h>
-#include <asm/asm-offsets.h>
+#include <generated/asm-offsets.h>
 #include <asm/ptrace.h>
 
 /* 
