@@ -17,6 +17,10 @@ config MMU
 	bool
 	default n
 
+config NO_DMA
+	bool
+	default y
+
 config VGA_CONSOLE
 	bool
 	default n
