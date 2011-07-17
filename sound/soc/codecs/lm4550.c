@@ -2,7 +2,7 @@
  * ALSA SoC LM4550 codec support
  *
  * Copyright (C) 2010 Sebastien Bourdeauducq
- * Based on lm4550.c, (C) Analog Devices Inc.
+ * Based on ad1980.c, (C) Analog Devices Inc.
  *
  * This program is free software; you can redistribute  it and/or modify it
  * under  the terms of  the GNU General  Public License as published by the
@@ -14,22 +14,20 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/device.h>
-#include <sound/core.h>
 #include <sound/pcm.h>
 #include <sound/ac97_codec.h>
 #include <sound/initval.h>
 #include <sound/soc.h>
-#include <sound/soc-dapm.h>
 
-#include "lm4550.h"
+static const uint16_t lm4550_default_regs[] = {
+	0x0d50, 0x8000, 0x8000, 0x8000, 0x0000, 0x0000, 0x8008, 0x8008,
+	0x8808, 0x8808, 0x8808, 0x8808, 0x8808, 0x0000, 0x8000, 0x0000,
+	0x0000, 0x0101, 0x0000, 0x0000, 0x0201, 0x0000, 0xbb80, 0x0000,
+	0x0000, 0xbb80,
+};
 
-static unsigned int ac97_read(struct snd_soc_codec *codec,
-	unsigned int reg);
-static int ac97_write(struct snd_soc_codec *codec,
-	unsigned int reg, unsigned int val);
-
-static const char *lm4550_rec_sel[] = {"Mic", "CD", "Video", "AUX", "Line",
-		"Stereo Mix", "Mono Mix", "Phone"};
+static const char *lm4550_rec_sel[] = { "Mic", "CD", "Video", "AUX", "Line",
+		"Stereo Mix", "Mono Mix", "Phone" };
 
 static const struct soc_enum lm4550_cap_src =
 	SOC_ENUM_DOUBLE(AC97_REC_SEL, 8, 0, 7, lm4550_rec_sel);
@@ -44,7 +42,7 @@ SOC_SINGLE("Headphone Playback Switch", AC97_HEADPHONE, 15, 1, 1),
 SOC_DOUBLE("PCM Playback Volume", AC97_PCM, 8, 0, 31, 1),
 SOC_SINGLE("PCM Playback Switch", AC97_PCM, 15, 1, 1),
 
-SOC_DOUBLE("PCM Capture Volume", AC97_REC_GAIN, 8, 0, 31, 0),
+SOC_DOUBLE("PCM Capture Volume", AC97_REC_GAIN, 8, 0, 15, 0),
 SOC_SINGLE("PCM Capture Switch", AC97_REC_GAIN, 15, 1, 1),
 
 SOC_SINGLE("Mono Playback Volume", AC97_MASTER_MONO, 0, 31, 1),
@@ -56,28 +54,60 @@ SOC_SINGLE("Phone Capture Switch", AC97_PHONE, 15, 1, 1),
 SOC_SINGLE("Mic Volume", AC97_MIC, 0, 31, 1),
 SOC_SINGLE("Mic Switch", AC97_MIC, 15, 1, 1),
 
-SOC_DOUBLE("Center/LFE Playback Volume", AC97_CENTER_LFE_MASTER, 8, 0, 31, 1),
-SOC_DOUBLE("Center/LFE Playback Switch", AC97_CENTER_LFE_MASTER, 15, 7, 1, 1),
-
 SOC_ENUM("Capture Source", lm4550_cap_src),
 
 SOC_SINGLE("Mic Boost Switch", AC97_MIC, 6, 1, 0),
 };
 
+static bool lm4550_volatile_register(struct snd_soc_codec *codec,
+	unsigned int reg)
+{
+	switch (reg) {
+	case AC97_RESET:
+	case AC97_VENDOR_ID1:
+	case AC97_VENDOR_ID2:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 static unsigned int ac97_read(struct snd_soc_codec *codec,
 	unsigned int reg)
 {
-	return soc_ac97_ops.read(codec->ac97, reg);
+	int ret;
+	unsigned int val;
+
+	if (reg >= codec->driver->reg_cache_size ||
+		lm4550_volatile_register(codec, reg)) {
+		return soc_ac97_ops.read(codec->ac97, reg);
+	}
+
+	ret = snd_soc_cache_read(codec, reg >> 1, &val);
+	if (ret < 0)
+		return -1;
+
+	return val;
 }
 
 static int ac97_write(struct snd_soc_codec *codec, unsigned int reg,
 	unsigned int val)
 {
+	int ret;
+
+	if (reg < codec->driver->reg_cache_size) {
+		ret = snd_soc_cache_write(codec, reg >> 1, val);
+		if (ret < 0)
+			return -1;
+	}
+
 	soc_ac97_ops.write(codec->ac97, reg, val);
 	return 0;
 }
 
-struct snd_soc_dai lm4550_dai = {
+static struct snd_soc_dai_driver lm4550_dai_driver = {
 	.name = "AC97",
 	.ac97_control = 1,
 	.playback = {
@@ -85,101 +115,98 @@ struct snd_soc_dai lm4550_dai = {
 		.channels_min = 2,
 		.channels_max = 6,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SND_SOC_STD_AC97_FMTS, },
+		.formats = SND_SOC_STD_AC97_FMTS,
+	},
 	.capture = {
 		.stream_name = "Capture",
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SND_SOC_STD_AC97_FMTS, },
+		.formats = SND_SOC_STD_AC97_FMTS,
+	},
 };
-EXPORT_SYMBOL_GPL(lm4550_dai);
 
-static int lm4550_soc_probe(struct platform_device *pdev)
+static int lm4550_codec_probe(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec;
-	int ret = 0;
-
-	printk(KERN_INFO "LM4550 SoC Audio Codec\n");
-
-	socdev->card->codec = kzalloc(sizeof(struct snd_soc_codec), GFP_KERNEL);
-	if (socdev->card->codec == NULL)
-		return -ENOMEM;
-	codec = socdev->card->codec;
-	mutex_init(&codec->mutex);
-
-	codec->name = "LM4550";
-	codec->owner = THIS_MODULE;
-	codec->dai = &lm4550_dai;
-	codec->num_dai = 1;
-	codec->write = ac97_write;
-	codec->read = ac97_read;
-	INIT_LIST_HEAD(&codec->dapm_widgets);
-	INIT_LIST_HEAD(&codec->dapm_paths);
+	int ret;
+	uint16_t id1, id2;
 
 	ret = snd_soc_new_ac97_codec(codec, &soc_ac97_ops, 0);
-	if (ret < 0) {
-		printk(KERN_ERR "LM4550: failed to register AC97 codec\n");
-		goto codec_err;
-	}
-
-	/* register pcms */
-	ret = snd_soc_new_pcms(socdev, SNDRV_DEFAULT_IDX1, SNDRV_DEFAULT_STR1);
 	if (ret < 0)
-		goto pcm_err;
+		return ret;
 
 	ac97_write(codec, AC97_RESET, 0xffff);
 
-	/* Read out vendor ID to make sure it is LM4550 */
-	if (ac97_read(codec, AC97_VENDOR_ID1) != 0x4e53)
+	id1 = ac97_read(codec, AC97_VENDOR_ID1);
+	id2 = ac97_read(codec, AC97_VENDOR_ID2);
+
+	if (id1 != 0x4e53 || id2 != 0x4350) {
+		ret = -ENODEV;
 		goto reset_err;
-
-	if (ac97_read(codec, AC97_VENDOR_ID2) != 0x4350)
-		goto reset_err;
-
-	/* unmute captures and playbacks volume */
-	ac97_write(codec, AC97_MASTER, 0x0000);
-	ac97_write(codec, AC97_HEADPHONE, 0x0f0f);
-	ac97_write(codec, AC97_PCM, 0x0000);
-	ac97_write(codec, AC97_MIC, 0x0000);
-	ac97_write(codec, AC97_REC_GAIN, 0x0f0f);
-
-	snd_soc_add_controls(codec, lm4550_snd_ac97_controls,
-				ARRAY_SIZE(lm4550_snd_ac97_controls));
+	}
 
 	return 0;
 
 reset_err:
-	snd_soc_free_pcms(socdev);
-pcm_err:
 	snd_soc_free_ac97_codec(codec);
-codec_err:
-	kfree(socdev->card->codec);
-	socdev->card->codec = NULL;
 	return ret;
 }
 
-static int lm4550_soc_remove(struct platform_device *pdev)
+static int lm4550_codec_remove(struct snd_soc_codec *codec)
 {
-	struct snd_soc_device *socdev = platform_get_drvdata(pdev);
-	struct snd_soc_codec *codec = socdev->card->codec;
-
-	if (codec == NULL)
-		return 0;
-
-	snd_soc_dapm_free(socdev);
-	snd_soc_free_pcms(socdev);
 	snd_soc_free_ac97_codec(codec);
-	kfree(codec);
 	return 0;
 }
 
-struct snd_soc_codec_device soc_codec_dev_lm4550 = {
-	.probe = 	lm4550_soc_probe,
-	.remove = 	lm4550_soc_remove,
+static struct snd_soc_codec_driver lm4550_codec_driver = {
+	.probe = lm4550_codec_probe,
+	.remove = lm4550_codec_remove,
+
+	.reg_cache_size = ARRAY_SIZE(lm4550_default_regs),
+	.reg_cache_default = lm4550_default_regs,
+	.reg_word_size = sizeof(uint16_t),
+	.reg_cache_step = 2,
+
+	.read = ac97_read,
+	.write = ac97_write,
+
+	.controls = lm4550_snd_ac97_controls,
+	.num_controls = ARRAY_SIZE(lm4550_snd_ac97_controls),
 };
-EXPORT_SYMBOL_GPL(soc_codec_dev_lm4550);
+
+static int __devinit lm4550_probe(struct platform_device *pdev)
+{
+	return snd_soc_register_codec(&pdev->dev, &lm4550_codec_driver,
+		&lm4550_dai_driver, 1);
+}
+
+static int __devexit lm4550_remove(struct platform_device *pdev)
+{
+	snd_soc_unregister_codec(&pdev->dev);
+	return 0;
+}
+
+static struct platform_driver lm4550_driver = {
+	.driver = {
+		.name = "lm4550",
+		.owner = THIS_MODULE,
+	},
+
+	.probe = lm4550_probe,
+	.remove = __devexit_p(lm4550_remove),
+};
+
+static int __init lm4550_init(void)
+{
+	return platform_driver_register(&lm4550_driver);
+}
+module_init(lm4550_init);
+
+static void __exit lm4550_exit(void)
+{
+	platform_driver_unregister(&lm4550_driver);
+}
+module_exit(lm4550_exit);
 
 MODULE_DESCRIPTION("ASoC LM4550 driver");
 MODULE_AUTHOR("Sebastien Bourdeauducq");
