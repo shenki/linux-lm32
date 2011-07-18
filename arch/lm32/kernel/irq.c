@@ -71,9 +71,9 @@ void __init init_IRQ(void)
 	__asm__ __volatile__("wcsr IM, r0");
 
 	for (irq = 0; irq < NR_IRQS; irq++) {
-		set_irq_chip(irq, &lm32_irq_chip);
-		set_irq_chip_data(irq, (void *)(1 << irq));
-		set_irq_handler(irq, handle_level_irq);
+		irq_set_chip(irq, &lm32_irq_chip);
+		irq_set_chip_data(irq, (void *)(1 << irq));
+		irq_set_handler(irq, handle_level_irq);
 	}
 }
 
@@ -91,7 +91,7 @@ int show_interrupts(struct seq_file *p, void *v)
 		{
 			seq_printf(p, "%3d: ", i);
 			seq_printf(p, "%10u", kstat_irqs(i));
-			seq_printf(p, "%14s ", get_irq_chip(i)->name ? : "-");
+			seq_printf(p, "%14s ", irq_get_chip(i)->name ? : "-");
 			seq_printf(p, " %s", action->name);
 			for (action = action->next; action; action = action->next)
 				seq_printf(p, ", %s", action->name);
