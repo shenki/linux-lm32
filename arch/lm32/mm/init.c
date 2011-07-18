@@ -212,14 +212,14 @@ void __init free_initrd_mem(unsigned long start, unsigned long end) {
 }
 #endif
 
-void show_mem(void)
+void show_mem(unsigned int flags)
 {
 	unsigned long i;
 	int free = 0, total = 0, reserved = 0, shared = 0;
 	int cached = 0;
 
 	printk(KERN_INFO "\nMem-info:\n");
-	show_free_areas();
+	show_free_areas(flags);
 	i = max_mapnr;
 	while (i-- > 0) {
 		total++;
