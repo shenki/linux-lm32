@@ -75,31 +75,27 @@ ENTRY(system_call)
 	lw r9, (r9+0) /* dereference lm32_current_thread */
 	lw r10, (r9+TI_TASK) /* load pointer to task */
 	lw r9, (r10+TASK_WHICH_STACK)
+
+	mv r11, sp /* remember sp for restoring r9, r10, r11 */
+
 	be r9, r0, 1f
 
 	/* we are on user stack, have to switch */
-	mv r11, sp /* remember sp for restoring r9, r10, r11 */
 	sw (r10+TASK_USP), sp /* store usp */
 	lw sp, (r10+TASK_KSP) /* load ksp */
 	sw (r10+TASK_WHICH_STACK), r0 /* set which_stack to 0 */
+
+1:/* already on kernel stack */
+
+	addi sp, sp, -132
+	sw (sp+116), r11
 
 	/* restore r9, r10, r11 */
 	lw r9, (r11+0)
 	lw r10, (r11+-4)
 	lw r11, (r11+-8)
-	bi 2f
-
-1:/* already on kernel stack */
-
-	/* restore r9, r10 */
-	lw r9, (sp+0)
-	lw r10, (sp+-4)
-	/* no need to restore r11 as we did not use it */
-
-2:/* we now are on kernel stack and registers are untainted */
 
   /* save registers */
-	addi  sp, sp, -132
 	sw    (sp + 120), ra
 	calli _save_syscall_frame
 
@@ -396,8 +392,6 @@ _save_syscall_frame:
 	sw      (sp+104), r25
 	sw      (sp+108), r26
 	sw      (sp+112), r27
-	addi     r7, sp, 132 /* we could store usp here */
-	sw      (sp+116), r7
 	/* ra (sp + 120) has already been written */
 	sw      (sp+124), ea
 	sw      (sp+128), ba
@@ -430,6 +424,8 @@ label: \
 	/* r10: current = current_thread_info()->task */ \
 	/* r11: ksp backup */ \
 	/* setup r10 = current */ \
+	addi sp, sp, 132; \
+	bne r2, r0, 1f; \
 	mvhi r9, hi(lm32_current_thread); \
 	ori r9, r9, lo(lm32_current_thread); \
 	lw r9, (r9+0); /* dereference lm32_current_thread */ \
@@ -438,12 +434,11 @@ label: \
 	mvi r9, TASK_USP - TASK_KSP; \
 	sw (r10+TASK_WHICH_STACK), r9; \
 	/* store ksp (after restore of frame) into task->thread.ksp */ \
-	addi r9, sp, 132; \
-	sw (r10+TASK_KSP), r9; \
+	sw (r10+TASK_KSP), sp; \
 	/* save sp into r11 */ \
-	mv r11, sp; \
 	/* get usp into sp*/ \
-	lw  sp, (r10+TASK_USP); \
+	1: \
+	addi r11, sp, -132; \
 	/* restore frame from original kernel stack */ \
 	/* restore r1 as the return value is stored onto the stack */ \
 	lw      r1,  (r11+8); \
@@ -473,7 +468,7 @@ label: \
 	lw      r25, (r11+104); \
 	lw      r26, (r11+108); \
 	lw      r27, (r11+112); \
-	/* skip sp as it was retrieved from TASK_USP */ \
+	lw      sp,  (r11+116); \
 	lw      ra,  (r11+120); \
 	lw      ea,  (r11+124); \
 	lw      ba,  (r11+128); \
