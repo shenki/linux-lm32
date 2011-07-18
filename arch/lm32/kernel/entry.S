@@ -209,10 +209,6 @@ ENTRY(ret_from_fork)
 	addi	sp, sp, 16
 	ret
 
-ENTRY(sys_fork)
-	mvi r0, -EINVAL
-	ret
-
 ENTRY(sys_execve)
 	mv r4, r7
 	bi lm32_execve
