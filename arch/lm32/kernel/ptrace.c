@@ -39,7 +39,7 @@ void ptrace_disable(struct task_struct *child)
 /*
  * Read a register set.
  */
-int ptrace_getregs (struct task_struct *child, unsigned long __user *data)
+static int ptrace_getregs(struct task_struct *child, unsigned long __user *data)
 {
 	struct pt_regs *regs;
 	int i;
@@ -60,7 +60,7 @@ int ptrace_getregs (struct task_struct *child, unsigned long __user *data)
 /*
  * Write a register set.
  */
-int ptrace_setregs (struct task_struct *child, unsigned long __user *data)
+static int ptrace_setregs (struct task_struct *child, unsigned long __user *data)
 {
 	struct pt_regs *regs;
 	int i;
