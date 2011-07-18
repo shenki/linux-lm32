@@ -77,31 +77,9 @@ void __init init_IRQ(void)
 	}
 }
 
-int show_interrupts(struct seq_file *p, void *v)
+int arch_show_interrupts(struct seq_file *p, int prec)
 {
-	int i = *(loff_t *)v;
-	struct irqaction * action;
-	unsigned long flags;
-
-	if (i < NR_IRQS)
-	{
-		raw_spin_lock_irqsave(&irq_desc[i].lock, flags);
-		action = irq_desc[i].action;
-		if (action)
-		{
-			seq_printf(p, "%3d: ", i);
-			seq_printf(p, "%10u", kstat_irqs(i));
-			seq_printf(p, "%14s ", irq_get_chip(i)->name ? : "-");
-			seq_printf(p, " %s", action->name);
-			for (action = action->next; action; action = action->next)
-				seq_printf(p, ", %s", action->name);
-			seq_putc(p, '\n');
-		}
-		raw_spin_unlock_irqrestore(&irq_desc[i].lock, flags);
-	} else if (i == NR_IRQS) {
-		seq_printf(p, "\nErrors: %u\n", atomic_read(&irq_err_count));
-	}
-
+	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
 	return 0;
 }
 
