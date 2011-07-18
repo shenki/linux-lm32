@@ -107,8 +107,6 @@ void __init setup_arch(char **cmdline_p)
 	//sdram_start = (unsigned long)CONFIG_MEMORY_START;
 	//sdram_size = (unsigned long)CONFIG_MEMORY_SIZE;
 
-	/* Save unparsed command line copy for /proc/cmdline */
-	memcpy(boot_command_line, *cmdline_p, COMMAND_LINE_SIZE);
 	*cmdline_p = cmd_line;
 
 #ifdef CONFIG_DUMMY_CONSOLE
