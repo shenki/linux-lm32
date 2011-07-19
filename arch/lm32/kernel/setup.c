@@ -76,8 +76,6 @@ extern void bootmem_init(void);
 extern void paging_init(void);
 
 unsigned int cpu_frequency;
-//unsigned int sdram_start;
-//unsigned int sdram_size;
 
 void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
 		unsigned long p_initrd_end)
@@ -104,8 +102,6 @@ void __init setup_arch(char **cmdline_p)
 	lm32_current_thread = (struct thread_info*)&init_thread_union;
 
 	cpu_frequency = (unsigned long)CONFIG_CPU_CLOCK;
-	//sdram_start = (unsigned long)CONFIG_MEMORY_START;
-	//sdram_size = (unsigned long)CONFIG_MEMORY_SIZE;
 
 	*cmdline_p = cmd_line;
 

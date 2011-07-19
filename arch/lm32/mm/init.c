@@ -43,57 +43,40 @@
 #include <asm-generic/sections.h>
 #include <asm/setup.h>
 
-//#undef DEBUG
-#define DEBUG
-
-/* in arch/lm32/kernel/setup.c */
-extern unsigned long asmlinkage _kernel_arg_initrd_start;
-extern unsigned long asmlinkage _kernel_arg_initrd_end;
-
-unsigned long physical_memory_start;
-unsigned long physical_memory_end;
 unsigned long memory_start;
 unsigned long memory_end;
 
 void __init bootmem_init(void)
 {
 	unsigned long bootmap_size;
+	unsigned long free_pfn, end_pfn;
 
-	/*
-	 * Init memory
-	 */
-	physical_memory_start = CONFIG_MEMORY_START;
-	physical_memory_end = CONFIG_MEMORY_START + CONFIG_MEMORY_SIZE;
-	if( ((unsigned long)_end < physical_memory_start) || ((unsigned long)_end > physical_memory_end) )
+	memory_start = CONFIG_KERNEL_RAM_BASE_ADDRESS;
+	memory_end = CONFIG_KERNEL_RAM_BASE_ADDRESS + CONFIG_KERNEL_RAM_SIZE;
+
+	if( ((unsigned long)_end < memory_start) || ((unsigned long)_end > memory_end) )
 		printk("BUG: your kernel is not located in the ddr sdram");
-	/* start after kernel code */
-	memory_start = PAGE_ALIGN((unsigned long)_end);
-	memory_end = physical_memory_end;
-#ifdef DEBUG
-	printk("memory from %lx - %lx\n", memory_start, memory_end);
-#endif
 
 	init_mm.start_code = (unsigned long)_stext;
 	init_mm.end_code = (unsigned long)_etext;
 	init_mm.end_data = (unsigned long)_edata;
-	init_mm.brk = (unsigned long)0;
+	init_mm.brk = (unsigned long)_end;
+
+	free_pfn = PFN_UP(__pa((unsigned long)_end));
+	end_pfn = PFN_DOWN(__pa(memory_end));
 
 	/*
 	 * Give all the memory to the bootmap allocator, tell it to put the
 	 * boot mem_map at the start of memory.
 	 */
-	bootmap_size = init_bootmem_node(
-			NODE_DATA(0),
-			memory_start >> PAGE_SHIFT, /* map goes here */
-			PAGE_OFFSET >> PAGE_SHIFT,
-			memory_end >> PAGE_SHIFT);
+	bootmap_size = init_bootmem(free_pfn, end_pfn);
 
 	/*
 	 * Free the usable memory, we have to make sure we do not free
 	 * the bootmem bitmap so we then reserve it after freeing it :-)
 	 */
-	free_bootmem(memory_start, memory_end - memory_start);
-	reserve_bootmem(memory_start, bootmap_size, BOOTMEM_DEFAULT);
+	free_bootmem(PFN_PHYS(free_pfn), PFN_PHYS(end_pfn - free_pfn));
+	reserve_bootmem(PFN_PHYS(free_pfn), bootmap_size, BOOTMEM_DEFAULT);
 
 	/*
 	 * reserve initrd boot memory
@@ -103,7 +86,7 @@ void __init bootmem_init(void)
 		unsigned long reserve_start = initrd_start & PAGE_MASK;
 		unsigned long reserve_end = (initrd_end + PAGE_SIZE-1) & PAGE_MASK;
 		printk("reserving initrd memory: %lx size %lx\n", reserve_start, reserve_end-reserve_start);
-		reserve_bootmem(reserve_start, reserve_end-reserve_start, BOOTMEM_DEFAULT);
+		reserve_bootmem(__pa(reserve_start), reserve_end-reserve_start, BOOTMEM_DEFAULT);
 	}
 #endif
 }
@@ -116,94 +99,47 @@ void __init bootmem_init(void)
  */
 void __init paging_init(void)
 {
-	/*
-	 * Make sure start_mem is page aligned, otherwise bootmem and
-	 * page_alloc get different views of the world.
-	 */
-#ifdef DEBUG
-	unsigned long start_mem = PAGE_ALIGN(memory_start);
-#endif
-	unsigned long end_mem   = memory_end & PAGE_MASK;
+	unsigned long zones_size[MAX_NR_ZONES] = {0, };
 
-#ifdef DEBUG
-	printk ("start_mem is %#lx\nvirtual_end is %#lx\n",
-		start_mem, end_mem);
-#endif
-
-	set_fs(KERNEL_DS);
-
-#ifdef DEBUG
-	printk ("before free_area_init\n");
-
-	printk ("free_area_init -> start_mem is %#lx\nvirtual_end is %#lx\n",
-		start_mem, end_mem);
-#endif
-
-	{
-		unsigned i;
-		unsigned long zones_size[MAX_NR_ZONES];
-
-		for (i = 0; i < MAX_NR_ZONES; i++)
-			zones_size[i] = 0;
-		zones_size[ZONE_NORMAL] = (end_mem - PAGE_OFFSET) >> PAGE_SHIFT;
-		free_area_init(zones_size);
-	}
-	printk ("after free_area_init\n");
+	zones_size[ZONE_NORMAL] = max_low_pfn;
+	free_area_init(zones_size);
 }
 
 void __init mem_init(void)
 {
-	int codek = 0, datak = 0;
-	unsigned long tmp;
-	unsigned long start_mem = memory_start;
-	unsigned long end_mem   = memory_end;
-	/* TODO: use more of hardware setup to initialize memory */
-	unsigned long ramlen = CONFIG_MEMORY_SIZE;
+	high_memory = (void *)__va(max_low_pfn * PAGE_SIZE);
 
-#ifdef DEBUG
-	printk(KERN_DEBUG "Mem_init: start=%lx, end=%lx\n", start_mem, end_mem);
-#endif
+	max_mapnr = num_physpages = max_low_pfn;
 
-	end_mem &= PAGE_MASK;
-	high_memory = (void *) end_mem;
-
-	start_mem = PAGE_ALIGN(start_mem);
-	max_mapnr = num_physpages = (((unsigned long) high_memory) - PAGE_OFFSET) >> PAGE_SHIFT;
-
-	/* this will put all memory onto the freelists */
 	totalram_pages = free_all_bootmem();
 
-	codek = (_etext - _stext) >> 10;
-	datak = (__bss_stop - __bss_start) >> 10;
-
-	tmp = nr_free_pages() << PAGE_SHIFT;
 	printk(KERN_INFO "Memory available: %luk/%luk RAM, (%dk kernel code, %dk data)\n",
-	       tmp >> 10,
-	       ramlen >> 10,
-	       codek,
-	       datak
+	       nr_free_pages() << (PAGE_SHIFT - 10),
+	       max_mapnr << (PAGE_SHIFT - 10),
+	       (_etext - _stext) >> 10,
+	       (_edata - _etext) >> 10
 	       );
 }
 
-static void free_init_pages(const char *what, unsigned long start, unsigned long end) {
-	unsigned long pfn;
-	printk("Freeing %s mem: %ldk freed\n", what, (end-start) >> 10);
+static void free_init_pages(const char *what, unsigned long start, unsigned long end)
+{
+	unsigned long addr;
 
-	for (pfn = PFN_UP(start); pfn < PFN_DOWN(end); pfn++) {
-		struct page* page = pfn_to_page(pfn);
+	for (addr = start; addr < end; addr += PAGE_SIZE) {
+		struct page* page = virt_to_page(addr);
 
 		ClearPageReserved(page);
 		init_page_count(page);
 		__free_page(page);
 		totalram_pages++;
 	}
+
+	printk("Freeing %s mem: %ldk freed\n", what, (end-start) >> 10);
 }
 
-void
-free_initmem(void)
+void free_initmem(void)
 {
-	/* this will create segfaults, so deactivated */
-	/* free_init_pages("unused kernel", (unsigned long)&__init_begin, (unsigned* long)&__init_end); */
+	free_init_pages("unused kernel", (unsigned long)&__init_begin, (unsigned long)&__init_end);
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
