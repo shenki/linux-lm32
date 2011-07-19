@@ -32,48 +32,24 @@
  */
 
 #include <linux/kernel.h>
-#include <linux/sched.h>
-#include <linux/delay.h>
-#include <linux/interrupt.h>
-#include <linux/fs.h>
-#include <linux/fb.h>
 #include <linux/module.h>
 #include <linux/console.h>
-#include <linux/genhd.h>
-#include <linux/errno.h>
 #include <linux/string.h>
-#include <linux/platform_device.h>
 #include <linux/major.h>
 #include <linux/initrd.h>
-#include <linux/bootmem.h>
-#include <linux/seq_file.h>
-#include <linux/root_dev.h>
 #include <linux/init.h>
-#include <linux/linkage.h>
 
-#include <asm/setup.h>
-#include <asm/irq.h>
-#include <asm/page.h>
-#include <asm/pgtable.h>
-#include <asm/thread_info.h>
 #include <asm/sections.h>
+#include <asm/pgtable.h>
 
 unsigned int kernel_mode = PT_MODE_KERNEL;
-
-/* this is set first thing as the kernel is started
- * from the arguments to the kernel. */
-unsigned long asmlinkage _kernel_arg_cmdline; /* address of the commandline parameters */
-unsigned long asmlinkage _kernel_arg_initrd_start;
-unsigned long asmlinkage _kernel_arg_initrd_end;
 
 static char __initdata cmd_line[COMMAND_LINE_SIZE];
 
 extern void setup_early_printk(void);
 
-
 /* from mm/init.c */
 extern void bootmem_init(void);
-extern void paging_init(void);
 
 unsigned int cpu_frequency;
 
@@ -90,6 +66,7 @@ void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
 #else
 	strlcpy(cmd_line, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
 #endif
+
 	initrd_start = p_initrd_start;
 	initrd_end = p_initrd_end;
 }
@@ -103,6 +80,7 @@ void __init setup_arch(char **cmdline_p)
 
 	cpu_frequency = (unsigned long)CONFIG_CPU_CLOCK;
 
+	strlcpy(boot_command_line, cmd_line, COMMAND_LINE_SIZE);
 	*cmdline_p = cmd_line;
 
 #ifdef CONFIG_DUMMY_CONSOLE
@@ -123,54 +101,3 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	paging_init();
 }
-
-/*
- *	Get CPU information for use by the procfs.
- */
-
-static int show_cpuinfo(struct seq_file *m, void *v)
-{
-    char *cpu, *mmu, *fpu;
-    u_long clockfreq;
-
-    cpu = "lm32";
-    mmu = "none";
-    fpu = "none";
-
-    clockfreq = (loops_per_jiffy*HZ)*5/4;
-
-    seq_printf(m, "CPU:\t\t%s\n"
-		   "MMU:\t\t%s\n"
-		   "FPU:\t\t%s\n"
-		   "Clocking:\t%lu.%1luMHz\n"
-		   "BogoMips:\t%lu.%02lu\n"
-		   "Calibration:\t%lu loops\n",
-		   cpu, mmu, fpu,
-		   clockfreq/1000000,(clockfreq/100000)%10,
-		   (loops_per_jiffy*HZ)/500000,((loops_per_jiffy*HZ)/5000)%100,
-		   (loops_per_jiffy*HZ));
-
-	return 0;
-}
-
-static void *c_start(struct seq_file *m, loff_t *pos)
-{
-	return *pos < NR_CPUS ? (void *)(*pos + 1) : NULL;
-}
-
-static void *c_next(struct seq_file *m, void *v, loff_t *pos)
-{
-	++*pos;
-	return c_start(m, pos);
-}
-
-static void c_stop(struct seq_file *m, void *v)
-{
-}
-
-const struct seq_operations cpuinfo_op = {
-	.start	= c_start,
-	.next	= c_next,
-	.stop	= c_stop,
-	.show	= show_cpuinfo,
-};
