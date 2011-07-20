@@ -29,5 +29,34 @@
 		#interrupt-cells = <1>;
 		interrupt-controller;
 	};
+
+	serial@e0000000 {
+		compatible = "milkymist,uart";
+		reg = <0xe0000000 0x10>;
+		interrupts = <0 1>;
+	};
+
+	usb@e000f000 {
+		compatible = "milkymist,softusb";
+		reg = <0xa0000000 0x22000>;
+		interrupts = <17>;
+	};
+
+	ac97@e0005000 {
+		compatible = "milkymist,ac97";
+		reg = <0xe0005000 0x30>;
+		interrupts = <5 6 7 8>;
+	};
+
+	ethernet@e0008000 {
+		compatible = "milkymist,minimac";
+		reg = <0xe0008000 0x40>;
+		interrupts = <11 12>;
+	};
+
+	mmc@e0004000 {
+		compatible = "milkymist,mmc";
+		reg = <0xe0004000 0x20>;
+	};
 };
 
