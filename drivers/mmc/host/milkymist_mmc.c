@@ -456,12 +456,18 @@ static int __devexit milkymist_mmc_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id milkymist_mmc_of_ids[] = {
+	{ .compatible = "milkymist,mmc", },
+	{}
+};
+
 static struct platform_driver milkymist_mmc_driver = {
 	.probe = milkymist_mmc_probe,
 	.remove = __devexit_p(milkymist_mmc_remove),
 	.driver = {
 		.name = "milkymist-mmc",
 		.owner = THIS_MODULE,
+		.of_match_table = milkymist_mmc_of_ids,
 	},
 };
 
