@@ -199,11 +199,18 @@ static int __devexit softusb_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id softusb_of_ids[] = {
+	{ .compatible = "milkymist,softusb", },
+	{}
+};
+
+
 static struct platform_driver softusb_driver = {
 	.probe		= softusb_probe,
 	.remove		= __devexit_p(softusb_remove),
 	.driver		= {
-	.name		= "softusb",
+		.name		= "softusb",
+		.of_match_table = softusb_of_ids,
 	},
 };
 
