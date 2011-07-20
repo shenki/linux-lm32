@@ -39,6 +39,7 @@ OBJCOPYFLAGS	:=-O binary -R .note -R .comment -S
 head-y := arch/lm32/kernel/head.o arch/lm32/kernel/init_task.o
 
 core-y	+= arch/lm32/
+core-y	+= arch/lm32/boot/
 libs-y	+= arch/lm32/lib/
 
 vmlinux.bin: vmlinux

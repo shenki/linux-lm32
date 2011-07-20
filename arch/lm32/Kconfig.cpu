@@ -42,11 +42,6 @@ config KERNEL_RAM_BASE_ADDRESS
 	hex "Physical memory start address (hex)"
 	default "0x40000000"
 
-config KERNEL_RAM_SIZE
-	hex "Physical memory size (hex)"
-	default "0x08000000" if BOARD_MILKYMIST_ONE
-	default "0x04000000" if BOARD_MILKYMIST_SOC
-
 config KERNEL_BASE_ADDR
 	hex "Physical address where Linux Kernel is"
 	default "0x40000000"

@@ -39,6 +39,7 @@
 #include <linux/slab.h>
 #include <linux/linkage.h>
 #include <linux/pfn.h>
+#include <linux/memblock.h>
 
 #include <asm-generic/sections.h>
 #include <asm/setup.h>
@@ -48,13 +49,17 @@ unsigned long memory_end;
 
 void __init bootmem_init(void)
 {
+	struct memblock_region *reg;
 	unsigned long bootmap_size;
-	unsigned long free_pfn, end_pfn;
+	unsigned long free_pfn, end_pfn, start_pfn;
 
-	memory_start = CONFIG_KERNEL_RAM_BASE_ADDRESS;
-	memory_end = CONFIG_KERNEL_RAM_BASE_ADDRESS + CONFIG_KERNEL_RAM_SIZE;
+	for_each_memblock(memory, reg) {
+		memory_start = reg->base;
+		memory_end = reg->base + reg->size;
+		break;
+	}
 
-	if( ((unsigned long)_end < memory_start) || ((unsigned long)_end > memory_end) )
+	if(((unsigned long)__pa(_end) < memory_start) || ((unsigned long)__pa(_end) > memory_end))
 		printk("BUG: your kernel is not located in the ddr sdram");
 
 	init_mm.start_code = (unsigned long)_stext;
@@ -62,33 +67,22 @@ void __init bootmem_init(void)
 	init_mm.end_data = (unsigned long)_edata;
 	init_mm.brk = (unsigned long)_end;
 
+	start_pfn = PFN_UP(memory_start);
 	free_pfn = PFN_UP(__pa((unsigned long)_end));
-	end_pfn = PFN_DOWN(__pa(memory_end));
+	end_pfn = PFN_DOWN(memory_end);
 
-	/*
-	 * Give all the memory to the bootmap allocator, tell it to put the
-	 * boot mem_map at the start of memory.
-	 */
+	memblock_reserve(PFN_PHYS(start_pfn), PFN_PHYS(free_pfn - start_pfn));
+
 	bootmap_size = init_bootmem(free_pfn, end_pfn);
+	memblock_reserve(PFN_PHYS(free_pfn), bootmap_size);
 
-	/*
-	 * Free the usable memory, we have to make sure we do not free
-	 * the bootmem bitmap so we then reserve it after freeing it :-)
-	 */
 	free_bootmem(PFN_PHYS(free_pfn), PFN_PHYS(end_pfn - free_pfn));
-	reserve_bootmem(PFN_PHYS(free_pfn), bootmap_size, BOOTMEM_DEFAULT);
 
-	/*
-	 * reserve initrd boot memory
-	 */
-#ifdef CONFIG_BLK_DEV_INITRD
-	if (initrd_start) {
-		unsigned long reserve_start = initrd_start & PAGE_MASK;
-		unsigned long reserve_end = (initrd_end + PAGE_SIZE-1) & PAGE_MASK;
-		printk("reserving initrd memory: %lx size %lx\n", reserve_start, reserve_end-reserve_start);
-		reserve_bootmem(__pa(reserve_start), reserve_end-reserve_start, BOOTMEM_DEFAULT);
-	}
-#endif
+	for_each_memblock(reserved, reg)
+		reserve_bootmem(reg->base, reg->size, BOOTMEM_DEFAULT);
+
+	memory_start += PAGE_OFFSET;
+	memory_end += PAGE_OFFSET;
 }
 
 /*

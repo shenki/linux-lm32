@@ -4,6 +4,8 @@
 #include <linux/kernel_stat.h>
 #include <linux/seq_file.h>
 #include <linux/types.h>
+#include <linux/of_fdt.h>
+#include <linux/module.h>
 
 atomic_t irq_err_count;
 
@@ -82,6 +84,20 @@ int arch_show_interrupts(struct seq_file *p, int prec)
 	seq_printf(p, "%*s: %10u\n", prec, "ERR", atomic_read(&irq_err_count));
 	return 0;
 }
+
+/*
+ * irq_create_of_mapping - Hook to resolve OF irq specifier into a Linux irq#
+ *
+ * Currently the mapping mechanism is trivial; simple flat hwirq numbers are
+ * mapped 1:1 onto Linux irq numbers.  Cascaded irq controllers are not
+ * supported.
+ */
+unsigned int irq_create_of_mapping(struct device_node *controller,
+				   const u32 *intspec, unsigned int intsize)
+{
+	return intspec[0];
+}
+EXPORT_SYMBOL_GPL(irq_create_of_mapping);
 
 asmlinkage void asm_do_IRQ(unsigned int irq, struct pt_regs *regs)
 {

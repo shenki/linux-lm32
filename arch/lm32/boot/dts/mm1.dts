@@ -1,0 +1,33 @@
+/dts-v1/;
+/ {
+	compatible = "milkymist,mm1";
+	#address-cells = <1>;
+	#size-cells = <1>;
+	interrupt-parent = <&pic>;
+
+	chosen {
+		bootargs = "root=/dev/root";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x00000000 0x8000000>;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+		cpu@0 {
+			compatible = "lattice,lm32";
+			reg = <0>;
+			clock-frequency = <80000000>;
+		};
+	};
+
+	pic: pic {
+		compatible = "lattice,lm32-pic";
+		#interrupt-cells = <1>;
+		interrupt-controller;
+	};
+};
+
