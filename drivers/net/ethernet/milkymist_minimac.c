@@ -526,9 +526,15 @@ static int minimac_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct of_device_id minimac_of_ids[] = {
+	{ .compatible = "milkymist,minimac", },
+	{}
+};
+
 static struct platform_driver minimac_driver = {
 	.driver  = {
 		.name = "minimac",
+		.of_match_table = minimac_of_ids,
 	},
 	.probe   = minimac_probe,
 	.remove  = minimac_remove,
