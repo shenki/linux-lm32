@@ -450,12 +450,18 @@ static int __devexit milkymistuart_serial_remove(struct platform_device *pdev)
 	return ret;
 }
 
+static const struct of_device_id milkymistuart_of_ids[] = {
+	{ .compatible = "milkymist,uart", },
+	{}
+};
+
 static struct platform_driver milkymistuart_serial_driver = {
 	.probe		= milkymistuart_serial_probe,
 	.remove		= __devexit_p(milkymistuart_serial_remove),
 	.driver		= {
 		.name	= "milkymist_uart",
 		.owner	= THIS_MODULE,
+		.of_match_table = milkymistuart_of_ids,
 	},
 };
 
