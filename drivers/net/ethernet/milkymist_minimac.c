@@ -151,17 +151,17 @@ static int minimac_reset(struct minimac *dev)
 	static unsigned char preamble[8] = {0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0xd5};
 	int i;
 
-	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, CSR_MINIMAC_SETUP);
+	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, dev->iobase + CSR_MINIMAC_SETUP);
 
 	for (i = 0; i < MAX_PACKET_RECEPTION_SLOT; ++i) {
-		iowrite32be((unsigned int)dev->pkt_buf[i].buf, CSR_MINIMAC_ADDR0+i*12);
-		iowrite32be(MINIMAC_STATE_LOADED, CSR_MINIMAC_STATE0+i*12);
+		iowrite32be((unsigned int)dev->pkt_buf[i].buf, dev->iobase + CSR_MINIMAC_ADDR0+i*12);
+		iowrite32be(MINIMAC_STATE_LOADED, dev->iobase + CSR_MINIMAC_STATE0+i*12);
 	}
 
 	memcpy_toio(dev->pkt_buf->buf, preamble, 8);		/* TX buff preamble */
 
-	iowrite32be(0, CSR_MINIMAC_TXREMAINING);
-	iowrite32be(0, CSR_MINIMAC_SETUP);
+	iowrite32be(0, dev->iobase + CSR_MINIMAC_TXREMAINING);
+	iowrite32be(0, dev->iobase + CSR_MINIMAC_SETUP);
 
 	return 0;
 }
@@ -179,10 +179,10 @@ static int minimac_rx(struct net_device *dev, int budget)
 	while (netif_running(dev) && received < budget ) {
 		count = 0;
 		for (i = 1; i <= MAX_PACKET_RECEPTION_SLOT && received < budget ; ++i) {
-			flush_dcache_range(CSR_MINIMAC_STATE0, 256);
-			state = ioread32be(CSR_MINIMAC_STATE0+(i-1)*12);
+			flush_dcache_range(tp->iobase + CSR_MINIMAC_STATE0, 256);
+			state = ioread32be(tp->iobase + CSR_MINIMAC_STATE0+(i-1)*12);
 			if (state & MINIMAC_STATE_PENDING) {
-				size = ioread32be(CSR_MINIMAC_COUNT0+(i-1)*12);
+				size = ioread32be(tp->iobase + CSR_MINIMAC_COUNT0+(i-1)*12);
 				if (size == 0) {
 				} else if (size < 64) {
 					dev_dbg(&dev->dev, "rx: frame too short(%d)\n", size);
@@ -224,7 +224,7 @@ static int minimac_rx(struct net_device *dev, int budget)
 					++received;
 					++count;
 				}
-				iowrite32be(MINIMAC_STATE_LOADED, CSR_MINIMAC_STATE0+(i-1)*12);
+				iowrite32be(MINIMAC_STATE_LOADED, tp->iobase + CSR_MINIMAC_STATE0+(i-1)*12);
 			}
 		}
 		if (count == 0)
@@ -250,8 +250,8 @@ static irqreturn_t minimac_interrupt_rx(int irq, void *dev_id)
 	struct minimac *tp = netdev_priv(dev);
 
 	flush_dcache_range(CSR_MINIMAC_SETUP, 256);
-	if (ioread32be(CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST)
-		iowrite32be(0, CSR_MINIMAC_SETUP);
+	if (ioread32be(tp->iobase + CSR_MINIMAC_SETUP) & MINIMAC_SETUP_RXRST)
+		iowrite32be(0, tp->iobase + CSR_MINIMAC_SETUP);
 
 	disable_irq_nosync(dev->irq);
 
@@ -328,10 +328,10 @@ static int minimac_stop(struct net_device *dev)
 	free_irq(dev->irq+1, dev);
 
 	for (i = 0; i < MAX_PACKET_RECEPTION_SLOT; ++i)
-		iowrite32be(MINIMAC_STATE_EMPTY, CSR_MINIMAC_STATE0+i*12);
+		iowrite32be(MINIMAC_STATE_EMPTY, tp->iobase + CSR_MINIMAC_STATE0+i*12);
 
-	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, CSR_MINIMAC_SETUP);
-	iowrite32be(0, CSR_MINIMAC_TXREMAINING);
+	iowrite32be(MINIMAC_SETUP_RXRST | MINIMAC_SETUP_TXRST, tp->iobase + CSR_MINIMAC_SETUP);
+	iowrite32be(0, tp->iobase + CSR_MINIMAC_TXREMAINING);
 
 	return 0;
 }
@@ -348,7 +348,7 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	unsigned long fcs;
 	int len;
 
-	if (ioread32be(CSR_MINIMAC_TXREMAINING) != 0)
+	if (ioread32be(tp->iobase + CSR_MINIMAC_TXREMAINING) != 0)
 		return NETDEV_TX_BUSY;
 
 	spin_lock_irq(&tp->lock);
@@ -368,8 +368,8 @@ static netdev_tx_t minimac_start_xmit(struct sk_buff *skb, struct net_device *de
 	(dest+len)[10] = (fcs & 0xff0000) >> 16;
 	(dest+len)[11] = (fcs & 0xff000000) >> 24;
 
-	iowrite32be(dest, CSR_MINIMAC_TXADR);
-	iowrite32be(len + 12, CSR_MINIMAC_TXREMAINING);
+	iowrite32be(dest, tp->iobase + CSR_MINIMAC_TXADR);
+	iowrite32be(len + 12, tp->iobase + CSR_MINIMAC_TXREMAINING);
 	(tp->pkt_buf)->count = len;
 
 	netif_stop_queue(dev);
