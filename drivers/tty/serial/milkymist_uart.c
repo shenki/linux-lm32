@@ -49,7 +49,7 @@ static bool milkymist_uart_irqs_enabled;
 /* these two will be initialized by milkymistuart_init */
 static struct uart_port milkymistuart_ports[1];
 
-static struct uart_port* __devinit milkymistuart_init_port(struct platform_device *pdev);
+static struct uart_port* __devinit milkymistuart_init_port(void);
 
 static unsigned int milkymistuart_tx_empty(struct uart_port *port);
 static void milkymistuart_set_mctrl(struct uart_port *port, unsigned int mctrl);
@@ -358,12 +358,10 @@ static struct console milkymist_console = {
 /*
  * Early console initialization
  */
-/* TODO remove this extern */
-extern struct platform_device* milkymistuart_default_console_device;
 static int __init milkymist_early_console_init(void)
 {
-	add_preferred_console(MILKYMISTUART_DEVICENAME, milkymistuart_default_console_device->id, NULL);
-	milkymistuart_init_port((struct platform_device *)&milkymistuart_default_console_device);
+	add_preferred_console(MILKYMISTUART_DEVICENAME, 0, NULL);
+	milkymistuart_init_port();
 	register_console(&milkymist_console);
 	pr_info("milkymist_uart: registered real console\n");
 	return 0;
@@ -398,7 +396,7 @@ static struct uart_driver milkymistuart_driver = {
 	.cons        = MILKYMIST_CONSOLE_DEVICE
 };
 
-static struct uart_port* __devinit milkymistuart_init_port(struct platform_device *pdev)
+static struct uart_port* __devinit milkymistuart_init_port(void)
 {
 	struct uart_port* port;
 	
@@ -422,10 +420,7 @@ static int __devinit milkymistuart_serial_probe(struct platform_device *pdev)
 	struct uart_port *port;
 	int ret;
 
-	if( pdev->id != 0 )
-		return -1;
-
-	port = milkymistuart_init_port(pdev);
+	port = milkymistuart_init_port();
 
 	ret = uart_add_one_port(&milkymistuart_driver, port);
 	if (!ret) {
