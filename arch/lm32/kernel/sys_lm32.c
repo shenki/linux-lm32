@@ -101,8 +101,6 @@ asmlinkage int sys_lm32_vfork(struct pt_regs *regs, unsigned long ra_in_syscall)
 
 	//printk("do_fork regs=%lx ra=%lx usp=%lx\n", regs, ra_to_syscall_entry, usp);
 
-	/* save ra_in_syscall to r1, this register will not be restored or overwritten (TODO find out)*/
-	regs->r1 = ra_in_syscall;
 	ret = do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, current->thread.usp, regs, 0, NULL, NULL);
 	//printk("do_fork returned %d\n", ret);
 	return ret;
@@ -111,12 +109,12 @@ asmlinkage int sys_lm32_vfork(struct pt_regs *regs, unsigned long ra_in_syscall)
 /* the args to sys_lm32_clone try to match the libc call to avoid register
  * reshuffling:
  *   int clone(int (*fn)(void *arg), void *child_stack, int flags, void *arg); */
-asmlinkage int sys_lm32_clone(
+asmlinkage int sys_clone(
 		int _unused_fn,
 		unsigned long newsp,
 		unsigned long clone_flags,
 		int _unused_arg,
-		unsigned long ra_in_syscall,
+		unsigned long _unused_r5,
 		int _unused_r6,
 		struct pt_regs *regs)
 {
@@ -128,8 +126,6 @@ asmlinkage int sys_lm32_clone(
 	if( !newsp ) {
 	  newsp = r_sp - 12;
 	}
-	/* ret_from_fork will return to this address (in child), see copy_thread */
-	regs->r1 = ra_in_syscall;
 	ret = do_fork(clone_flags, newsp, regs, 0, NULL, NULL);
 	return ret;
 }

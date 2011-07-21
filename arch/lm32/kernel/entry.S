@@ -30,7 +30,7 @@ ENTRY(reset_handler)
 	KERNEL_EXCEPTION_VECTOR(0)
 
 ENTRY(breakpoint_handler)
-	bi _long_breakpoint_handler
+	bret
 	nop
 	nop
 	nop
@@ -114,7 +114,7 @@ ENTRY(system_call)
 	lw r9, (r9+0) /* fetch address of syscall function */
 	call r9 /* execute syscall */
 
-.syscallTail:
+ENTRY(syscall_tail)
 	/* store pt_regs* in r2 */
 	addi      r2,  sp, 4
 	calli manage_signals
@@ -126,50 +126,6 @@ ENTRY(system_call)
 	mvi r1, -ENOSYS
 
 	bi      _restore_and_return_exception
-
-/* end of exception handlers */
-
-
-/********************************/
-/* ensure to be on kernel stack */
-/********************************/
-#define ENSURE_TO_BE_ON_KERNEL_STACK \
-	/* store away r9,r10 so that we can use it here TODO: use clobbered ones*/ \
-	sw (sp+-4), r9; /* needed for various */ \
-	sw (sp+-8), r10; /* needed for current = current_thread_info()->task */ \
-	sw (sp+-12), r11; /* needed for user stack pointer, if switching */ \
-	/* test if already on kernel stack: test current_thread_info->task->which_stack */ \
-	mvhi r9, hi(lm32_current_thread); \
-	ori r9, r9, lo(lm32_current_thread); \
-	lw r9, (r9+0); /* dereference lm32_current_thread */ \
-	lw r10, (r9+TI_TASK); /* load pointer to task */ \
-	lw r9, (r10+TASK_WHICH_STACK); \
-	be r9, r0, 1f; \
-	/* we are on user stack, have to switch */ \
-	mv r11, sp; /* remember sp for restoring r9, r10, r11 */ \
-	sw (r10+TASK_USP), sp; /* store usp */ \
-	lw sp, (r10+TASK_KSP); /* load ksp */ \
-	sw (r10+TASK_WHICH_STACK), r0; /* set which_stack to 0 */ \
-	/* restore r9, r10, r11 */ \
-	lw r9, (r11+-4); \
-	lw r10, (r11+-8); \
-	lw r11, (r11+-12); \
-	bi 2f; \
-1:/* already on kernel stack */ \
-	/* restore r9, r10 */ \
-	lw r9, (sp+-4); \
-	lw r10, (sp+-8); \
-	/* no need to restore r11 as we did not use it */ \
-2:/* now for sure on kernel stack */
-
-_long_breakpoint_handler:
-	ENSURE_TO_BE_ON_KERNEL_STACK; \
-	addi	sp,sp,-132; \
-	calli	_save_syscall_frame; \
-	mvi		r1, 32; /* 32 = breakpoint magic offset */ \
-	addi	r2, sp, 4; \
-	calli	asm_do_sig; \
-	bi		_return_from_debug_exception
 
 /**************************/
 /* exception return paths */
@@ -187,8 +143,6 @@ label: \
 	bi branch_to
 
 EXCEPTION_RETURN_PATH(_return_from_exception, _restore_and_return_exception)
-
-EXCEPTION_RETURN_PATH(_return_from_debug_exception, _restore_and_return_debug_exception)
 
 /* ret_from_fork(unused, arg2, arg3, arg1, continuation) */
 /* calls schedule_tail and then manage_signals */
@@ -226,18 +180,9 @@ ENTRY(sys_rt_sigsuspend_wrapper)
 	ret
 
 ENTRY(sys_vfork)
-	/* save ra to kernel stack */
-	addi sp,sp,-4
-	sw (sp+4), ra
 	/* store regs into 1st argument */
 	mv r1, r7
-	/* store ra into 2nd argument */
-	mv r2, ra
-	calli sys_lm32_vfork
-	/* load ra from kernel stack */
-	lw ra, (sp+4)
-	addi sp,sp,4
-	ret
+	bi sys_lm32_vfork
 
 /* purpose of this wrapper: put struct pt_regs* into first argument */
 ENTRY(sys_sigreturn)
@@ -247,18 +192,6 @@ ENTRY(sys_sigreturn)
 	/* fix first argument */
 	mv r1, r7
 	calli sys_sigreturn
-	/* load ra from stack */
-	lw ra, (sp+4)
-	addi sp,sp,4
-	ret
-
-ENTRY(sys_clone)
-	/* save ra to stack */
-	addi sp,sp,-4
-	sw (sp+4), ra
-	/* store ra into 5th argument */
-	mv r5, ra
-	calli sys_lm32_clone
 	/* load ra from stack */
 	lw ra, (sp+4)
 	addi sp,sp,4
@@ -475,9 +408,6 @@ label: \
 	return_instr
 
 RETURN_FROM_SYSCALL_OR_EXCEPTION(_restore_and_return_exception,ea,eret)
-
-/* also use "ea" here because "ba" should not be changed! */
-RETURN_FROM_SYSCALL_OR_EXCEPTION(_restore_and_return_debug_exception,ea,bret)
 
 /*
  * struct task_struct* resume(struct task_struct* prev, struct task_struct* next)

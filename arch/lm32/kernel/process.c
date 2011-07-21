@@ -49,6 +49,7 @@
 #include <asm/hw/milkymist.h>
 
 asmlinkage void ret_from_fork(void);
+asmlinkage void syscall_tail(void);
 
 
 struct thread_info* lm32_current_thread;
@@ -204,13 +205,7 @@ int copy_thread(unsigned long clone_flags,
 	} else {
 		/* userspace thread (vfork, clone) */
 
-		unsigned long ra_in_syscall;
 		struct pt_regs* childsyscallregs;
-
-		//asm volatile("break");
-
-		/* this was brought to us by sys_lm32_vfork */
-		ra_in_syscall = regs->r1;
 
 		/* childsyscallregs = full syscall frame on kernel stack of child */
 		childsyscallregs = (struct pt_regs *)(child_tos) - 1; /* 32 = safety */
@@ -239,7 +234,7 @@ int copy_thread(unsigned long clone_flags,
 		/* child returns via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
 		/* child shall return to where sys_vfork_wrapper has been called */
-		childregs->r5 =	ra_in_syscall;
+		childregs->r5 =	(unsigned long)syscall_tail;
 		/* child gets zero as return value from syscall */
 		childregs->r4 = 0;
 		/* after task switch segment return the stack pointer shall point to the
@@ -272,6 +267,6 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 	regs->fp = current->mm->start_data;
 	regs->pt_mode = PT_MODE_USER;
 
-	//printk("start_thread: current=%lx usp=%lx\n", current, usp);
+	/*printk("start_thread: current=%lx usp=%lx\n", current, usp);*/
 }
 
