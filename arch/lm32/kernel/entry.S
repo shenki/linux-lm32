@@ -179,11 +179,6 @@ ENTRY(sys_rt_sigsuspend_wrapper)
 	addi sp,sp,4
 	ret
 
-ENTRY(sys_vfork)
-	/* store regs into 1st argument */
-	mv r1, r7
-	bi sys_lm32_vfork
-
 /* purpose of this wrapper: put struct pt_regs* into first argument */
 ENTRY(sys_sigreturn)
 	/* save ra to stack */

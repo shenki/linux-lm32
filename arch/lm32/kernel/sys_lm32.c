@@ -95,17 +95,6 @@ int kernel_execve(const char *filename, const char *const argv[], const char *co
 }
 EXPORT_SYMBOL(kernel_execve);
 
-asmlinkage int sys_lm32_vfork(struct pt_regs *regs, unsigned long ra_in_syscall)
-{
-	int ret;
-
-	//printk("do_fork regs=%lx ra=%lx usp=%lx\n", regs, ra_to_syscall_entry, usp);
-
-	ret = do_fork(CLONE_VFORK | CLONE_VM | SIGCHLD, current->thread.usp, regs, 0, NULL, NULL);
-	//printk("do_fork returned %d\n", ret);
-	return ret;
-}
-
 /* the args to sys_lm32_clone try to match the libc call to avoid register
  * reshuffling:
  *   int clone(int (*fn)(void *arg), void *child_stack, int flags, void *arg); */
@@ -118,15 +107,9 @@ asmlinkage int sys_clone(
 		int _unused_r6,
 		struct pt_regs *regs)
 {
-	register unsigned long r_sp asm("sp");
-	int ret;
+	if (!newsp)
+		newsp = current->thread.usp;
 
-	/* -12 because the function and the argument to the child is stored on
-		 the stack, see clone.S in uClibc */
-	if( !newsp ) {
-	  newsp = r_sp - 12;
-	}
-	ret = do_fork(clone_flags, newsp, regs, 0, NULL, NULL);
-	return ret;
+	return do_fork(clone_flags, newsp, regs, 0, NULL, NULL);
 }
 

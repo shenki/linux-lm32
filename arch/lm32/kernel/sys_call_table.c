@@ -4,6 +4,8 @@
 
 #include <asm/syscalls.h>
 
+#define sys_vfork sys_ni_syscall
+
 #undef __SYSCALL
 #define __SYSCALL(nr, call) [nr] = (call),
 
