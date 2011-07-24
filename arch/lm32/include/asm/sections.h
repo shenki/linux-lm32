@@ -5,6 +5,7 @@
 
 #ifndef __ASSEMBLY__
 extern char __exception_text_start[], __exception_text_end[];
+extern char __dtb_start[], __dtb_end[];
 #endif /* __ASSEMBLY__ */
 
 #endif /* _ASM_LM32_SECTIONS_H */

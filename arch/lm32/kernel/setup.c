@@ -137,8 +137,6 @@ static void __init device_tree_init(void)
 	of_node_put(cpu);
 }
 
-extern char __dtb_start[];
-
 void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
 		unsigned long p_initrd_end)
 {
