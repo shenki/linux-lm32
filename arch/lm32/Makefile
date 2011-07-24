@@ -39,11 +39,36 @@ OBJCOPYFLAGS	:=-O binary -R .note -R .comment -S
 head-y := arch/lm32/kernel/head.o arch/lm32/kernel/init_task.o
 
 core-y	+= arch/lm32/
-core-y	+= arch/lm32/boot/
 libs-y	+= arch/lm32/lib/
 
-vmlinux.bin: vmlinux
-	$(OBJCOPY) $(OBJCOPYFLAGS) $< $@
+boot := arch/lm32/boot
 
-vmlinux.gz: vmlinux.bin
-	cat $< |gzip >$@
+# Are we making a simpleImage.<boardname> target? If so, crack out the boardname
+DTB:=$(subst simpleImage.,,$(filter simpleImage.%, $(MAKECMDGOALS)))
+
+ifneq ($(DTB),)
+	core-y  += $(boot)/
+endif
+
+export DTB
+
+vmlinux.bin: vmlinux
+	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
+
+simpleImage.%: vmlinux
+	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
+
+%.dtb:
+	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
+
+archclean:
+	@$(MAKE) $(clean)=$(boot)
+
+define archhelp
+	echo '  vmlinux.bin          - Raw binary boot image'
+	echo '  simpleImage.<dt>     - Raw binary boot image'
+	echo
+	echo '  These will be default as apropriate for a configured platform.'
+endef
+
+MRPROPER_FILES += $(boot)/simpleImage.*
