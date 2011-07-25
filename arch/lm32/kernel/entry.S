@@ -125,6 +125,7 @@ ENTRY(syscall_tail)
 
 .badsyscall:
 	mvi r1, -ENOSYS
+	sw (sp+8), r1 /* store return value into pt_regs */
 
 	bi      _restore_and_return_exception
 
