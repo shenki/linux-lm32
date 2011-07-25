@@ -1,6 +1,6 @@
 /*
- *  Copyright (C) 2009-2010, Lars-Peter Clausen <lars@metafoo.de>
- *	JZ4740 SoC LCD framebuffer driver
+ *  Copyright (C) 2009-2011, Lars-Peter Clausen <lars@metafoo.de>
+ *  Copyright (C) 2011, Michael Walle <michael@walle.cc>
  *
  *  This program is free software; you can redistribute it and/or modify it
  *  under  the terms of  the GNU General Public License as published by the
@@ -21,39 +21,60 @@
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
 #include <linux/interrupt.h>
-#include <linux/platform_device.h>
 
 #include <linux/io.h>
 #include <linux/fb.h>
 #include <linux/init.h>
 #include <linux/dma-mapping.h>
 
-#include <asm/hw/milkymist.h>
+#include <linux/of_device.h>
+#include <linux/of_platform.h>
+#include <linux/of_address.h>
 
-/*
- *  RAM we reserve for the frame buffer. This defines the maximum screen
- *  size
- *
- *  The default can be overridden if the driver is compiled as a module
- */
-#define VIDMEMSIZE	(1024*768*2)
+#define DRIVER_NAME  "milkymist_fb"
+
+/* hardware registers */
+#define VGAFB_CTRL             0x00
+#define VGAFB_HRES             0x04
+#define VGAFB_HSYNC_START      0x08
+#define VGAFB_HSYNC_END        0x0c
+#define VGAFB_HSCAN            0x10
+#define VGAFB_VRES             0x14
+#define VGAFB_VSYNC_START      0x18
+#define VGAFB_VSYNC_END        0x1c
+#define VGAFB_VSCAN            0x20
+#define VGAFB_BASEADDRESS      0x24
+#define VGAFB_BASEADDRESS_ACT  0x28
+#define VGAFB_BURST_COUNT      0x2c
+#define VGAFB_DDC              0x30
+#define VGAFB_CLKSEL           0x34
+#define REG_MAX                0x38
+
+#define CTRL_RESET       (1<<0)
+
+#define CLKSEL_25MHZ     0
+#define CLKSEL_50MHZ     1
+#define CLKSEL_65MHZ     2
+
+#define DDC_SDA_IN       (1<<0)
+#define DDC_SDA_OUT      (1<<1)
+#define DDC_SDA_OE       (1<<2)
+#define DDC_SDA_SDC      (1<<3)
 
 struct milkymistfb {
 	struct fb_info *fb;
 
-	void *vidmem;
-	dma_addr_t vidmem_phys;
+	void *vidmem_virt;
+	unsigned long vidmem_phys;
+	unsigned char __iomem *ctrlbase;
 
 	uint32_t pseudo_palette[16];
 };
 
-static unsigned long videomemorysize = VIDMEMSIZE;
-module_param(videomemorysize, ulong, 0);
-
-static char *milkymistfb_mode_option = "640x480@60";
+static char *mode_option = "640x480@60";
 
 static const struct fb_videomode milkymist_modedb[] = {
-	{ NULL, 60, 640, 480, 40000, 47, 16, 32, 30, 96, 2,	0,
+	{ NULL, 60, 640, 480, 40000, 47, 16, 32, 30, 96, 2, 0,
 		FB_VMODE_NONINTERLACED },
 	{ NULL, 72, 800, 600, 20000, 80, 32, 23, 37, 128, 6, 0,
 		FB_VMODE_NONINTERLACED },
@@ -67,9 +88,6 @@ static const struct fb_fix_screeninfo milkymistfb_fix = {
 	.visual =	FB_VISUAL_TRUECOLOR,
 	.accel =	FB_ACCEL_NONE,
 };
-
-static int milkymistfb_enable __initdata;	/* disabled by default */
-module_param(milkymistfb_enable, bool, 0);
 
 static unsigned int get_line_length(unsigned int xres_virtual, unsigned int bpp)
 {
@@ -98,9 +116,16 @@ static int milkymistfb_check_var(struct fb_var_screeninfo *var,
 	if (var->yres > var->yres_virtual)
 		var->yres_virtual = var->yres;
 
+	if (var->rotate) {
+		dev_dbg(info->device, "Rotation is not supported\n");
+		return -EINVAL;
+	}
+
 	line_length = get_line_length(var->xres_virtual, var->bits_per_pixel);
-	if (line_length * var->yres_virtual > videomemorysize)
+	if (line_length * var->yres_virtual > info->fix.smem_len) {
+		dev_dbg(info->device, "Not enough memory\n");
 		return -ENOMEM;
+	}
 
 	var->red.offset = 11;
 	var->red.length = 5;
@@ -138,41 +163,47 @@ static int milkymistfb_set_par(struct fb_info *info)
 
 	burst_count = (info->var.xres * info->var.yres * 16) / (64*4);
 
-	iowrite32be(VGA_RESET, CSR_VGA_RESET);
-	iowrite32be(milkymistfb->vidmem_phys, CSR_VGA_BASEADDRESS);
-	iowrite32be(info->var.xres, CSR_VGA_HRES);
-	iowrite32be(hsync_start, CSR_VGA_HSYNC_START);
-	iowrite32be(hsync_end, CSR_VGA_HSYNC_END);
-	iowrite32be(hscan, CSR_VGA_HSCAN);
-	iowrite32be(info->var.yres, CSR_VGA_VRES);
-	iowrite32be(vsync_start, CSR_VGA_VSYNC_START);
-	iowrite32be(vsync_end, CSR_VGA_VSYNC_END);
-	iowrite32be(vscan, CSR_VGA_VSCAN);
-	iowrite32be(burst_count, CSR_VGA_BURST_COUNT);
+	/* assert reset */
+	iowrite32be(CTRL_RESET, milkymistfb->ctrlbase + VGAFB_CTRL);
 
-	if (info->var.pixclock >= 39000) /* 25 MHz */
-		iowrite32be(0, CSR_VGA_CLKSEL);
-	else if (info->var.pixclock >= 19000) /* 50 MHz */
-		iowrite32be(1, CSR_VGA_CLKSEL);
-	else /* 65 MHz */
-		iowrite32be(2, CSR_VGA_CLKSEL);
+	iowrite32be(milkymistfb->vidmem_phys,
+			milkymistfb->ctrlbase + VGAFB_BASEADDRESS);
+	iowrite32be(info->var.xres, milkymistfb->ctrlbase + VGAFB_HRES);
+	iowrite32be(hsync_start, milkymistfb->ctrlbase + VGAFB_HSYNC_START);
+	iowrite32be(hsync_end, milkymistfb->ctrlbase + VGAFB_HSYNC_END);
+	iowrite32be(hscan, milkymistfb->ctrlbase + VGAFB_HSCAN);
+	iowrite32be(info->var.yres, milkymistfb->ctrlbase + VGAFB_VRES);
+	iowrite32be(vsync_start, milkymistfb->ctrlbase + VGAFB_VSYNC_START);
+	iowrite32be(vsync_end, milkymistfb->ctrlbase + VGAFB_VSYNC_END);
+	iowrite32be(vscan, milkymistfb->ctrlbase + VGAFB_VSCAN);
+	iowrite32be(burst_count, milkymistfb->ctrlbase + VGAFB_BURST_COUNT);
 
-	iowrite32be(0, CSR_VGA_RESET);
+	if (info->var.pixclock >= 39000)
+		iowrite32be(CLKSEL_25MHZ, milkymistfb->ctrlbase + VGAFB_CLKSEL);
+	else if (info->var.pixclock >= 19000)
+		iowrite32be(CLKSEL_50MHZ, milkymistfb->ctrlbase + VGAFB_CLKSEL);
+	else
+		iowrite32be(CLKSEL_65MHZ, milkymistfb->ctrlbase + VGAFB_CLKSEL);
+
+	/* take hardware out of reset */
+	iowrite32be(0, milkymistfb->ctrlbase + VGAFB_CTRL);
 
 	return 0;
 }
 
 /* Based on CNVT_TOHW macro from skeletonfb.c */
-static inline uint32_t milkymistfb_convert_color_to_hw(unsigned val,
+static inline uint32_t milkymistfb_convert_color_to_hw(unsigned int val,
 	struct fb_bitfield *bf)
 {
-	return (((val << bf->length) + 0x7FFF - val) >> 16) << bf->offset;
+	return (((val << bf->length) + 0x7fff - val) >> 16) << bf->offset;
 }
 
 
-static int milkymistfb_setcolreg(unsigned regno, unsigned red, unsigned green,
-	unsigned blue, unsigned transp, struct fb_info *info)
+static int milkymistfb_setcolreg(unsigned int regno,
+		unsigned int red, unsigned int green, unsigned int blue,
+		unsigned int transp, struct fb_info *info)
 {
+	struct milkymistfb *milkymistfb = info->par;
 	uint32_t color;
 
 	if (regno >= 16)
@@ -183,44 +214,24 @@ static int milkymistfb_setcolreg(unsigned regno, unsigned red, unsigned green,
 	color |= milkymistfb_convert_color_to_hw(blue, &info->var.blue);
 	color |= milkymistfb_convert_color_to_hw(transp, &info->var.transp);
 
-	((uint32_t *)(info->pseudo_palette))[regno] = color;
+	milkymistfb->pseudo_palette[regno] = color;
 
 	return 0;
 }
 
+#if 0
 /* Based on bf54x-lq043fb.c */
 static int milkymistfb_mmap(struct fb_info *info, struct vm_area_struct *vma)
 {
 	struct milkymistfb *milkymistfb = info->par;
 
-	vma->vm_start = (unsigned int)milkymistfb->vidmem;
+	vma->vm_start = (unsigned int)milkymistfb->vidmem_virt;
 	vma->vm_end = vma->vm_start + info->fix.smem_len;
 	vma->vm_flags |= VM_MAYSHARE | VM_SHARED;
 
 	return 0;
 }
-
-#ifndef MODULE
-static int __init milkymistfb_setup(char *options)
-{
-	char *this_opt;
-
-	milkymistfb_enable = 1;
-
-	if (!options || !*options)
-		return 1;
-
-	while ((this_opt = strsep(&options, ",")) != NULL) {
-		if (!*this_opt)
-			continue;
-		if (!strncmp(this_opt, "mode:", 5))
-			milkymistfb_mode_option = this_opt + 5;
-		else if (!strncmp(this_opt, "disable", 7))
-			milkymistfb_enable = 0;
-	}
-	return 1;
-}
-#endif  /*  MODULE  */
+#endif
 
 static struct fb_ops milkymistfb_ops = {
 	.owner		= THIS_MODULE,
@@ -232,42 +243,67 @@ static struct fb_ops milkymistfb_ops = {
 	.fb_fillrect	= sys_fillrect,
 	.fb_copyarea	= sys_copyarea,
 	.fb_imageblit	= sys_imageblit,
+#if 0
 	.fb_mmap	= milkymistfb_mmap,
+#endif
 };
 
-static int __devinit milkymistfb_probe(struct platform_device *pdev)
+static int __devinit milkymistfb_probe(struct platform_device *ofdev)
 {
-	struct milkymistfb *milkymistfb;
+	struct device_node *np = ofdev->dev.of_node;
 	struct fb_info *info;
-	int ret = -ENOMEM;
+	struct milkymistfb *milkymistfb;
+	int ret;
+	struct resource res;
+	const unsigned int *vidmemsize;
 
-	info = framebuffer_alloc(sizeof(*milkymistfb), &pdev->dev);
+	printk("%s:%d\n", __FILE__, __LINE__);
+
+	ret = of_address_to_resource(np, 0, &res);
+	if (ret) {
+		dev_err(&ofdev->dev, "invalid address\n");
+		return ret;
+	}
+
+	/*  RAM we reserve for the frame buffer. This defines the maximum
+	 *  screen size */
+	vidmemsize = of_get_property(np, "video-mem-size", NULL);
+	if (!vidmemsize) {
+		dev_err(&ofdev->dev, "no video-mem-size property set\n");
+		return -ENODEV;
+	}
+
+	info = framebuffer_alloc(sizeof(struct milkymistfb), &ofdev->dev);
 	if (!info)
 		return -ENOMEM;
 
-	info->fbops = &milkymistfb_ops;
 	milkymistfb = info->par;
 	milkymistfb->fb = info;
 
-	fb_find_mode(&info->var, info, milkymistfb_mode_option,
-		milkymist_modedb, ARRAY_SIZE(milkymist_modedb), NULL, 16);
+	milkymistfb->ctrlbase = ioremap(res.start, REG_MAX);
 
-/*	milkymistfb->vidmem = dma_alloc_coherent(&pdev->dev, videomemorysize,
-		&milkymistfb->vidmem_phys, GFP_KERNEL);*/
-	milkymistfb->vidmem = vmalloc(videomemorysize);
-	milkymistfb->vidmem_phys = (unsigned int)milkymistfb->vidmem;
-	if (!milkymistfb->vidmem) {
+	info->fbops = &milkymistfb_ops;
+
+	/* allocate framebuffer memory */
+	milkymistfb->vidmem_virt = vmalloc(*vidmemsize);
+	milkymistfb->vidmem_phys = virt_to_phys(milkymistfb->vidmem_virt);
+
+	if (!milkymistfb->vidmem_virt) {
+		dev_err(&ofdev->dev, "could not allocate framebuffer\n");
 		ret = -ENOMEM;
 		goto err_framebuffer_release;
 	}
-	memset(milkymistfb->vidmem, 0, videomemorysize);
+	memset(milkymistfb->vidmem_virt, 0, *vidmemsize);
 
-	info->screen_base = milkymistfb->vidmem;
+	info->screen_base = milkymistfb->vidmem_virt;
 	info->fix = milkymistfb_fix;
 	info->pseudo_palette = milkymistfb->pseudo_palette;
 	info->flags = FBINFO_FLAG_DEFAULT;
 	info->fix.smem_start = milkymistfb->vidmem_phys;
-	info->fix.smem_len = videomemorysize;
+	info->fix.smem_len = *vidmemsize;
+
+	fb_find_mode(&info->var, info, mode_option,
+		milkymist_modedb, ARRAY_SIZE(milkymist_modedb), NULL, 16);
 
 	ret = fb_alloc_cmap(&info->cmap, 256, 0);
 	if (ret < 0)
@@ -277,60 +313,81 @@ static int __devinit milkymistfb_probe(struct platform_device *pdev)
 	if (ret < 0)
 		goto err_dealloc_cmap;
 
-	platform_set_drvdata(pdev, milkymistfb);
+	platform_set_drvdata(ofdev, milkymistfb);
 
-	dev_info(&pdev->dev,
-	       "fb%d: Milkymist frame buffer at %p, size %ld k\n",
-	       info->node, milkymistfb->vidmem, videomemorysize >> 10);
+	dev_info(&ofdev->dev,
+	       "fb%d: Milkymist frame buffer at %p, size %ukB\n",
+	       info->node, milkymistfb->vidmem_virt, *vidmemsize >> 10);
 
 	return 0;
 
 err_dealloc_cmap:
 	fb_dealloc_cmap(&info->cmap);
 err_dma_free:
-/*	dma_free_coherent(&pdev->dev, videomemorysize, milkymistfb->vidmem,
-		milkymistfb->vidmem_phys);*/
-	vfree(milkymistfb->vidmem);
+	vfree(milkymistfb->vidmem_virt);
 err_framebuffer_release:
 	framebuffer_release(info);
 	return ret;
 }
 
-static int __devexit milkymistfb_remove(struct platform_device *pdev)
+static int __devexit milkymistfb_remove(struct platform_device *ofdev)
 {
-	struct milkymistfb *milkymistfb = platform_get_drvdata(pdev);
+	struct milkymistfb *milkymistfb = platform_get_drvdata(ofdev);
 	struct fb_info *info = milkymistfb->fb;
 
-	iowrite32be(VGA_RESET, CSR_VGA_RESET);
+	/* take hardware into reset */
+	iowrite32be(CTRL_RESET, milkymistfb->ctrlbase + VGAFB_CTRL);
 
 	unregister_framebuffer(info);
-	framebuffer_release(info);
-	/*
-	dma_free_coherent(&pdev->dev, videomemorysize, milkymistfb->vidmem,
-		milkymistfb->vidmem_phys);*/
-	vfree(milkymistfb->vidmem);
-	fb_dealloc_cmap(&info->cmap);
 
-	platform_set_drvdata(pdev, NULL);
+	fb_dealloc_cmap(&info->cmap);
+	vfree(milkymistfb->vidmem_virt);
+	framebuffer_release(info);
+
+	platform_set_drvdata(ofdev, NULL);
 
 	return 0;
 }
 
-static struct platform_driver milkymistfb_driver = {
-	.probe	= milkymistfb_probe,
-	.remove = __devexit_p(milkymistfb_remove),
+static const struct of_device_id milkymist_vgafb_match[] = {
+	{ .compatible = "milkymist,vgafb", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, milkymist_vgafb_match);
+
+static struct platform_driver milkymist_vgafb_of_driver = {
 	.driver = {
-		.name	= "milkymistfb",
-		.owner	= THIS_MODULE,
+		.name = DRIVER_NAME,
+		.owner = THIS_MODULE,
+		.of_match_table = milkymist_vgafb_match,
 	},
+	.probe		= milkymistfb_probe,
+	.remove		= __devexit_p(milkymistfb_remove),
 };
 
-static struct platform_device *milkymistfb_device;
-
-static int __init milkymistfb_init(void)
+#ifndef MODULE
+static int __init milkymistfb_setup(char *options)
 {
-	int ret = 0;
+	char *this_opt;
 
+	if (!options || !*options)
+		return 0;
+
+	while ((this_opt = strsep(&options, ",")) != NULL) {
+		if (!*this_opt)
+			continue;
+		if (!strncmp(this_opt, "mode:", 5))
+			mode_option = this_opt + 5;
+		else
+			printk(KERN_ERR "milkymistfb: unknown parameter %s\n",
+					this_opt);
+	}
+	return 0;
+}
+#endif  /*  MODULE  */
+
+static int __init milkymist_vgafb_init(void)
+{
 #ifndef MODULE
 	char *option = NULL;
 
@@ -339,34 +396,17 @@ static int __init milkymistfb_init(void)
 	milkymistfb_setup(option);
 #endif
 
-	if (!milkymistfb_enable)
-		return -ENXIO;
-
-	ret = platform_driver_register(&milkymistfb_driver);
-
-	if (!ret) {
-		milkymistfb_device = platform_device_alloc("milkymistfb", 0);
-
-		if (milkymistfb_device)
-			ret = platform_device_add(milkymistfb_device);
-		else
-			ret = -ENOMEM;
-
-		if (ret) {
-			platform_device_put(milkymistfb_device);
-			platform_driver_unregister(&milkymistfb_driver);
-		}
-	}
-
-	return ret;
+	return platform_driver_register(&milkymist_vgafb_of_driver);
 }
-module_init(milkymistfb_init);
 
-static void __exit milkymistfb_exit(void)
+static void __exit milkymist_vgafb_exit(void)
 {
-	platform_device_unregister(milkymistfb_device);
-	platform_driver_unregister(&milkymistfb_driver);
+	platform_driver_unregister(&milkymist_vgafb_of_driver);
 }
-module_exit(milkymistfb_exit);
 
+module_init(milkymist_vgafb_init);
+module_exit(milkymist_vgafb_exit);
+
+MODULE_AUTHOR("Milkymist Project");
+MODULE_DESCRIPTION("Milkymist VGAFB driver");
 MODULE_LICENSE("GPL");
