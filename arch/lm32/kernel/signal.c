@@ -371,7 +371,7 @@ asmlinkage int manage_signals(int retval, struct pt_regs *regs)
 	unsigned long flags;
 
 	if (regs->pt_mode == PT_MODE_KERNEL)
-		return 0;
+		return retval;
 
 	/* disable interrupts for sampling current_thread_info()->flags */
 	local_irq_save(flags);
