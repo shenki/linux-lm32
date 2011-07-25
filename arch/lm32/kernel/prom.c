@@ -13,13 +13,6 @@
 #include <linux/memblock.h>
 #include <asm/setup.h>
 
-int __init early_init_dt_scan_memory_arch(unsigned long node,
-					  const char *uname, int depth,
-					  void *data)
-{
-	return early_init_dt_scan_memory(node, uname, depth, data);
-}
-
 void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 {
 	memblock_add(base, size);
@@ -54,7 +47,7 @@ void __init early_init_devtree(void *params)
 	/* Scan memory nodes */
 	memblock_init();
 	of_scan_flat_dt(early_init_dt_scan_root, NULL);
-	of_scan_flat_dt(early_init_dt_scan_memory_arch, NULL);
+	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
 	memblock_analyze();
 }
 
