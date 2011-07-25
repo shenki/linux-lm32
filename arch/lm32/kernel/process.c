@@ -127,10 +127,8 @@ void show_regs(struct pt_regs * regs)
 }
 
 
-static void kernel_thread_helper(int reserved, int (*fn)(void*), void* arg)
+static void kernel_thread_helper(int (*fn)(void*), void* arg)
 {
-  /* Note: read copy_thread, kernel_thread and ret_from_fork to fully appreciate why the first argument is "reserved" */
-
 	do_exit(fn(arg));
 }
 
@@ -148,9 +146,9 @@ int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
 
 	//printk("kernel_thread fn=%x arg=%x regs=%x\n", fn, arg, &regs);
 
-	regs.r2 = (unsigned long)fn;
-	regs.r3 = (unsigned long)arg;
-	regs.r5 = (unsigned long)kernel_thread_helper;
+	regs.r11 = (unsigned long)fn;
+	regs.r12 = (unsigned long)arg;
+	regs.r13 = (unsigned long)kernel_thread_helper;
 	regs.pt_mode = PT_MODE_KERNEL;
 	return do_fork(flags | CLONE_VM | CLONE_UNTRACED, 0, &regs, 0, NULL, NULL);
 }
@@ -188,8 +186,6 @@ int copy_thread(unsigned long clone_flags,
 		childregs = (struct pt_regs *)(child_tos) - 1;
 		*childregs = *regs;
 
-		childregs->r4 = 0; /* child gets zero as return value */
-
 		/* return via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
 
@@ -208,17 +204,12 @@ int copy_thread(unsigned long clone_flags,
 
 		/* childsyscallregs = full syscall frame on kernel stack of child */
 		childsyscallregs = (struct pt_regs *)(child_tos) - 1; /* 32 = safety */
+		/* child shall have same syscall context to restore as parent has ... */
+		*childsyscallregs = *regs;
 
 		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
 		childregs = childsyscallregs - 1;
-
-		/* child shall have same syscall context to restore as parent has ... */
-		*childsyscallregs = *regs;
-		/* no need to set return value here, it will be set by task switch frame */
-
-		/* copy task switch frame, child shall return with the same registers as parent
-		 * entered the syscall except for return value of syscall */
-		*childregs = *regs;
+		memset(childregs, 0, sizeof(childregs));
 
 		/* user stack pointer is shared with the parent per definition of vfork */
 		p->thread.usp = usp;
@@ -231,9 +222,9 @@ int copy_thread(unsigned long clone_flags,
 		/* child returns via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
 		/* child shall return to where sys_vfork_wrapper has been called */
-		childregs->r5 =	(unsigned long)syscall_tail;
+		childregs->r13 = (unsigned long)syscall_tail;
 		/* child gets zero as return value from syscall */
-		childregs->r4 = 0;
+		childregs->r11 = 0;
 		/* after task switch segment return the stack pointer shall point to the
 		 * syscall frame */
 		childregs->sp = (unsigned long)childsyscallregs - 4;

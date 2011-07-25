@@ -146,23 +146,14 @@ label: \
 
 EXCEPTION_RETURN_PATH(_return_from_exception, _restore_and_return_exception)
 
-/* ret_from_fork(unused, arg2, arg3, arg1, continuation) */
+/* ret_from_fork(arg1, arg2, continuation) */
 /* calls schedule_tail and then manage_signals */
-/* returns to continuation(arg1, arg2, arg3) */
+/* returns to continuation(arg1, arg2) */
 ENTRY(ret_from_fork)
-	addi	sp, sp, -16
-	sw	(sp + 4), r2
-	sw	(sp + 8), r3
-	sw	(sp + 12), r4
-	sw	(sp + 16), r5
 	calli	schedule_tail
-	lw	r1, (sp + 12)
-	mv	r2, r0
-	/* calli manage_signals TODO reactivate */
-	lw	r2, (sp + 4)
-	lw	r3, (sp + 8)
-	lw	ra, (sp + 16)
-	addi	sp, sp, 16
+	mv r1, r11
+	mv r2, r12
+	mv ra, r13
 	ret
 
 ENTRY(sys_execve)
@@ -459,7 +450,6 @@ ENTRY(resume)
 	add r3, r3, r2
 	lw  sp, (r3 + TASK_KSP)
 
-	lw  r2,  (sp+12)
 	lw  r3,  (sp+16)
 	lw  r4,  (sp+20)
 	lw  r5,  (sp+24)
