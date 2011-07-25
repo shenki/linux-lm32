@@ -189,7 +189,6 @@ int copy_thread(unsigned long clone_flags,
 		*childregs = *regs;
 
 		childregs->r4 = 0; /* child gets zero as return value */
-		regs->r4 = p->pid; /* parent gets child pid as return value */
 
 		/* return via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
@@ -220,8 +219,6 @@ int copy_thread(unsigned long clone_flags,
 		/* copy task switch frame, child shall return with the same registers as parent
 		 * entered the syscall except for return value of syscall */
 		*childregs = *regs;
-
-		regs->r4 = p->pid; /* parent gets child pid as return value */ 
 
 		/* user stack pointer is shared with the parent per definition of vfork */
 		p->thread.usp = usp;
