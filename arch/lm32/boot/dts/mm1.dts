@@ -18,7 +18,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 		cpu@0 {
-			compatible = "lattice,lm32";
+			compatible = "lattice,mico32";
 			reg = <0>;
 			clock-frequency = <80000000>;
 		};

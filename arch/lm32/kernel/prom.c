@@ -75,7 +75,7 @@ void __init device_tree_init(void)
 	/* free the space reserved for the dt blob */
 	memblock_free(base, size);
 
-	cpu = of_find_compatible_node(NULL, NULL, "lattice,lm32");
+	cpu = of_find_compatible_node(NULL, NULL, "lattice,mico32");
 	if (!cpu)
 		panic("No compatible CPU found in device tree\n");
 
