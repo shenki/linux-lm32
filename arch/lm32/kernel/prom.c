@@ -22,6 +22,7 @@ int __init early_init_dt_scan_memory_arch(unsigned long node,
 
 void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 {
+	memblock_add(base, size);
 }
 
 void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
@@ -51,8 +52,10 @@ void __init early_init_devtree(void *params)
 	of_scan_flat_dt(early_init_dt_scan_chosen, cmd_line);
 
 	/* Scan memory nodes */
+	memblock_init();
 	of_scan_flat_dt(early_init_dt_scan_root, NULL);
 	of_scan_flat_dt(early_init_dt_scan_memory_arch, NULL);
+	memblock_analyze();
 }
 
 void __init device_tree_init(void)
