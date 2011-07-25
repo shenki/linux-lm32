@@ -67,13 +67,9 @@ void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
 	/* clear bss section */
 	memset(__bss_start, 0, __bss_stop - __bss_start);
 
-#ifndef CONFIG_CMDLINE_BOOL
 	if (cmdline) {
 		strlcpy(cmd_line, cmdline, COMMAND_LINE_SIZE);
 	}
-#else
-	strlcpy(cmd_line, CONFIG_CMDLINE, COMMAND_LINE_SIZE);
-#endif
 
 	initrd_start = p_initrd_start;
 	initrd_end = p_initrd_end;
