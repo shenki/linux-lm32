@@ -9,6 +9,5 @@ obj-y := \
 	flat.o sys_call_table.o cpuinfo.o prom.o \
 	platform.o
 
-obj-$(CONFIG_EARLY_PRINTK)  += early_printk.o
 obj-$(CONFIG_MODULES)       += module.o
 

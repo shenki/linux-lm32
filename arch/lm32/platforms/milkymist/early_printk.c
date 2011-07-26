@@ -69,7 +69,7 @@ static struct console early_console __initdata = {
 
 static bool early_console_initialized __initdata;
 
-void __init setup_early_printk(void)
+void __init milkymist_setup_early_printk(void)
 {
 	if (early_console_initialized)
 		return;
