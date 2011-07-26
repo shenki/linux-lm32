@@ -22,9 +22,8 @@
 #include <sound/soc.h>
 
 #include <asm/io.h>
-#include <asm/irq.h>
+#include <asm/hw/interrupts.h>
 
-#include "milkymist-pcm.h"
 #include "milkymist-hw.h"
 
 static unsigned int initial_dremaining;
@@ -41,14 +40,14 @@ static irqreturn_t downstream_irq(int irq, void *data)
 	downstream_period++;
 	if(downstream_period == runtime->periods) {
 		downstream_period = 0;
-		out_be32(CSR_AC97_DADDRESS, runtime->dma_addr);
+		iowrite32be(runtime->dma_addr, CSR_AC97_DADDRESS);
 	}
 
-	out_be32(CSR_AC97_DREMAINING, fragsize_bytes);
+	iowrite32be(fragsize_bytes, CSR_AC97_DREMAINING);
 	initial_dremaining = fragsize_bytes;
-	
+
 	snd_pcm_period_elapsed(downstream);
-	
+
 	return IRQ_HANDLED;
 }
 
@@ -95,13 +94,13 @@ static int milkymist_pcm_prepare(struct snd_pcm_substream *substream)
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
 		downstream_period = 0;
 		downstream = substream;
-		out_be32(CSR_AC97_DADDRESS, runtime->dma_addr);
-		out_be32(CSR_AC97_DREMAINING, fragsize_bytes);
+		iowrite32be(runtime->dma_addr, CSR_AC97_DADDRESS);
+		iowrite32be(fragsize_bytes, CSR_AC97_DREMAINING);
 		initial_dremaining = fragsize_bytes;
 	} else {
 		upstream = substream;
-		out_be32(CSR_AC97_UADDRESS, runtime->dma_addr);
-		out_be32(CSR_AC97_UREMAINING, fragsize_bytes);
+		iowrite32be(runtime->dma_addr, CSR_AC97_UADDRESS);
+		iowrite32be(fragsize_bytes, CSR_AC97_UREMAINING);
 		initial_uremaining = fragsize_bytes;
 	}
 
@@ -115,17 +114,17 @@ static int milkymist_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 	switch (cmd) {
 	case SNDRV_PCM_TRIGGER_START:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			out_be32(CSR_AC97_DCTL, AC97_SCTL_EN);
+			iowrite32be(AC97_SCTL_EN, CSR_AC97_DCTL);
 		else
-			out_be32(CSR_AC97_UCTL, AC97_SCTL_EN);
+			iowrite32be(AC97_SCTL_EN, CSR_AC97_UCTL);
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:
 	case SNDRV_PCM_TRIGGER_PAUSE_PUSH:
 		if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK)
-			out_be32(CSR_AC97_DCTL, 0);
+			iowrite32be(0, CSR_AC97_DCTL);
 		else
-			out_be32(CSR_AC97_UCTL, 0);
+			iowrite32be(0, CSR_AC97_UCTL);
 		break;
 	default:
 		ret = -EINVAL;
@@ -140,10 +139,10 @@ static snd_pcm_uframes_t milkymist_pcm_pointer(struct snd_pcm_substream *substre
 	snd_pcm_uframes_t frames;
 
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK) {
-		diff = initial_dremaining - in_be32(CSR_AC97_DREMAINING);
+		diff = initial_dremaining - ioread32be(CSR_AC97_DREMAINING);
 		frames = diff / 4;
 	} else {
-		diff = initial_uremaining - in_be32(CSR_AC97_UREMAINING);
+		diff = initial_uremaining - ioread32be(CSR_AC97_UREMAINING);
 		frames = diff / 4;
 	}
 	return frames;
@@ -156,7 +155,7 @@ static int milkymist_pcm_open(struct snd_pcm_substream *substream)
 	return 0;
 }
 
-struct snd_pcm_ops milkymist_pcm_ac97_ops = {
+static struct snd_pcm_ops milkymist_pcm_ac97_ops = {
 	.open           = milkymist_pcm_open,
 	.ioctl          = snd_pcm_lib_ioctl,
 	.hw_params      = milkymist_pcm_hw_params,
@@ -170,20 +169,19 @@ static int milkymist_pcm_ac97_new(struct snd_card *card, struct snd_soc_dai *dai
 	struct snd_pcm *pcm)
 {
 	int ret;
-	
+
 	ret = request_irq(IRQ_AC97DMAR, downstream_irq,
 		IRQF_DISABLED, "milkymist_pcm down", pcm);
-	if(ret) return ret;
-	
+	if(ret)
+		return ret;
+
 	ret = request_irq(IRQ_AC97DMAW, upstream_irq,
 		IRQF_DISABLED, "milkymist_pcm up", pcm);
 	if(ret) {
 		free_irq(IRQ_AC97DMAR, pcm);
 		return ret;
 	}
-	lm32_irq_unmask(IRQ_AC97DMAR);
-	lm32_irq_unmask(IRQ_AC97DMAW);
-	
+
 	ret = snd_pcm_lib_preallocate_pages_for_all(pcm, SNDRV_DMA_TYPE_DEV,
 		card->dev, MAX_BUFFER, MAX_BUFFER);
 	if(ret) {
@@ -202,23 +200,41 @@ static void milkymist_pcm_ac97_free(struct snd_pcm *pcm)
 	snd_pcm_lib_preallocate_free_for_all(pcm);
 }
 
-struct snd_soc_platform milkymist_ac97_soc_platform = {
-	.name           = "milkymist-audio",
-	.pcm_ops        = &milkymist_pcm_ac97_ops,
+static struct snd_soc_platform_driver milkymist_ac97_soc_platform = {
+	.ops        = &milkymist_pcm_ac97_ops,
 	.pcm_new        = milkymist_pcm_ac97_new,
 	.pcm_free       = milkymist_pcm_ac97_free,
 };
-EXPORT_SYMBOL_GPL(milkymist_ac97_soc_platform);
+
+static int __devinit milkymist_pcm_ac97_probe(struct platform_device *pdev)
+{
+	return snd_soc_register_platform(&pdev->dev, &milkymist_ac97_soc_platform);
+}
+
+static int __devexit milkymist_pcm_ac97_remove(struct platform_device *pdev)
+{
+	snd_soc_unregister_platform(&pdev->dev);
+	return 0;
+}
+
+static struct platform_driver milkymist_pcm_ac97_driver = {
+	.probe = milkymist_pcm_ac97_probe,
+	.remove = milkymist_pcm_ac97_remove,
+	.driver = {
+		.name = "milkymist-pcm-ac97",
+		.owner = THIS_MODULE,
+	},
+};
 
 static int __init milkymist_pcm_ac97_init(void)
 {
-	return snd_soc_register_platform(&milkymist_ac97_soc_platform);
+	return platform_driver_register(&milkymist_pcm_ac97_driver);
 }
 module_init(milkymist_pcm_ac97_init);
 
 static void __exit milkymist_pcm_ac97_exit(void)
 {
-	snd_soc_unregister_platform(&milkymist_ac97_soc_platform);
+	platform_driver_unregister(&milkymist_pcm_ac97_driver);
 }
 module_exit(milkymist_pcm_ac97_exit);
 

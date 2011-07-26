@@ -22,7 +22,7 @@
 #include <sound/initval.h>
 #include <sound/soc.h>
 
-#include <asm/irq.h>
+#include <asm/hw/interrupts.h>
 #include <asm/io.h>
 
 #include "milkymist-ac97.h"
@@ -34,8 +34,8 @@ static unsigned short milkymist_ac97_read(struct snd_ac97 *ac97,
 	int timeout;
 
 	lm32_irq_ack(IRQ_AC97CRREPLY);
-	out_be32(CSR_AC97_CRADDR, (unsigned int)reg);
-	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN);
+	iowrite32be((unsigned int)reg, CSR_AC97_CRADDR);
+	iowrite32be(AC97_CRCTL_RQEN, CSR_AC97_CRCTL);
 
 	timeout = 1000;
 	while (!(lm32_irq_pending() & (1 << IRQ_AC97CRREPLY))) {
@@ -47,7 +47,7 @@ static unsigned short milkymist_ac97_read(struct snd_ac97 *ac97,
 		}
 	}
 	lm32_irq_ack(IRQ_AC97CRREPLY);
-	return in_be32(CSR_AC97_CRDATAIN);
+	return ioread32be(CSR_AC97_CRDATAIN);
 }
 
 void milkymist_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
@@ -56,9 +56,9 @@ void milkymist_ac97_write(struct snd_ac97 *ac97, unsigned short reg,
 	int timeout;
 
 	lm32_irq_ack(IRQ_AC97CRREQUEST);
-	out_be32(CSR_AC97_CRADDR, (unsigned int)reg);
-	out_be32(CSR_AC97_CRDATAOUT, (unsigned int)val);
-	out_be32(CSR_AC97_CRCTL, AC97_CRCTL_RQEN|AC97_CRCTL_WRITE);
+	iowrite32be((unsigned int)reg, CSR_AC97_CRADDR);
+	iowrite32be((unsigned int)val, CSR_AC97_CRDATAOUT);
+	iowrite32be(AC97_CRCTL_RQEN | AC97_CRCTL_WRITE, CSR_AC97_CRDATAOUT);
 
 	timeout = 1000;
 	while (!(lm32_irq_pending() & (1 << IRQ_AC97CRREQUEST))) {
@@ -90,34 +90,32 @@ struct snd_ac97_bus_ops soc_ac97_ops = {
 };
 EXPORT_SYMBOL_GPL(soc_ac97_ops);
 
-struct snd_soc_dai milkymist_ac97_dai = {
-	.name = "milkymist-ac97",
-	.id = 0,
+static struct snd_soc_dai_driver milkymist_ac97_dai_driver = {
 	.ac97_control = 1,
 	.playback = {
 		.stream_name = "AC97 Playback",
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_BE, },
+		.formats = SNDRV_PCM_FMTBIT_S16_BE,
+	},
 	.capture = {
 		.stream_name = "AC97 Capture",
 		.channels_min = 2,
 		.channels_max = 2,
 		.rates = SNDRV_PCM_RATE_48000,
-		.formats = SNDRV_PCM_FMTBIT_S16_BE, },
+		.formats = SNDRV_PCM_FMTBIT_S16_BE,
+	},
 };
-EXPORT_SYMBOL_GPL(milkymist_ac97_dai);
 
 static int __devinit milkymist_ac97_probe(struct platform_device *pdev)
 {
-	milkymist_ac97_dai.dev = &pdev->dev;
-	return snd_soc_register_dai(&milkymist_ac97_dai);
+	return snd_soc_register_dai(&pdev->dev, &milkymist_ac97_dai_driver);
 }
 
 static void __devexit milkymist_ac97_remove(struct platform_device *pdev)
 {
-	snd_soc_unregister_dai(&milkymist_ac97_dai);
+	snd_soc_unregister_dai(&pdev->dev);
 }
 
 static struct platform_driver milkymist_ac97_driver = {
@@ -133,7 +131,6 @@ static int __init milkymist_ac97_init(void)
 {
 	return platform_driver_register(&milkymist_ac97_driver);
 }
-
 module_init(milkymist_ac97_init);
 
 static void __exit milkymist_ac97_exit(void)
