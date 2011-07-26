@@ -42,7 +42,7 @@
 #include <linux/memblock.h>
 
 #include <asm-generic/sections.h>
-#include <asm/setup.h>
+#include <asm/page.h>
 
 unsigned long memory_start;
 unsigned long memory_end;
@@ -53,25 +53,29 @@ void __init bootmem_init(void)
 	unsigned long bootmap_size;
 	unsigned long free_pfn, end_pfn, start_pfn;
 
-	for_each_memblock(memory, reg) {
-		memory_start = reg->base;
-		memory_end = reg->base + reg->size;
-		break;
-	}
-
-	if(((unsigned long)__pa(_end) < memory_start) || ((unsigned long)__pa(_end) > memory_end))
-		printk("BUG: your kernel is not located in the ddr sdram");
-
 	init_mm.start_code = (unsigned long)_stext;
 	init_mm.end_code = (unsigned long)_etext;
 	init_mm.end_data = (unsigned long)_edata;
 	init_mm.brk = (unsigned long)_end;
 
+	memblock_init();
+	memblock_add(memory_start, memory_end);
+
+	if(((unsigned long)__pa(_end) < memory_start) || ((unsigned long)__pa(_end) > memory_end))
+		printk("BUG: your kernel is not located in the ddr sdram");
+
 	start_pfn = PFN_UP(memory_start);
 	free_pfn = PFN_UP(__pa((unsigned long)_end));
 	end_pfn = PFN_DOWN(memory_end);
 
-	memblock_reserve(PFN_PHYS(start_pfn), PFN_PHYS(free_pfn - start_pfn));
+	//memblock_reserve(PFN_PHYS(start_pfn), PFN_PHYS(free_pfn - start_pfn));
+	memblock_reserve(__pa(_stext), _end - _stext);
+
+#ifdef CONFIG_BLK_DEV_INITRD
+	if (initrd_start && initrd_end && initrd_start < initrd_end) {
+		memblock_reserve(initrd_start, initrd_end - initrd_start);
+	}
+#endif
 
 	bootmap_size = init_bootmem(free_pfn, end_pfn);
 	memblock_reserve(PFN_PHYS(free_pfn), bootmap_size);
@@ -83,6 +87,9 @@ void __init bootmem_init(void)
 
 	memory_start += PAGE_OFFSET;
 	memory_end += PAGE_OFFSET;
+
+	memblock_analyze();
+	memblock_dump_all();
 }
 
 /*

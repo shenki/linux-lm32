@@ -52,31 +52,16 @@
 
 unsigned int kernel_mode = PT_MODE_KERNEL;
 
-char cmd_line[COMMAND_LINE_SIZE];
-
-extern void setup_early_printk(void);
+char __initdata cmd_line[COMMAND_LINE_SIZE];
 
 /* from mm/init.c */
 extern void bootmem_init(void);
 
 unsigned int cpu_frequency;
+unsigned int __cmdline;
 
-void __init machine_early_init(char *cmdline, unsigned long p_initrd_start,
-		unsigned long p_initrd_end)
+void __init __weak plat_setup_arch(void)
 {
-	/* clear bss section */
-	memset(__bss_start, 0, __bss_stop - __bss_start);
-
-	if (cmdline) {
-		strlcpy(cmd_line, cmdline, COMMAND_LINE_SIZE);
-	}
-
-	initrd_start = p_initrd_start;
-	initrd_end = p_initrd_end;
-
-	early_init_devtree(__dtb_start);
-	printk("initrd: %lx %lx\n", initrd_start, initrd_end);
-	memblock_reserve(__pa(initrd_start), initrd_end - initrd_start);
 }
 
 void __init setup_arch(char **cmdline_p)
@@ -86,25 +71,27 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	lm32_current_thread = (struct thread_info*)&init_thread_union;
 
-	strlcpy(boot_command_line, cmd_line, COMMAND_LINE_SIZE);
+	if (__cmdline) {
+		strlcpy(cmd_line, (void*)__cmdline, COMMAND_LINE_SIZE);
+		strlcpy(boot_command_line, cmd_line, COMMAND_LINE_SIZE);
+	}
 	*cmdline_p = cmd_line;
+
+	/* early commandline needed by memblock */
+	parse_early_param();
+
+	/* populate memory_start and memory_end, needed for bootmem_init() */
+	early_init_devtree(__dtb_start);
+
+	bootmem_init();
+
+	device_tree_init();
+
+	paging_init();
+
+	plat_setup_arch();
 
 #ifdef CONFIG_DUMMY_CONSOLE
 	conswitchp = &dummy_con;
 #endif
-
-#ifdef CONFIG_EARLY_PRINTK
-	setup_early_printk();
-#endif
-
-	/*
-	 * Init boot memory
-	 */
-	bootmem_init();
-	device_tree_init();
-
-	/*
-	 * Get kmalloc into gear.
-	 */
-	paging_init();
 }

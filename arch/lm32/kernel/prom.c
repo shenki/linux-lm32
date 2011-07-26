@@ -11,11 +11,17 @@
 #include <linux/bootmem.h>
 #include <linux/initrd.h>
 #include <linux/memblock.h>
-#include <asm/setup.h>
+#include <asm/page.h>
 
 void __init early_init_dt_add_memory_arch(u64 base, u64 size)
 {
-	memblock_add(base, size);
+	if (!memory_end) {
+		memory_start = base;
+		memory_end = base + size;
+	} else {
+		printk(KERN_CRIT "Only one memory bank is supported. "
+			"Ignoring memory at 0x%08llx\n", base);
+	}
 }
 
 void * __init early_init_dt_alloc_memory_arch(u64 size, u64 align)
@@ -45,10 +51,8 @@ void __init early_init_devtree(void *params)
 	of_scan_flat_dt(early_init_dt_scan_chosen, cmd_line);
 
 	/* Scan memory nodes */
-	memblock_init();
 	of_scan_flat_dt(early_init_dt_scan_root, NULL);
 	of_scan_flat_dt(early_init_dt_scan_memory, NULL);
-	memblock_analyze();
 }
 
 void __init device_tree_init(void)
