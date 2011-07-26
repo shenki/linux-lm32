@@ -261,6 +261,9 @@ ret
 
 /* restore all caller saved registers saved in _save_irq_frame and return from exception */
 _restore_irq_frame_and_return:
+	rcsr r2, IE
+	andi r3, r2, 0xfffe
+	wcsr IE, r3
 	lw r2, (sp+132)
 	mvhi r1, hi(kernel_mode)
 	ori r1, r1, lo(kernel_mode)
@@ -332,6 +335,9 @@ _save_syscall_frame:
 
 #define RETURN_FROM_SYSCALL_OR_EXCEPTION(label, addr_register, return_instr) \
 label: \
+	rcsr r2, IE; \
+	andi r3, r2, 0xfffe; \
+	wcsr IE, r3; \
 	lw r2, (sp+132); \
 	mvhi r1, hi(kernel_mode); \
 	ori r1, r1, lo(kernel_mode); \

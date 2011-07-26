@@ -6,12 +6,12 @@
 	interrupt-parent = <&pic>;
 
 	chosen {
-		bootargs = "root=/dev/root";
+		bootargs = "root=/dev/ram0 rootfstype=ext2 init=/bin/foobar.sh";
 	};
 
 	memory@0 {
 		device_type = "memory";
-		reg = <0x00000000 0x8000000>;
+		reg = <0x40000000 0x8000000>;
 	};
 
 	cpus {
