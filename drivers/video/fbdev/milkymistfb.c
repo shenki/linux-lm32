@@ -257,8 +257,6 @@ static int __devinit milkymistfb_probe(struct platform_device *ofdev)
 	struct resource res;
 	const unsigned int *vidmemsize;
 
-	printk("%s:%d\n", __FILE__, __LINE__);
-
 	ret = of_address_to_resource(np, 0, &res);
 	if (ret) {
 		dev_err(&ofdev->dev, "invalid address\n");
