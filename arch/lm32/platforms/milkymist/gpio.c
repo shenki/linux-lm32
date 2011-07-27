@@ -163,7 +163,7 @@ static const struct of_device_id milkymist_gpio_match[] = {
 	{ .compatible = "milkymist,sysctl", },
 	{},
 };
-MODULE_DEVICE_TABLE(of, milkymist_vgafb_match);
+MODULE_DEVICE_TABLE(of, milkymist_gpio_match);
 
 static struct platform_driver milkymist_gpio_driver = {
 	.driver = {
