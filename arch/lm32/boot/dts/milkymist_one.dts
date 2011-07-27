@@ -190,5 +190,6 @@
 		};
 	};
 	chosen {
+		bootargs = "root=/dev/ram0 rootfstype=ext2";
 	};
 };
