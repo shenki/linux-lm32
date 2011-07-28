@@ -5,6 +5,7 @@
 #include <asm/syscalls.h>
 
 #define sys_vfork sys_ni_syscall
+#define sys_mmap sys_ni_syscall
 #define sys_mmap2 sys_mmap_pgoff
 
 #undef __SYSCALL
