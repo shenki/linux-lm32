@@ -160,30 +160,13 @@ ENTRY(sys_execve)
 	mv r4, r7
 	bi lm32_execve
 
-ENTRY(sys_rt_sigsuspend_wrapper)
-	/* save ra to kernel stack */
-	addi sp,sp,-4
-	sw (sp+4), ra
-	/* store regs into 3rd argument */
-	mv r3, r7
-	calli sys_rt_sigsuspend
-	/* load ra from kernel stack */
-	lw ra, (sp+4)
-	addi sp,sp,4
-	ret
-
-/* purpose of this wrapper: put struct pt_regs* into first argument */
-ENTRY(sys_sigreturn)
-	/* save ra to stack */
-	addi sp,sp,-4
-	sw (sp+4), ra
-	/* fix first argument */
+ENTRY(sys_rt_sigreturn)
 	mv r1, r7
-	calli sys_sigreturn
-	/* load ra from stack */
-	lw ra, (sp+4)
-	addi sp,sp,4
-	ret
+	bi _sys_rt_sigreturn
+
+ENTRY(sys_sigaltstack)
+	lw r3, (r7+112)
+	bi do_sigaltstack
 
 /* in IRQ we call a function between save and restore */
 /* we therefore only save and restore the caller saved registers */
