@@ -69,12 +69,12 @@ static int _apply_relocate(Elf32_Shdr *sechdrs, const char *strtab,
 {
 	unsigned int i;
 	unsigned int target_addr;
-	Elf32_Rel *rel = (void *)sechdrs[relsec].sh_addr;
+	Elf32_Rela *rel = (void *)sechdrs[relsec].sh_addr;
 	Elf32_Sym *sym;
 	uint32_t *location;
 	int ret;
 
-	pr_dbg("Applying relocate section %u to %u\n", relsec,
+	pr_debug("Applying relocate section %u to %u\n", relsec,
 				 sechdrs[relsec].sh_info);
 	for (i = 0; i < sechdrs[relsec].sh_size / sizeof(*rel); i++) {
 		/* This is where to make the change */
@@ -95,6 +95,7 @@ static int _apply_relocate(Elf32_Shdr *sechdrs, const char *strtab,
 			return ret;
 	}
 	return 0;
+}
 
 int apply_relocate(Elf32_Shdr *sechdrs, const char *strtab,
 	unsigned int symindex, unsigned int relsec, struct module *me)
