@@ -112,20 +112,23 @@ void machine_power_off(void)
 		cpu_relax();
 }
 
-void show_regs(struct pt_regs * regs)
-{
-	printk("Registers:\n");
-	#define LM32REG(name) printk("%3s : 0x%lx\n", #name, regs->name)
-	LM32REG(r0);  LM32REG(r1);  LM32REG(r2);  LM32REG(r3);  LM32REG(r4);
-	LM32REG(r5);  LM32REG(r6);  LM32REG(r7);  LM32REG(r8);  LM32REG(r9);
-	LM32REG(r10); LM32REG(r11); LM32REG(r12); LM32REG(r13); LM32REG(r14);
-	LM32REG(r15); LM32REG(r16); LM32REG(r17); LM32REG(r18); LM32REG(r19);
-	LM32REG(r20); LM32REG(r21); LM32REG(r22); LM32REG(r23); LM32REG(r24);
-	LM32REG(r25); LM32REG(gp);  LM32REG(fp);  LM32REG(sp);  LM32REG(ra);
-	LM32REG(ea);  LM32REG(ba);
-	#undef LM32REG
-}
+static const char * const lm32_reg_names[] = {
+	"r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+	"r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+	"r16", "r17", "r18", "r19", "r20", "r21", "r22", "r23",
+	"r24", "r25", "gp", "fp", "sp", "ra", "ea", "ba"
+};
 
+void show_regs(struct pt_regs *regs)
+{
+	unsigned long *reg = (unsigned long *)regs;
+	unsigned int i;
+
+	printk("Registers:\n");
+
+	for (i = 0; i < 32; ++i)
+		printk("%3s: 0x%lx\n", lm32_reg_names[i], reg[i]);
+}
 
 static void kernel_thread_helper(int (*fn)(void*), void* arg)
 {
