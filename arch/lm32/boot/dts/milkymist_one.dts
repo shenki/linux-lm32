@@ -94,11 +94,11 @@
 		gpio-leds {
 			compatible = "gpio-leds";
 			led1 {
-				gpios = <&sysctl 0 0>;
+				gpios = <&sysctl 7 0>;
 				default-state = "keep";
 			};
 			led2 {
-				gpios = <&sysctl 1 0>;
+				gpios = <&sysctl 8 0>;
 				default-state = "keep";
 			};
 		};
