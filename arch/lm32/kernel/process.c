@@ -158,7 +158,6 @@ int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
 
 void flush_thread(void)
 {
-	set_fs(USER_DS);
 }
 
 /* no stack unwinding */
