@@ -8,4 +8,6 @@
 
 #include <asm-generic/unistd.h>
 
+#undef __NR_mmap
+
 #endif /* _ASM_LM32_UNISTD_H */
