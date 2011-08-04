@@ -1,33 +1,4 @@
 /*
- * (C) Copyright 2007
- *     Theobroma Systems <www.theobroma-systems.com>
- *
- * See file CREDITS for list of people who contributed to this
- * project.
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License as
- * published by the Free Software Foundation; either version 2 of
- * the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
- * MA 02111-1307 USA
- */
-
-/*
- * Based on
- *
- * arch/m68knommu/kernel/asm-offsets.c
- */
-
-/*
  * This program is used to generate definitions needed by
  * assembly language modules.
  *
@@ -37,15 +8,16 @@
  * #defines from the assembly-language output.
  */
 
+#define ASM_OFFSETS_C
+
 #include <linux/kbuild.h>
 
 #include <linux/sched.h>
 #include <asm/processor.h>
 #include <asm/thread_info.h>
 
-void output_task_struct_defines(void)
+int main(void)
 {
-	COMMENT("offsets into the task struct");
 	DEFINE(TASK_STATE, offsetof(struct task_struct, state));
 	DEFINE(TASK_FLAGS, offsetof(struct task_struct, flags));
 	DEFINE(TASK_PTRACE, offsetof(struct task_struct, ptrace));
@@ -55,16 +27,10 @@ void output_task_struct_defines(void)
 	DEFINE(TASK_MM, offsetof(struct task_struct, mm));
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
-	COMMENT("offsets into the thread struct in the task struct.");
 	DEFINE(TASK_KSP, offsetof(struct task_struct, thread.ksp));
 	DEFINE(TASK_USP, offsetof(struct task_struct, thread.usp));
 	DEFINE(TASK_WHICH_STACK, offsetof(struct task_struct, thread.which_stack));
-	BLANK();
-}
 
-void output_ptreg_defines(void)
-{
-	COMMENT("LM32 pt_regs offsets.");
 	DEFINE(PT_R0, offsetof(struct pt_regs, r0));
 	DEFINE(PT_R1, offsetof(struct pt_regs, r1));
 	DEFINE(PT_R2, offsetof(struct pt_regs, r2));
@@ -98,28 +64,17 @@ void output_ptreg_defines(void)
 	DEFINE(PT_EA, offsetof(struct pt_regs, ea));
 	DEFINE(PT_BA, offsetof(struct pt_regs, ba));
 	DEFINE(PT_MODE, offsetof(struct pt_regs, pt_mode));
-	BLANK();
-}
 
-void output_thread_info_defines(void)
-{
-	COMMENT("Offsets in thread_info structure.");
 	DEFINE(TI_TASK, offsetof(struct thread_info, task));
 	DEFINE(TI_EXECDOMAIN, offsetof(struct thread_info, exec_domain));
 	DEFINE(TI_FLAGS, offsetof(struct thread_info, flags));
 	DEFINE(TI_CPU, offsetof(struct thread_info, cpu));
 	DEFINE(TI_ADDR_LIMIT, offsetof(struct thread_info, addr_limit));
 	DEFINE(_THREAD_SIZE, THREAD_SIZE);
-	BLANK();
-}
 
-int output_thread_struct_defines(void)
-{
-	COMMENT("offsets into the thread struct");
 	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
 	DEFINE(THREAD_USP, offsetof(struct thread_struct, usp));
 	DEFINE(THREAD_WHICH_STACK, offsetof(struct thread_struct, which_stack));
-	BLANK();
 
 	DEFINE(THREAD_SIZE, THREAD_SIZE);
 
