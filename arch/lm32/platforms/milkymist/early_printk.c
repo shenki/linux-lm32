@@ -35,20 +35,27 @@
 #include <linux/string.h>
 #include <asm/irq.h>
 #include <linux/io.h>
-#include <asm/hw/milkymist.h>
+
+#define UART_RXTX     (void*)0xe0000000
+#define UART_DIVISOR  (void*)0xe0000004
+#define UART_STAT     (void*)0xe0000008
+#define UART_CTRL     (void*)0xe000000c
+#define UART_DEBUG    (void*)0xe000000c
+
+#define UART_STAT_THRE   (1<<0)
+#define UART_STAT_RX_EVT (1<<1)
+#define UART_STAT_TX_EVT (1<<2)
 
 static void __init early_console_putc(char c)
 {
 	unsigned int timeout = 1000;
-	uint32_t pending;
+	uint32_t stat;
 
-	iowrite32be(c, CSR_UART_RXTX);
+	iowrite32be(c, UART_RXTX);
 
 	do {
-		pending = lm32_irq_pending();
-	} while (pending & BIT(IRQ_UARTTX) && --timeout);
-
-	lm32_irq_ack(IRQ_UARTTX);
+		stat = ioread32be(UART_STAT);
+	} while (!(stat & UART_STAT_THRE) && --timeout);
 }
 
 static void __init early_console_write(struct console *con, const char *s,
