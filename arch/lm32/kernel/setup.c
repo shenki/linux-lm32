@@ -58,7 +58,7 @@ char __initdata cmd_line[COMMAND_LINE_SIZE];
 extern void bootmem_init(void);
 
 unsigned int cpu_frequency;
-unsigned int __cmdline;
+char *__cmdline;
 
 void __init __weak plat_setup_arch(void)
 {
@@ -71,17 +71,18 @@ void __init setup_arch(char **cmdline_p)
 	 */
 	lm32_current_thread = (struct thread_info*)&init_thread_union;
 
-	if (__cmdline) {
-		strlcpy(cmd_line, (void*)__cmdline, COMMAND_LINE_SIZE);
-		strlcpy(boot_command_line, cmd_line, COMMAND_LINE_SIZE);
-	}
+	/* populate memory_start and memory_end, needed for bootmem_init() */
+	early_init_devtree(__dtb_start);
+
+	/* a cmdline set by the bootloader overrides one defined in the dts */
+	if (__cmdline && strlen(__cmdline))
+		strlcpy(cmd_line, __cmdline, COMMAND_LINE_SIZE);
+
 	*cmdline_p = cmd_line;
+	strlcpy(boot_command_line, cmd_line, COMMAND_LINE_SIZE);
 
 	/* early commandline needed by memblock */
 	parse_early_param();
-
-	/* populate memory_start and memory_end, needed for bootmem_init() */
-	early_init_devtree(__dtb_start);
 
 	bootmem_init();
 
