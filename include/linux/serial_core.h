@@ -206,6 +206,9 @@
 /* Xilinx PSS UART */
 #define PORT_XUARTPS	98
 
+/* Milkymist UART */
+#define PORT_MILKYMIST_UART	99
+
 #ifdef __KERNEL__
 
 #include <linux/compiler.h>
