@@ -14,7 +14,7 @@ static const struct of_device_id lm32_of_bus_ids[] __initdata = {
 
 static int __init lm32_device_probe(void)
 {
-	of_platform_populate(NULL, lm32_of_bus_ids, NULL);
+	of_platform_populate(NULL, lm32_of_bus_ids, NULL, NULL);
 	//of_platform_reset_gpio_probe();
 
 	return 0;
