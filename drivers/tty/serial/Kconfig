@@ -1518,6 +1518,11 @@ config SERIAL_MILKYMIST
 	help
 	  Enable Milkymist UART driver.
 
+config SERIAL_MILKYMIST_NR_UARTS
+	int "Maximum number of milkymist serial ports"
+	depends on SERIAL_MILKYMIST
+	default "1"
+
 config SERIAL_MILKYMIST_CONSOLE
 	bool "Enable Milkymist UART driver as system console"
 	depends on SERIAL_MILKYMIST

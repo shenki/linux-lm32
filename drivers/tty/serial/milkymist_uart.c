@@ -1,6 +1,10 @@
 /*
- * (C) Copyright 2009 Sebastien Bourdeauducq, Takeshi Matsuya
- * (C) Copyright 2007 Theobroma Systems <www.theobroma-systems.com>
+ * Copyright (C) 2011 Michael Walle <michael@walle.cc>
+ * Copyright (C) 2009 Sebastien Bourdeauducq, Takeshi Matsuya
+ * Copyright (C) 2006 Peter Korsgaard <jacmet@sunsite.dk>
+ * Copyright (C) 2007 Secret Lab Technologies Ltd.
+ *
+ * based on uartlite.c
  *
  * See file CREDITS for list of people who contributed to this
  * project.
@@ -32,310 +36,321 @@
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/serial_core.h>
-#include <linux/platform_device.h>
 #include <asm/io.h>
 #include <asm/irq.h>
 #include <asm/setup.h>
-#include <asm/hw/milkymist.h>
+#include <linux/of_device.h>
+#include <linux/of_address.h>
+#include <linux/of_irq.h>
 
-#define MILKYMISTUART_DRIVERNAME "milkymist_uart"
-#define MILKYMISTUART_DEVICENAME "ttyS"
-#define MILKYMISTUART_MAJOR TTY_MAJOR
-#define MILKYMISTUART_MINOR 64
+#define MILKYMIST_UART_MAJOR TTY_MAJOR
+#define MILKYMIST_UART_MINOR 64
 
-static volatile int tx_cts;
-static bool milkymist_uart_irqs_enabled;
+#define MILKYMIST_NR_UARTS CONFIG_SERIAL_MILKYMIST_NR_UARTS
 
-/* these two will be initialized by milkymistuart_init */
-static struct uart_port milkymistuart_ports[1];
+#define UART_RXTX  0x00
+#define UART_DIV   0x04
+#define UART_STAT  0x08
+#define UART_CTRL  0x0c
+#define UART_DEBUG 0x10
 
-static struct uart_port* __devinit milkymistuart_init_port(void);
+#define UART_STAT_THRE    0x01
+#define UART_STAT_RX_EVT  0x02
+#define UART_STAT_TX_EVT  0x04
 
-static unsigned int milkymistuart_tx_empty(struct uart_port *port);
-static void milkymistuart_set_mctrl(struct uart_port *port, unsigned int mctrl);
-static unsigned int milkymistuart_get_mctrl(struct uart_port *port);
-static void milkymistuart_start_tx(struct uart_port *port);
-static void milkymistuart_stop_tx(struct uart_port *port);
-static void milkymistuart_stop_rx(struct uart_port *port);
-static void milkymistuart_enable_ms(struct uart_port *port);
-static void milkymistuart_break_ctl(struct uart_port *port, int break_state);
-static int milkymistuart_startup(struct uart_port *port);
-static void milkymistuart_shutdown(struct uart_port *port);
-static void milkymistuart_set_termios(struct uart_port *port, struct ktermios *termios, struct ktermios *old);
-static const char *milkymistuart_type(struct uart_port *port);
-static void milkymistuart_release_port(struct uart_port *port);
-static int milkymistuart_request_port(struct uart_port *port);
-static void milkymistuart_config_port(struct uart_port *port, int flags);
-static int milkymistuart_verify_port(struct uart_port *port, struct serial_struct *ser);
+#define UART_CTRL_RX_INT  0x01
+#define UART_CTRL_TX_INT  0x02
+#define UART_CTRL_THRU    0x04
 
-static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud);
-static irqreturn_t milkymistuart_irq_rx(int irq, void* portarg);
-static irqreturn_t milkymistuart_irq_tx(int irq, void* portarg);
+#define UART_DEBUG_BREAK  0x01
 
-static struct uart_ops milkymistuart_pops = {
-	.tx_empty	= milkymistuart_tx_empty,
-	.set_mctrl	= milkymistuart_set_mctrl,
-	.get_mctrl	= milkymistuart_get_mctrl,
-	.stop_tx	= milkymistuart_stop_tx,
-	.start_tx	= milkymistuart_start_tx,
-	.stop_rx	= milkymistuart_stop_rx,
-	.enable_ms	= milkymistuart_enable_ms,
-	.break_ctl	= milkymistuart_break_ctl,
-	.startup	= milkymistuart_startup,
-	.shutdown	= milkymistuart_shutdown,
-	.set_termios	= milkymistuart_set_termios,
-	.type		= milkymistuart_type,
-	.release_port	= milkymistuart_release_port,
-	.request_port	= milkymistuart_request_port,
-	.config_port	= milkymistuart_config_port,
-	.verify_port	= milkymistuart_verify_port
-};
+static struct uart_port milkymist_uart_ports[MILKYMIST_NR_UARTS];
 
-static inline void milkymistuart_set_baud_rate(struct uart_port *port, unsigned long baud)
+static void milkymist_uart_tx_char(struct uart_port *port)
 {
-	// TODO: use the board configuration option to get the frequency
-	iowrite32be((unsigned long)CONFIG_CPU_CLOCK/baud/16, CSR_UART_DIVISOR);
-}
-
-static void milkymistuart_tx_next_char(struct uart_port* port)
-{
-	struct circ_buf *xmit = &(port->state->xmit);
+	struct circ_buf *xmit = &port->state->xmit;
 
 	if (port->x_char) {
-		/* send xon/xoff character */
-		tx_cts = 0;
-		iowrite32be(port->x_char, CSR_UART_RXTX);
+		iowrite32be(port->x_char, port->membase + UART_RXTX);
 		port->x_char = 0;
 		port->icount.tx++;
 		return;
 	}
 
-	/* stop transmitting if buffer empty */
-	if (uart_circ_empty(xmit) || uart_tx_stopped(port)) {
-		tx_cts = 1;
+	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
 		return;
-	}
 
-	/* send next character */
-	tx_cts = 0;
-	iowrite32be(xmit->buf[xmit->tail], CSR_UART_RXTX);
-	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
+	iowrite32be(xmit->buf[xmit->tail], port->membase + UART_RXTX);
+	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE-1);
 	port->icount.tx++;
 
 	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
 		uart_write_wakeup(port);
-#if 0
-while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
-#endif
 }
 
-static void milkymistuart_rx_next_char(struct uart_port* port)
+static void milkymist_uart_rx_char(struct uart_port *port)
 {
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
-	ch = ioread32be(CSR_UART_RXTX) & 0xFF;
+	ch = ioread32be(port->membase + UART_RXTX) & 0xff;
 	port->icount.rx++;
 
 	if (uart_handle_sysrq_char(port, ch))
 		goto ignore_char;
 
-	tty_insert_flip_char(tty, ch, TTY_NORMAL);
+	uart_insert_char(port, 0, 0, ch, TTY_NORMAL);
 
 ignore_char:
 	tty_flip_buffer_push(tty);
 }
 
-static irqreturn_t milkymistuart_irq_rx(int irq, void* portarg)
+static irqreturn_t milkymist_uart_isr(int irq, void *data)
 {
-	struct uart_port* port = (struct uart_port*)portarg;
+	struct uart_port *port = data;
+	u8 stat;
 
-	milkymistuart_rx_next_char(port);
-	
+	spin_lock(&port->lock);
+
+	/* read and ack events */
+	stat = ioread32be(port->membase + UART_STAT) & 0xff;
+	iowrite32be(stat, port->membase + UART_STAT);
+
+	if (stat & UART_STAT_RX_EVT)
+		milkymist_uart_rx_char(port);
+	if (stat & UART_STAT_TX_EVT)
+		milkymist_uart_tx_char(port);
+
+	spin_unlock(&port->lock);
+
 	return IRQ_HANDLED;
 }
 
-static irqreturn_t milkymistuart_irq_tx(int irq, void* portarg)
+static void milkymist_uart_start_tx(struct uart_port *port)
 {
-	struct uart_port* port = (struct uart_port*)portarg;
-
-	milkymistuart_tx_next_char(port);
-
-	return IRQ_HANDLED;
+	milkymist_uart_tx_char(port);
 }
 
-static unsigned int milkymistuart_tx_empty(struct uart_port *port)
+static unsigned int milkymist_uart_tx_empty(struct uart_port *port)
 {
+	/* XXX return tx_pending */
 	return TIOCSER_TEMT;
 }
 
-static void milkymistuart_set_mctrl(struct uart_port *port, unsigned int mctrl)
+static void milkymist_uart_set_mctrl(struct uart_port *port, unsigned int mctrl)
 {
-	/* no modem control */
 }
 
-static unsigned int milkymistuart_get_mctrl(struct uart_port *port)
+static unsigned int milkymist_uart_get_mctrl(struct uart_port *port)
 {
 	return 0;
 }
 
-static void milkymistuart_start_tx(struct uart_port *port)
+static void milkymist_uart_stop_tx(struct uart_port *port)
 {
-	if (tx_cts) {
-		struct circ_buf *xmit = &(port->state->xmit);
+}
 
-		if (port->x_char) {
-			/* send xon/xoff character */
-			tx_cts = 0;
-			iowrite32be(port->x_char, CSR_UART_RXTX);
-			port->x_char = 0;
-			port->icount.tx++;
-			return;
-		}
+static void milkymist_uart_stop_rx(struct uart_port *port)
+{
+}
 
-		/* stop transmitting if buffer empty */
-		if (uart_circ_empty(xmit) || uart_tx_stopped(port))
-			return;
+static void milkymist_uart_enable_ms(struct uart_port *port)
+{
+}
 
-		/* send next character */
-		tx_cts = 0;
-		iowrite32be(xmit->buf[xmit->tail], CSR_UART_RXTX);
-		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
-		port->icount.tx++;
+static void milkymist_uart_break_ctl(struct uart_port *port, int break_state)
+{
+}
 
-		if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-			uart_write_wakeup(port);
+static int milkymist_uart_startup(struct uart_port *port)
+{
+	int ret;
+
+	ret = request_irq(port->irq, milkymist_uart_isr,
+			IRQF_DISABLED, "milkymist_uart", port);
+
+	/* ack events */
+	iowrite32be(UART_STAT_TX_EVT | UART_STAT_RX_EVT,
+			port->membase + UART_STAT);
+
+	iowrite32be(UART_CTRL_RX_INT | UART_CTRL_TX_INT,
+			port->membase + UART_CTRL);
+
+	if (ret) {
+		pr_err("milkymist_uart: unable to attach interrupt\n");
+		return ret;
 	}
-	return;
-}
-
-static void milkymistuart_stop_tx(struct uart_port *port)
-{
-	return;
-}
-
-
-static void milkymistuart_stop_rx(struct uart_port *port)
-{
-	return;
-}
-
-static void milkymistuart_enable_ms(struct uart_port *port)
-{
-}
-
-static void milkymistuart_break_ctl(struct uart_port *port, int break_state)
-{
-}
-
-static int milkymistuart_startup(struct uart_port *port)
-{
-	if( request_irq(IRQ_UARTRX, milkymistuart_irq_rx,
-				IRQF_DISABLED, "milkymist_uart RX", port) ) {
-		printk(KERN_NOTICE "Unable to attach Milkymist UART RX interrupt\n");
-		return -EBUSY;
-	}
-	if( request_irq(IRQ_UARTTX, milkymistuart_irq_tx,
-				IRQF_DISABLED, "milkymist_uart TX", port) ) {
-		printk(KERN_NOTICE "Unable to attach Milkymist UART TX interrupt\n");
-		return -EBUSY;
-	}
-
-	milkymist_uart_irqs_enabled = true;
 
 	return 0;
 }
 
-static void milkymistuart_shutdown(struct uart_port *port)
+static void milkymist_uart_shutdown(struct uart_port *port)
 {
-	milkymist_uart_irqs_enabled = false;
-
-	free_irq(IRQ_UARTRX, port);
-	free_irq(IRQ_UARTTX, port);
+	iowrite32be(0, port->membase + UART_CTRL);
+	free_irq(port->irq, port);
 }
 
-static void milkymistuart_set_termios(
-		struct uart_port *port, struct ktermios *termios, struct ktermios *old)
+static const char *milkymist_uart_type(struct uart_port *port)
 {
-	unsigned long baud;
+	return (port->type == PORT_MILKYMIST_UART) ? "Milkymist UART" : NULL;
+}
+
+static int milkymist_uart_request_port(struct uart_port *port)
+{
+	if (!request_mem_region(port->mapbase, 16, "milkymist_uart")) {
+		dev_err(port->dev, "memory region busy\n");
+		return -EBUSY;
+	}
+
+	port->membase = ioremap(port->mapbase, 16);
+	if (!port->membase) {
+		dev_err(port->dev, "unable to map registers\n");
+		release_mem_region(port->mapbase, 16);
+		return -EBUSY;
+	}
+
+	return 0;
+}
+
+static void milkymist_uart_release_port(struct uart_port *port)
+{
+	release_mem_region(port->mapbase, 16);
+	iounmap(port->membase);
+	port->membase = NULL;
+}
+
+static void milkymist_uart_config_port(struct uart_port *port, int flags)
+{
+	if (!milkymist_uart_request_port(port))
+		port->type = PORT_MILKYMIST_UART;
+}
+
+static int milkymist_uart_verify_port(struct uart_port *port,
+		struct serial_struct *ser)
+{
+	if ((ser->type != PORT_UNKNOWN) && (ser->type != PORT_MILKYMIST_UART))
+		return -EINVAL;
+	return 0;
+}
+
+static void milkymist_uart_set_termios(struct uart_port *port,
+		struct ktermios *termios, struct ktermios *old)
+{
 	unsigned long flags;
+	unsigned int baud;
+	unsigned int quot;
 
-	/* >> 4 means / 16 */
-	baud = uart_get_baud_rate(port, termios, old, 0, port->uartclk >> 4);
+	baud = uart_get_baud_rate(port, termios, old, 0, port->uartclk/16);
+	quot = uart_get_divisor(port, baud);
 
-	/* deactivate irqs */
 	spin_lock_irqsave(&port->lock, flags);
-
-	milkymistuart_set_baud_rate(port, baud);
-
 	uart_update_timeout(port, termios->c_cflag, baud);
-
-	/* restore irqs */
+	iowrite32be(quot, port->membase + UART_DIV);
 	spin_unlock_irqrestore(&port->lock, flags);
+
+	if (tty_termios_baud_rate(termios))
+		tty_termios_encode_baud_rate(termios, baud, baud);
 }
 
-static const char *milkymistuart_type(struct uart_port *port)
-{
-	/* check, to be on the safe side */
-	if( port->type == PORT_UARTLITE )
-		return "milkymist_uart";
-	else
-		return "error";
-}
-
-static void milkymistuart_release_port(struct uart_port *port)
-{
-}
-
-static int milkymistuart_request_port(struct uart_port *port)
-{
-	return 0;
-}
-
-/* we will only configure the port type here */
-static void milkymistuart_config_port(struct uart_port *port, int flags)
-{
-	if( flags & UART_CONFIG_TYPE ) {
-		port->type = PORT_UARTLITE;
-	}
-}
-
-/* we do not allow the user to configure via this method */
-static int milkymistuart_verify_port(struct uart_port *port, struct serial_struct *ser)
-{
-	return -EINVAL;
-}
+static struct uart_ops milkymist_uart_ops = {
+	.tx_empty       = milkymist_uart_tx_empty,
+	.set_mctrl      = milkymist_uart_set_mctrl,
+	.get_mctrl      = milkymist_uart_get_mctrl,
+	.stop_tx        = milkymist_uart_stop_tx,
+	.start_tx       = milkymist_uart_start_tx,
+	.stop_rx        = milkymist_uart_stop_rx,
+	.enable_ms      = milkymist_uart_enable_ms,
+	.break_ctl      = milkymist_uart_break_ctl,
+	.startup        = milkymist_uart_startup,
+	.shutdown       = milkymist_uart_shutdown,
+	.set_termios    = milkymist_uart_set_termios,
+	.type           = milkymist_uart_type,
+	.release_port   = milkymist_uart_release_port,
+	.request_port   = milkymist_uart_request_port,
+	.config_port    = milkymist_uart_config_port,
+	.verify_port    = milkymist_uart_verify_port,
+#if 0
+#ifdef CONFIG_CONSOLE_POLL
+	.poll_get_char  = milkymist_uart_get_poll_char,
+	.poll_put_char  = milkymist_uart_put_poll_char,
+#endif
+#endif
+};
 
 #ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
-static void milkymist_console_putchar(struct uart_port *port, int ch)
+static void milkymist_uart_console_wait_tx(struct uart_port *port)
 {
-	if (milkymist_uart_irqs_enabled)
-		disable_irq(IRQ_UARTTX);
-	iowrite32be(ch, CSR_UART_RXTX);
-	while(!(lm32_irq_pending() & (1 << IRQ_UARTTX)));
-	lm32_irq_ack(IRQ_UARTTX);
-	if (milkymist_uart_irqs_enabled)
-		enable_irq(IRQ_UARTTX);
+	int i;
+	u8 stat;
+
+	for (i = 0; i < 100000; i++) {
+		stat = ioread32be(port->membase + UART_STAT) & 0xff;
+		if (stat & UART_STAT_THRE)
+			break;
+		cpu_relax();
+	}
 }
 
-/*
- * Interrupts are disabled on entering
- */
-static void milkymist_console_write(struct console *co, const char *s, u_int count)
+static void milkymist_uart_console_putchar(struct uart_port *port, int ch)
 {
-	struct uart_port *port = &milkymistuart_ports[co->index];
-
-	uart_console_write(port, s, count, milkymist_console_putchar);
+	milkymist_uart_console_wait_tx(port);
+	iowrite32be(ch, port->membase + UART_RXTX);
 }
 
-static int __init milkymist_console_setup(struct console *co, char *options)
+static void milkymist_uart_console_write(struct console *co, const char *s,
+		unsigned int count)
 {
-	struct uart_port *port = &milkymistuart_ports[co->index];
+	struct uart_port *port = &milkymist_uart_ports[co->index];
+	u32 ctrl;
+	unsigned long flags;
+	int locked = 1;
 
+	if (oops_in_progress)
+		locked = spin_trylock_irqsave(&port->lock, flags);
+	else
+		spin_lock_irqsave(&port->lock, flags);
+
+	/* wait until current transmission is finished */
+	milkymist_uart_console_wait_tx(port);
+
+	/* save ctrl and stat */
+	ctrl = ioread32be(port->membase + UART_CTRL);
+
+	/* disable irqs */
+	iowrite32be(ctrl & ~(UART_CTRL_RX_INT | UART_CTRL_TX_INT),
+			port->membase + UART_CTRL);
+
+	uart_console_write(port, s, count, milkymist_uart_console_putchar);
+	milkymist_uart_console_wait_tx(port);
+
+	/* ack write event */
+	iowrite32be(UART_STAT_TX_EVT, port->membase + UART_STAT);
+
+	/* restore control register */
+	iowrite32be(ctrl, port->membase + UART_CTRL);
+
+	if (locked)
+		spin_unlock_irqrestore(&port->lock, flags);
+}
+
+static int __devinit milkymist_uart_console_setup(struct console *co,
+		char *options)
+{
+	struct uart_port *port;
 	int baud = 115200;
 	int bits = 8;
 	int parity = 'n';
 	int flow = 'n';
+
+	if (co->index < 0 || co->index >= MILKYMIST_NR_UARTS)
+		return -EINVAL;
+
+	port = &milkymist_uart_ports[co->index];
+
+	if (!port->mapbase) {
+		pr_debug("console on ttyS%i not present\n", co->index);
+		return -ENODEV;
+	}
 
 	if (options)
 		uart_parse_options(options, &baud, &parity, &bits, &flow);
@@ -343,157 +358,161 @@ static int __init milkymist_console_setup(struct console *co, char *options)
 	return uart_set_options(port, co, baud, parity, bits, flow);
 }
 
-static struct uart_driver milkymistuart_driver;
+static struct uart_driver milkymist_uart_driver;
 
-static struct console milkymist_console = {
-	.name		= MILKYMISTUART_DEVICENAME,
-	.write		= milkymist_console_write,
-	.device		= uart_console_device,
-	.setup		= milkymist_console_setup,
-	.flags		= CON_PRINTBUFFER,
-	.index		= -1,
-	.data		= &milkymistuart_driver,
+static struct console milkymist_uart_console = {
+	.name	=	"ttyS",
+	.write	=	milkymist_uart_console_write,
+	.device	=	uart_console_device,
+	.setup	=	milkymist_uart_console_setup,
+	.flags	=	CON_PRINTBUFFER,
+	.index	=	-1,
+	.data	=	&milkymist_uart_driver,
 };
 
-/*
- * Early console initialization
- */
-static int __init milkymist_early_console_init(void)
+static int __init milkymist_uart_console_init(void)
 {
-	add_preferred_console(MILKYMISTUART_DEVICENAME, 0, NULL);
-	milkymistuart_init_port();
-	register_console(&milkymist_console);
-	pr_info("milkymist_uart: registered real console\n");
+	register_console(&milkymist_uart_console);
 	return 0;
 }
-console_initcall(milkymist_early_console_init);
-
-/*
- * Late console initialization
- */
-static int __init milkymist_late_console_init(void)
-{
-	if( !(milkymist_console.flags & CON_ENABLED) ) {
-		register_console(&milkymist_console);
-		pr_info("milkymist_uart: registered real console\n");
-	}
-	return 0;
-}
-core_initcall(milkymist_late_console_init);
-
-#define MILKYMIST_CONSOLE_DEVICE	&milkymist_console
-#else
-#define MILKYMIST_CONSOLE_DEVICE	NULL
+console_initcall(milkymist_uart_console_init);
 #endif
 
-static struct uart_driver milkymistuart_driver = {
-	.owner       = THIS_MODULE,
-	.driver_name = MILKYMISTUART_DRIVERNAME,
-	.dev_name    = MILKYMISTUART_DEVICENAME,
-	.major       = MILKYMISTUART_MAJOR,
-	.minor       = MILKYMISTUART_MINOR,
-	.nr          = 0, /* will be filled by init */
-	.cons        = MILKYMIST_CONSOLE_DEVICE
+static struct uart_driver milkymist_uart_driver = {
+	.owner = THIS_MODULE,
+	.driver_name = "milkymist_uart",
+	.dev_name    = "ttyS",
+	.major       = MILKYMIST_UART_MAJOR,
+	.minor       = MILKYMIST_UART_MINOR,
+	.nr          = MILKYMIST_NR_UARTS,
+#ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
+	.cons        = &milkymist_uart_console,
+#endif
 };
 
-static struct uart_port* __devinit milkymistuart_init_port(void)
-{
-	struct uart_port* port;
-	
-	port = &milkymistuart_ports[0];
-	port->type = PORT_UARTLITE;
-	port->iobase = 0x0;
-	port->membase = (void __iomem*)CSR_UART_RXTX;
-	port->irq = IRQ_UARTRX;
-	port->uartclk = CONFIG_CPU_CLOCK;
-	port->flags = UPF_SKIP_TEST | UPF_BOOT_AUTOCONF; // TODO perhaps this is not completely correct
-	port->iotype = UPIO_PORT; // TODO perhaps this is not completely correct
-	port->regshift = 0;
-	port->ops = &milkymistuart_pops;
-	port->line = 0;
-	port->private_data = NULL;
-	return port;
-}
-
-static int __devinit milkymistuart_serial_probe(struct platform_device *pdev)
+static int __devinit milkymist_uart_probe(struct platform_device *op)
 {
 	struct uart_port *port;
+	struct device_node *np = op->dev.of_node;
 	int ret;
+	struct resource res;
+	const unsigned int *pid, *clk;
+	int id;
+	int irq;
 
-	port = milkymistuart_init_port();
-
-	ret = uart_add_one_port(&milkymistuart_driver, port);
-	if (!ret) {
-		pr_info("milkymist_uart: added port %d with irq %d-%d at 0x%lx\n",
-				port->line, IRQ_UARTRX, IRQ_UARTTX, (unsigned long)port->membase);
-		device_init_wakeup(&pdev->dev, 1);
-		platform_set_drvdata(pdev, port);
-	} else
-		printk(KERN_ERR "milkymist_uart: could not add port %d: %d\n", port->line, ret);
-
-	return ret;
-}
-
-static int __devexit milkymistuart_serial_remove(struct platform_device *pdev)
-{
-	struct uart_port *port = platform_get_drvdata(pdev);
-	int ret = 0;
-
-	device_init_wakeup(&pdev->dev, 0);
-	platform_set_drvdata(pdev, NULL);
-
-	if (port) {
-		ret = uart_remove_one_port(&milkymistuart_driver, port);
-		kfree(port);
+	ret = of_address_to_resource(np, 0, &res);
+	if (ret) {
+		dev_err(&op->dev, "invalid address\n");
+		return ret;
 	}
 
-	return ret;
-}
+	irq = irq_of_parse_and_map(np, 0);
 
-static const struct of_device_id milkymistuart_of_ids[] = {
-	{ .compatible = "milkymist,uart", },
-	{}
-};
+	clk = of_get_property(np, "clock-frequency", NULL);
+	if (!clk) {
+		dev_warn(&op->dev, "no clock-frequency property set\n");
+		return -ENODEV;
+	}
 
-static struct platform_driver milkymistuart_serial_driver = {
-	.probe		= milkymistuart_serial_probe,
-	.remove		= __devexit_p(milkymistuart_serial_remove),
-	.driver		= {
-		.name	= "milkymist_uart",
-		.owner	= THIS_MODULE,
-		.of_match_table = milkymistuart_of_ids,
-	},
-};
+	pid = of_get_property(np, "port-number", NULL);
 
-static int __init milkymistuart_init(void)
-{
-	int ret;
-	
-	pr_info("milkymist_uart: Milkymist UART driver\n");
+	if (pid)
+		id = *pid;
+	else {
+		/* find free id */
+		for (id = 0; id < MILKYMIST_NR_UARTS; id++)
+			if (milkymist_uart_ports[id].mapbase == 0)
+				break;
+	}
 
-	/* configure from hardware setup structures */
-	milkymistuart_driver.nr = 1;
-	tx_cts = 1;
-	ret = uart_register_driver(&milkymistuart_driver);
-	if( ret < 0 )
+	if (id < 0 || id >= MILKYMIST_NR_UARTS) {
+		dev_err(&op->dev, "milkymist_uart%i too large\n", id);
+		return -EINVAL;
+	}
+
+	if (milkymist_uart_ports[id].mapbase
+			&& milkymist_uart_ports[id].mapbase != res.start) {
+		dev_err(&op->dev, "milkymist_uart%i already in use\n", id);
+		return -EBUSY;
+	}
+
+	ret = uart_register_driver(&milkymist_uart_driver);
+	if (ret) {
+		dev_err(&op->dev, "uart_register_driver() failed; err=%i\n", ret);
 		return ret;
+	}
 
-	ret = platform_driver_register(&milkymistuart_serial_driver);
-	if( ret < 0 )
-		uart_unregister_driver(&milkymistuart_driver);
+	port = &milkymist_uart_ports[id];
 
-	return ret;
+	spin_lock_init(&port->lock);
+	port->line = id;
+	port->regshift = 2;
+	port->iotype = UPIO_MEM;
+	port->mapbase = res.start;
+	port->membase = NULL;
+	port->flags = UPF_BOOT_AUTOCONF;
+	port->irq = irq;
+
+	port->ops = &milkymist_uart_ops;
+	port->type = PORT_UNKNOWN;
+	port->uartclk = *clk;
+	
+	port->dev = &op->dev;
+
+	dev_set_drvdata(&op->dev, port);
+
+	ret = uart_add_one_port(&milkymist_uart_driver, port);
+	if (ret) {
+		dev_err(&op->dev, "uart_add_one_port() failed; err=%i\n", ret);
+		port->mapbase = 0;
+		return ret;
+	}
+
+	//device_init_wakeup(&op->dev, 1);
+
+	return 0;
 }
 
-static void __exit milkymistuart_exit(void)
+static int __devexit milkymist_uart_remove(struct platform_device *dev)
 {
-	platform_driver_unregister(&milkymistuart_serial_driver);
-	uart_unregister_driver(&milkymistuart_driver);
+	struct uart_port *port = dev_get_drvdata(&dev->dev);
+
+	uart_remove_one_port(&milkymist_uart_driver, port);
+	dev_set_drvdata(&dev->dev, NULL);
+	port->mapbase = 0;
+
+	return 0;
 }
 
-module_init(milkymistuart_init);
-module_exit(milkymistuart_exit);
+static const struct of_device_id milkymist_uart_match[] = {
+	{ .compatible = "milkymist,uart", },
+	{},
+};
+MODULE_DEVICE_TABLE(of, milkymist_uart_match);
 
-MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Milkymist UART driver");
+static struct platform_driver milkymist_uart_of_driver = {
+	.driver = {
+		.name = "milkymist_uart",
+		.owner = THIS_MODULE,
+		.of_match_table = milkymist_uart_match,
+	},
+	.probe		= milkymist_uart_probe,
+	.remove		= __devexit_p(milkymist_uart_remove),
+};
+
+static int __init milkymist_uart_init(void)
+{
+	return platform_driver_register(&milkymist_uart_of_driver);
+}
+
+static void __exit milkymist_uart_exit(void)
+{
+	platform_driver_unregister(&milkymist_uart_of_driver);
+}
+
+module_init(milkymist_uart_init);
+module_exit(milkymist_uart_exit);
+
 MODULE_AUTHOR("Milkymist Project");
+MODULE_DESCRIPTION("Milkymist UART driver");
+MODULE_LICENSE("GPL");
