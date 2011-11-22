@@ -23,7 +23,7 @@
 			device_type = "cpu";
 			compatible = "lattice,mico32";
 			reg = <0>;
-			clock-frequency = <83333333>;	/* 83.3333 MHz */
+			clock-frequency = <80000000>;	/* 80 MHz */
 			i-cache-line-size = <16>;
 			d-cache-line-size = <16>;
 			i-cache-size = <4096>;
@@ -75,16 +75,16 @@
 		uart@0 {
 			device_type = "serial";
 			compatible = "milkymist,uart";
-			clock-frequency = <83333333>;
+			clock-frequency = <80000000>;
 			reg = <0x0 0x1000>;
-			interrupts = <0 1>;
+			interrupts = <0>;
 			interrupt-parent = <&pic>;
 		};
 
 		sysctl: sysctl@1000 {
 			compatible = "milkymist,sysctl";
 			reg = <0x1000 0x1000>;
-			interrupts = <2 3 4>;
+			interrupts = <1 2 3>;
 			#gpio-cells = <2>;
 			gpio-controller;
 			num-gpi = <7>;
@@ -122,21 +122,21 @@
 		ac97@5000 {
 			compatible = "milkymist,ac97";
 			reg = <0x5000 0x1000>;
-			interrupts = <5 6 7 8>;
+			interrupts = <4 5 6 7>;
 			interrupt-parent = <&pic>;
 		};
 
 		pfpu@6000 {
 			compatible = "milkymist,pfpu";
 			reg = <0x6000 0x1000>;
-			interrupts = <9>;
+			interrupts = <8>;
 			interrupt-parent = <&pic>;
 		};
 
 		tmu@7000 {
 			compatible = "milkymist,tmu2";
 			reg = <0x7000 0x1000>;
-			interrupts = <10>;
+			interrupts = <9>;
 			interrupt-parent = <&pic>;
 		};
 
@@ -145,7 +145,7 @@
 			#size-cells = <0>;
 			compatible = "milkymist,minimac2";
 			reg = <0x8000 0x1000>;
-			interrupts = <11 12>;
+			interrupts = <10 11>;
 			interrupt-parent = <&pic>;
 
 			phy0: ethernet-phy@0 {
@@ -159,14 +159,14 @@
 		video-capture@a000 {
 			compatible = "milkymist,bt656cap";
 			reg = <0xa000 0x1000>;
-			interrupts = <13>;
+			interrupts = <12>;
 			interrupt-parent = <&pic>;
 		};
 
 		midi@b000 {
 			compatible = "milkymist,midi";
 			reg = <0xb000 0x1000>;
-			interrupts = <14 15>;
+			interrupts = <13>;
 			interrupt-parent = <&pic>;
 		};
 
@@ -178,14 +178,14 @@
 		ir-receiver@e000 {
 			compatible = "milkymist,rc5";
 			reg = <0xe000 0x1000>;
-			interrupts = <16>;
+			interrupts = <14>;
 			interrupt-parent = <&pic>;
 		};
 
 		usb-ctrl@f000 {
 			compatible = "milkymist,softusb";
 			reg = <0xf000 0x1000>;
-			interrupts = <17>;
+			interrupts = <15>;
 			interrupt-parent = <&pic>;
 		};
 	};
