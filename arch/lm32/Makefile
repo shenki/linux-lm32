@@ -23,7 +23,6 @@
 #
 
 board-$(CONFIG_BOARD_MILKYMIST_ONE)	:= milkymist-one
-board-$(CONFIG_BOARD_MILKYMIST_SOC)	:= milkymist-soc
 BOARD := $(board-y)
 
 export BOARD

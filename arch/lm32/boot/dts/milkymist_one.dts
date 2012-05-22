@@ -62,10 +62,6 @@
 		};
 	};
 
-	softusb@0 {
-		reg = <0xa0000000 0x02000000>;
-	};
-
 	csr-bus@e0000000 {
 		#address-cells = <1>;
 		#size-cells = <1>;
@@ -78,65 +74,6 @@
 			clock-frequency = <80000000>;
 			reg = <0x0 0x1000>;
 			interrupts = <0>;
-			interrupt-parent = <&pic>;
-		};
-
-		sysctl: sysctl@1000 {
-			compatible = "milkymist,sysctl";
-			reg = <0x1000 0x1000>;
-			interrupts = <1 2 3>;
-			#gpio-cells = <2>;
-			gpio-controller;
-			num-gpi = <7>;
-			num-gpo = <2>;
-		};
-
-		gpio-leds {
-			compatible = "gpio-leds";
-			led1 {
-				gpios = <&sysctl 7 0>;
-				default-state = "keep";
-			};
-			led2 {
-				gpios = <&sysctl 8 0>;
-				default-state = "keep";
-			};
-		};
-
-		memctrl@2000 {
-			compatible = "milkymist,hpdmc";
-			reg = <0x2000 0x1000>;
-		};
-
-		vgafb@3000 {
-			compatible = "milkymist,vgafb";
-			reg = <0x3000 0x1000>;
-			video-mem-size = <1572864>; /* 1024*768*2 */
-		};
-
-		memcard@4000 {
-			compatible = "milkymist,memcard";
-			reg = <0x4000 0x1000>;
-		};
-
-		ac97@5000 {
-			compatible = "milkymist,ac97";
-			reg = <0x5000 0x1000>;
-			interrupts = <4 5 6 7>;
-			interrupt-parent = <&pic>;
-		};
-
-		pfpu@6000 {
-			compatible = "milkymist,pfpu";
-			reg = <0x6000 0x1000>;
-			interrupts = <8>;
-			interrupt-parent = <&pic>;
-		};
-
-		tmu@7000 {
-			compatible = "milkymist,tmu2";
-			reg = <0x7000 0x1000>;
-			interrupts = <9>;
 			interrupt-parent = <&pic>;
 		};
 
@@ -154,39 +91,6 @@
 				phy = <&phy0>;
 				local-mac-address = [ 00 00 00 00 00 00 ];
 			};
-		};
-
-		video-capture@a000 {
-			compatible = "milkymist,bt656cap";
-			reg = <0xa000 0x1000>;
-			interrupts = <12>;
-			interrupt-parent = <&pic>;
-		};
-
-		midi@b000 {
-			compatible = "milkymist,midi";
-			reg = <0xb000 0x1000>;
-			interrupts = <13>;
-			interrupt-parent = <&pic>;
-		};
-
-		dmx@c000 {
-			compatible = "milkymist,dmx";
-			reg = <0xc000 0x2000>;
-		};
-
-		ir-receiver@e000 {
-			compatible = "milkymist,rc5";
-			reg = <0xe000 0x1000>;
-			interrupts = <14>;
-			interrupt-parent = <&pic>;
-		};
-
-		usb-ctrl@f000 {
-			compatible = "milkymist,softusb";
-			reg = <0xf000 0x1000>;
-			interrupts = <15>;
-			interrupt-parent = <&pic>;
 		};
 	};
 	chosen {

@@ -104,17 +104,9 @@ MODULE_DESCRIPTION("Xilinx SystemACE device driver");
 MODULE_LICENSE("GPL");
 
 /* SystemACE register definitions */
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_BUSMODE (0x00<<1)+2
-#else
 #define ACE_BUSMODE (0x00)
-#endif
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_STATUS (0x04<<1)+2
-#else
 #define ACE_STATUS (0x04)
-#endif
 #define ACE_STATUS_CFGLOCK      (0x00000001)
 #define ACE_STATUS_MPULOCK      (0x00000002)
 #define ACE_STATUS_CFGERROR     (0x00000004)	/* config controller error */
@@ -134,41 +126,23 @@ MODULE_LICENSE("GPL");
 #define ACE_STATUS_CFCORR       (0x00400000)
 #define ACE_STATUS_CFERR        (0x00800000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_ERROR (0x08<<1)+2
-#define ACE_CFGLBA (0x0c<<1)+2
-#define ACE_MPULBA (0x10<<1)+2
-#else
 #define ACE_ERROR (0x08)
 #define ACE_CFGLBA (0x0c)
 #define ACE_MPULBA (0x10)
-#endif
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_SECCNTCMD (0x14<<1)+2
-#else
 #define ACE_SECCNTCMD (0x14)
-#endif
 #define ACE_SECCNTCMD_RESET      (0x0100)
 #define ACE_SECCNTCMD_IDENTIFY   (0x0200)
 #define ACE_SECCNTCMD_READ_DATA  (0x0300)
 #define ACE_SECCNTCMD_WRITE_DATA (0x0400)
 #define ACE_SECCNTCMD_ABORT      (0x0600)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_VERSION (0x16<<1)+2
-#else
 #define ACE_VERSION (0x16)
-#endif
 #define ACE_VERSION_REVISION_MASK (0x00FF)
 #define ACE_VERSION_MINOR_MASK    (0x0F00)
 #define ACE_VERSION_MAJOR_MASK    (0xF000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_CTRL (0x18<<1)+2
-#else
 #define ACE_CTRL (0x18)
-#endif
 #define ACE_CTRL_FORCELOCKREQ   (0x0001)
 #define ACE_CTRL_LOCKREQ        (0x0002)
 #define ACE_CTRL_FORCECFGADDR   (0x0004)
@@ -184,11 +158,7 @@ MODULE_LICENSE("GPL");
 #define ACE_CTRL_CFGPROG        (0x1000)
 #define ACE_CTRL_CFGADDR_MASK   (0xe000)
 
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-#define ACE_FATSTAT (0x1c<<1)+2
-#else
 #define ACE_FATSTAT (0x1c)
-#endif
 
 #define ACE_NUM_MINORS 16
 #define ACE_SECTOR_SIZE (512)
@@ -315,11 +285,7 @@ static void ace_datain_be16(struct ace_device *ace)
 	int i = ACE_FIFO_SIZE / 2;
 	u16 *dst = ace->data_ptr;
 	while (i--)
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-		*dst++ = in_le16(ace->baseaddr + 0x82);
-#else
 		*dst++ = in_le16(ace->baseaddr + 0x40);
-#endif
 	ace->data_ptr = dst;
 }
 
@@ -328,11 +294,7 @@ static void ace_dataout_be16(struct ace_device *ace)
 	int i = ACE_FIFO_SIZE / 2;
 	u16 *src = ace->data_ptr;
 	while (i--)
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-		out_le16(ace->baseaddr + 0x82, *src++);
-#else
 		out_le16(ace->baseaddr + 0x40, *src++);
-#endif
 	ace->data_ptr = src;
 }
 
@@ -1014,11 +976,7 @@ static int ace_setup(struct ace_device *ace)
 	/*
 	 * Map the device
 	 */
-#if defined(CONFIG_PLAT_MILKYMIST) && defined(CONFIG_BOARD_MILKYMIST_SOC)
-	ace->baseaddr = ioremap(ace->physaddr, 0x100);
-#else
 	ace->baseaddr = ioremap(ace->physaddr, 0x80);
-#endif
 	if (!ace->baseaddr)
 		goto err_ioremap;
 
@@ -1072,7 +1030,7 @@ static int ace_setup(struct ace_device *ace)
 
 	/* Put sysace in a sane state by clearing most control reg bits */
 	ace_out(ace, ACE_CTRL, ACE_CTRL_FORCECFGMODE |
-		ace->irq != NO_IRQ ? ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ : 0);
+		ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ);
 
 	/* Now we can hook up the irq handler */
 	if (ace->irq) {
@@ -1086,8 +1044,7 @@ static int ace_setup(struct ace_device *ace)
 
 	/* Enable interrupts */
 	val = ace_in(ace, ACE_CTRL);
-	if (ace->irq != NO_IRQ)
-		val |= ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ;
+	val |= ACE_CTRL_DATABUFRDYIRQ | ACE_CTRL_ERRORIRQ;
 	ace_out(ace, ACE_CTRL, val);
 
 	/* Print the identification */
