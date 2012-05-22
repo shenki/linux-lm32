@@ -48,21 +48,17 @@
 
 #define MILKYMIST_NR_UARTS CONFIG_SERIAL_MILKYMIST_NR_UARTS
 
-#define UART_RXTX  0x00
-#define UART_DIV   0x04
-#define UART_STAT  0x08
-#define UART_CTRL  0x0c
-#define UART_DEBUG 0x10
+#define CSR_UART_RXTX		0x00
+#define CSR_UART_DIVISORH	0x04
+#define CSR_UART_DIVISORL	0x08
 
-#define UART_STAT_THRE    0x01
-#define UART_STAT_RX_EVT  0x02
-#define UART_STAT_TX_EVT  0x04
+#define CSR_UART_EV_STAT	0x0C
+#define CSR_UART_EV_PENDING	0x10
+#define CSR_UART_EV_ENABLE	0x14
 
-#define UART_CTRL_RX_INT  0x01
-#define UART_CTRL_TX_INT  0x02
-#define UART_CTRL_THRU    0x04
+#define UART_EV_TX		0x1
+#define UART_EV_RX		0x2
 
-#define UART_DEBUG_BREAK  0x01
 
 static struct uart_port milkymist_uart_ports[MILKYMIST_NR_UARTS];
 
@@ -71,7 +67,7 @@ static void milkymist_uart_tx_char(struct uart_port *port)
 	struct circ_buf *xmit = &port->state->xmit;
 
 	if (port->x_char) {
-		iowrite32be(port->x_char, port->membase + UART_RXTX);
+		iowrite32be(port->x_char, port->membase + CSR_UART_RXTX);
 		port->x_char = 0;
 		port->icount.tx++;
 		return;
@@ -80,7 +76,7 @@ static void milkymist_uart_tx_char(struct uart_port *port)
 	if (uart_circ_empty(xmit) || uart_tx_stopped(port))
 		return;
 
-	iowrite32be(xmit->buf[xmit->tail], port->membase + UART_RXTX);
+	iowrite32be(xmit->buf[xmit->tail], port->membase + CSR_UART_RXTX);
 	xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE-1);
 	port->icount.tx++;
 
@@ -93,7 +89,7 @@ static void milkymist_uart_rx_char(struct uart_port *port)
 	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
-	ch = ioread32be(port->membase + UART_RXTX) & 0xff;
+	ch = ioread32be(port->membase + CSR_UART_RXTX) & 0xff;
 	port->icount.rx++;
 
 	if (uart_handle_sysrq_char(port, ch))
@@ -113,12 +109,12 @@ static irqreturn_t milkymist_uart_isr(int irq, void *data)
 	spin_lock(&port->lock);
 
 	/* read and ack events */
-	stat = ioread32be(port->membase + UART_STAT) & 0xff;
-	iowrite32be(stat, port->membase + UART_STAT);
+	stat = ioread32be(port->membase + CSR_UART_EV_PENDING);
+	iowrite32be(stat, port->membase + CSR_UART_EV_PENDING);
 
-	if (stat & UART_STAT_RX_EVT)
+	if (stat & UART_EV_RX)
 		milkymist_uart_rx_char(port);
-	if (stat & UART_STAT_TX_EVT)
+	if (stat & UART_EV_TX)
 		milkymist_uart_tx_char(port);
 
 	spin_unlock(&port->lock);
@@ -129,10 +125,10 @@ static irqreturn_t milkymist_uart_isr(int irq, void *data)
 static void milkymist_uart_start_tx(struct uart_port *port)
 {
 	u8 stat;
-	stat = ioread32be(port->membase + UART_STAT) & 0xff;
+	stat = ioread32be(port->membase + CSR_UART_EV_STAT);
 
 	/* transmission is still in progress */
-	if (!(stat & UART_STAT_THRE))
+	if (stat & UART_EV_TX)
 		return;
 
 	milkymist_uart_tx_char(port);
@@ -176,12 +172,10 @@ static int milkymist_uart_startup(struct uart_port *port)
 	ret = request_irq(port->irq, milkymist_uart_isr,
 			IRQF_DISABLED, "milkymist_uart", port);
 
-	/* ack events */
-	iowrite32be(UART_STAT_TX_EVT | UART_STAT_RX_EVT,
-			port->membase + UART_STAT);
-
-	iowrite32be(UART_CTRL_RX_INT | UART_CTRL_TX_INT,
-			port->membase + UART_CTRL);
+	iowrite32be(UART_EV_TX | UART_EV_RX,
+			port->membase + CSR_UART_EV_PENDING);
+	iowrite32be(UART_EV_TX | UART_EV_RX,
+			port->membase + CSR_UART_EV_ENABLE);
 
 	if (ret) {
 		pr_err("milkymist_uart: unable to attach interrupt\n");
@@ -193,7 +187,7 @@ static int milkymist_uart_startup(struct uart_port *port)
 
 static void milkymist_uart_shutdown(struct uart_port *port)
 {
-	iowrite32be(0, port->membase + UART_CTRL);
+	iowrite32be(0, port->membase + CSR_UART_EV_ENABLE);
 	free_irq(port->irq, port);
 }
 
@@ -252,7 +246,8 @@ static void milkymist_uart_set_termios(struct uart_port *port,
 
 	spin_lock_irqsave(&port->lock, flags);
 	uart_update_timeout(port, termios->c_cflag, baud);
-	iowrite32be(quot, port->membase + UART_DIV);
+	iowrite32be((quot & 0xff00) >> 8, port->membase + CSR_UART_DIVISORH);
+	iowrite32be(quot & 0x00ff, port->membase + CSR_UART_DIVISORL);
 	spin_unlock_irqrestore(&port->lock, flags);
 
 	if (tty_termios_baud_rate(termios))
@@ -287,12 +282,11 @@ static struct uart_ops milkymist_uart_ops = {
 #ifdef CONFIG_SERIAL_MILKYMIST_CONSOLE
 static void milkymist_uart_console_wait_tx(struct uart_port *port)
 {
-	int i;
 	u8 stat;
 
-	for (i = 0; i < 100000; i++) {
-		stat = ioread32be(port->membase + UART_STAT) & 0xff;
-		if (stat & UART_STAT_THRE)
+	while (true) {
+		stat = ioread32be(port->membase + CSR_UART_EV_STAT);
+		if (!(stat & UART_EV_TX))
 			break;
 		cpu_relax();
 	}
@@ -301,14 +295,14 @@ static void milkymist_uart_console_wait_tx(struct uart_port *port)
 static void milkymist_uart_console_putchar(struct uart_port *port, int ch)
 {
 	milkymist_uart_console_wait_tx(port);
-	iowrite32be(ch, port->membase + UART_RXTX);
+	iowrite32be(ch, port->membase + CSR_UART_RXTX);
 }
 
 static void milkymist_uart_console_write(struct console *co, const char *s,
 		unsigned int count)
 {
 	struct uart_port *port = &milkymist_uart_ports[co->index];
-	u32 ctrl;
+	u32 enabled;
 	unsigned long flags;
 	int locked = 1;
 
@@ -320,21 +314,14 @@ static void milkymist_uart_console_write(struct console *co, const char *s,
 	/* wait until current transmission is finished */
 	milkymist_uart_console_wait_tx(port);
 
-	/* save ctrl and stat */
-	ctrl = ioread32be(port->membase + UART_CTRL);
-
-	/* disable irqs */
-	iowrite32be(ctrl & ~(UART_CTRL_RX_INT | UART_CTRL_TX_INT),
-			port->membase + UART_CTRL);
+	enabled = ioread32be(port->membase + CSR_UART_EV_ENABLE);
+	iowrite32be(0, port->membase + CSR_UART_EV_ENABLE);
 
 	uart_console_write(port, s, count, milkymist_uart_console_putchar);
 	milkymist_uart_console_wait_tx(port);
+	iowrite32be(UART_EV_TX, port->membase + CSR_UART_EV_PENDING);
 
-	/* ack write event */
-	iowrite32be(UART_STAT_TX_EVT, port->membase + UART_STAT);
-
-	/* restore control register */
-	iowrite32be(ctrl, port->membase + UART_CTRL);
+	iowrite32be(enabled, port->membase + CSR_UART_EV_ENABLE);
 
 	if (locked)
 		spin_unlock_irqrestore(&port->lock, flags);
@@ -520,6 +507,6 @@ static void __exit milkymist_uart_exit(void)
 module_init(milkymist_uart_init);
 module_exit(milkymist_uart_exit);
 
-MODULE_AUTHOR("Milkymist Project");
+MODULE_AUTHOR("RTCM");
 MODULE_DESCRIPTION("Milkymist UART driver");
 MODULE_LICENSE("GPL");

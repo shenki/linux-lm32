@@ -8,4 +8,3 @@ void __init plat_setup_arch(void)
     milkymist_setup_early_printk();
 #endif
 }
-

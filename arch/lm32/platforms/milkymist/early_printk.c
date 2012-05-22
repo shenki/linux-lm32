@@ -36,26 +36,15 @@
 #include <asm/irq.h>
 #include <linux/io.h>
 
-#define UART_RXTX     (void*)0xe0000000
-#define UART_DIVISOR  (void*)0xe0000004
-#define UART_STAT     (void*)0xe0000008
-#define UART_CTRL     (void*)0xe000000c
-#define UART_DEBUG    (void*)0xe000000c
+#define UART_RXTX		((void *)0xe0000000)
+#define UART_STAT		((void *)0xe000000c)
 
-#define UART_STAT_THRE   (1<<0)
-#define UART_STAT_RX_EVT (1<<1)
-#define UART_STAT_TX_EVT (1<<2)
+#define UART_STAT_TXING		(1)
 
 static void __init early_console_putc(char c)
 {
-	unsigned int timeout = 1000;
-	uint32_t stat;
-
 	iowrite32be(c, UART_RXTX);
-
-	do {
-		stat = ioread32be(UART_STAT);
-	} while (!(stat & UART_STAT_THRE) && --timeout);
+	while(ioread32be(UART_STAT) & UART_STAT_TXING);
 }
 
 static void __init early_console_write(struct console *con, const char *s,

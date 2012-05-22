@@ -21,74 +21,73 @@
 #include <linux/timex.h>
 #include <linux/io.h>
 
-#include <asm/hw/interrupts.h>
-#include <asm/hw/sysctl.h>
+// TODO: use the DTS?
+#define TIMER0_BASE		0xe0001800
 
-#define TIMER_CLOCKEVENT 0
-#define TIMER_CLOCKSOURCE 1
+#define TIMER0_CSR(x)		((void *)(TIMER0_BASE+(x)))
+
+#define CSR_TIMER0_EN		TIMER0_CSR(0x00)
+
+#define CSR_TIMER0_COUNT3	TIMER0_CSR(0x04)
+#define CSR_TIMER0_COUNT2	TIMER0_CSR(0x08)
+#define CSR_TIMER0_COUNT1	TIMER0_CSR(0x0C)
+#define CSR_TIMER0_COUNT0	TIMER0_CSR(0x10)
+
+#define CSR_TIMER0_RELOAD3	TIMER0_CSR(0x14)
+#define CSR_TIMER0_RELOAD2	TIMER0_CSR(0x18)
+#define CSR_TIMER0_RELOAD1	TIMER0_CSR(0x1C)
+#define CSR_TIMER0_RELOAD0	TIMER0_CSR(0x20)
+
+#define CSR_TIMER0_EV_STAT	TIMER0_CSR(0x24)
+#define CSR_TIMER0_EV_PENDING	TIMER0_CSR(0x28)
+#define CSR_TIMER0_EV_ENABLE	TIMER0_CSR(0x2C)
+
+#define TIMER0_INTERRUPT	1
+
 
 static uint32_t milkymist_ticks_per_jiffy;
 
-static inline uint32_t milkymist_timer_get_counter(unsigned int timer)
+static inline void milkymist_timer_set_counter(uint32_t value)
 {
-	return ioread32be(CSR_TIMER_COUNTER(timer));
+	iowrite32be((value & 0xff000000) >> 24, CSR_TIMER0_COUNT3);
+	iowrite32be((value & 0x00ff0000) >> 16, CSR_TIMER0_COUNT2);
+	iowrite32be((value & 0x0000ff00) >> 8, CSR_TIMER0_COUNT1);
+	iowrite32be(value & 0x000000ff, CSR_TIMER0_COUNT0);
 }
 
-static inline void milkymist_timer_set_counter(unsigned int timer, uint32_t value)
+static inline void milkymist_timer_set_reload(uint32_t value)
 {
-	iowrite32be(value, CSR_TIMER_COUNTER(timer));
+	iowrite32be((value & 0xff000000) >> 24, CSR_TIMER0_RELOAD3);
+	iowrite32be((value & 0x00ff0000) >> 16, CSR_TIMER0_RELOAD2);
+	iowrite32be((value & 0x0000ff00) >> 8, CSR_TIMER0_RELOAD1);
+	iowrite32be(value & 0x000000ff, CSR_TIMER0_RELOAD0);
 }
 
-static inline uint32_t milkymist_timer_get_compare(unsigned int timer)
+static inline void milkymist_timer_disable(void)
 {
-	return ioread32be(CSR_TIMER_COMPARE(timer));
+	iowrite32be(0, CSR_TIMER0_EN);
 }
 
-static inline void milkymist_timer_set_compare(unsigned int timer, uint32_t value)
+static inline void milkymist_timer_enable(void)
 {
-	iowrite32be(value, CSR_TIMER_COMPARE(timer));
-}
-
-static inline void milkymist_timer_disable(unsigned int timer)
-{
-	iowrite32be(0, CSR_TIMER_CONTROL(timer));
-}
-
-static inline void milkymist_timer_enable(unsigned int timer, bool periodic)
-{
-	uint32_t val = TIMER_ENABLE;
-	if (periodic);
-		val |= TIMER_AUTORESTART;
-	iowrite32be(val, CSR_TIMER_CONTROL(timer));
+	iowrite32be(1, CSR_TIMER0_EN);
 }
 
 cycles_t get_cycles(void)
 {
-	return milkymist_timer_get_counter(TIMER_CLOCKSOURCE);
+	return 0;
 }
-
-static cycle_t milkymist_clocksource_read(struct clocksource *cs)
-{
-	return get_cycles();
-}
-
-static struct clocksource milkymist_clocksource = {
-	.name = "milkymist-timer",
-	.rating = 200,
-	.read = milkymist_clocksource_read,
-	.mask = CLOCKSOURCE_MASK(32),
-	.flags = CLOCK_SOURCE_IS_CONTINUOUS,
-};
 
 static irqreturn_t milkymist_clockevent_irq(int irq, void *devid)
 {
 	struct clock_event_device *cd = devid;
 
 	if (cd->mode != CLOCK_EVT_MODE_PERIODIC)
-		milkymist_timer_disable(TIMER_CLOCKEVENT);
+		milkymist_timer_disable();
 
 	cd->event_handler(cd);
-
+	
+	iowrite32be(1, CSR_TIMER0_EV_PENDING);
 	return IRQ_HANDLED;
 }
 
@@ -97,15 +96,22 @@ static void milkymist_clockevent_set_mode(enum clock_event_mode mode,
 {
 	switch (mode) {
 	case CLOCK_EVT_MODE_PERIODIC:
-		milkymist_timer_disable(TIMER_CLOCKEVENT);
-		milkymist_timer_set_counter(TIMER_CLOCKEVENT, 0);
-		milkymist_timer_set_compare(TIMER_CLOCKEVENT, milkymist_ticks_per_jiffy);
+		milkymist_timer_disable();
+		milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
+		milkymist_timer_set_reload(milkymist_ticks_per_jiffy);
+		milkymist_timer_enable();
+		break;
 	case CLOCK_EVT_MODE_RESUME:
-		milkymist_timer_enable(TIMER_CLOCKEVENT, true);
+		milkymist_timer_enable();
 		break;
 	case CLOCK_EVT_MODE_ONESHOT:
+		milkymist_timer_disable();
+		milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
+		milkymist_timer_set_reload(0);
+		milkymist_timer_enable();
+		break;
 	case CLOCK_EVT_MODE_SHUTDOWN:
-		milkymist_timer_disable(TIMER_CLOCKEVENT);
+		milkymist_timer_disable();
 		break;
 	default:
 		break;
@@ -115,9 +121,9 @@ static void milkymist_clockevent_set_mode(enum clock_event_mode mode,
 static int milkymist_clockevent_set_next(unsigned long evt,
 	struct clock_event_device *cd)
 {
-	milkymist_timer_set_counter(TIMER_CLOCKEVENT, 0);
-	milkymist_timer_set_compare(TIMER_CLOCKEVENT, evt);
-	milkymist_timer_enable(TIMER_CLOCKEVENT, false);
+	milkymist_timer_disable();
+	milkymist_timer_set_counter(evt);
+	milkymist_timer_enable();
 
 	return 0;
 }
@@ -128,7 +134,7 @@ static struct clock_event_device milkymist_clockevent = {
 	.set_next_event = milkymist_clockevent_set_next,
 	.set_mode = milkymist_clockevent_set_mode,
 	.rating = 200,
-	.irq = IRQ_TIMER0,
+	.irq = TIMER0_INTERRUPT,
 };
 
 static struct irqaction timer_irqaction = {
@@ -140,8 +146,6 @@ static struct irqaction timer_irqaction = {
 
 void __init plat_time_init(void)
 {
-	int ret;
-
 	milkymist_ticks_per_jiffy = DIV_ROUND_CLOSEST(CONFIG_CPU_CLOCK, HZ);
 
 	clockevents_calc_mult_shift(&milkymist_clockevent, CONFIG_CPU_CLOCK, 5);
@@ -149,17 +153,7 @@ void __init plat_time_init(void)
 	milkymist_clockevent.max_delta_ns = clockevent_delta2ns(0xffff, &milkymist_clockevent);
 	milkymist_clockevent.cpumask = cpumask_of(0);
 
-	milkymist_timer_disable(TIMER_CLOCKSOURCE);
-	milkymist_timer_set_compare(TIMER_CLOCKSOURCE, 0xffffffff);
-	milkymist_timer_set_counter(TIMER_CLOCKSOURCE, 0);
-	milkymist_timer_enable(TIMER_CLOCKSOURCE, true);
-
 	clockevents_register_device(&milkymist_clockevent);
 
-	ret = clocksource_register_hz(&milkymist_clocksource, CONFIG_CPU_CLOCK);
-
-	if (ret)
-		printk(KERN_ERR "Failed to register clocksource: %d\n", ret);
-
-	setup_irq(IRQ_TIMER0, &timer_irqaction);
+	setup_irq(TIMER0_INTERRUPT, &timer_irqaction);
 }
