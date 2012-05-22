@@ -75,6 +75,6 @@
 		};
 	};
 	chosen {
-		bootargs = "root=/dev/ram0 rootfstype=ext2";
+		bootargs = "root=/dev/ram0 rootfstype=ext2 console=ttyS0";
 	};
 };

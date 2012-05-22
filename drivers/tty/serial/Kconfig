@@ -1319,6 +1319,25 @@ config SERIAL_GRLIB_GAISLER_APBUART_CONSOLE
 	help
 	Support for running a console on the GRLIB APBUART
 
+config SERIAL_MILKYMIST
+	bool "Enable Milkymist UART driver"
+	depends on LM32
+	select SERIAL_CORE
+	help
+	  Enable Milkymist UART driver.
+
+config SERIAL_MILKYMIST_NR_UARTS
+	int "Maximum number of Milkymist serial ports"
+	depends on SERIAL_MILKYMIST
+	default "1"
+
+config SERIAL_MILKYMIST_CONSOLE
+	bool "Enable Milkymist UART driver as system console"
+	depends on SERIAL_MILKYMIST
+	select SERIAL_CORE_CONSOLE
+	help
+	  Allow to use the Milkymist UART driver as system console.
+
 config SERIAL_ALTERA_JTAGUART
 	tristate "Altera JTAG UART support"
 	select SERIAL_CORE
@@ -1661,26 +1680,6 @@ config SERIAL_MVEBU_CONSOLE
 	  (the system console is the device which receives all kernel messages
 	  and warnings and which allows logins in single user mode)
 	  Otherwise, say 'N'.
-
-config SERIAL_MILKYMIST
-	bool "Enable Milkymist UART driver"
-	depends on LM32 || COMPILE_TEST
-	select SERIAL_CORE
-	help
-          Enable Milkymist UART driver.
-
-config SERIAL_MILKYMIST_NR_UARTS
-	int "Maximum number of milkymist serial ports"
-	depends on SERIAL_MILKYMIST
-	default "1"
-
-config SERIAL_MILKYMIST_CONSOLE
-	bool "Enable Milkymist UART driver as system console"
-	depends on SERIAL_MILKYMIST
-	select SERIAL_CORE_CONSOLE
-	default y
-	help
-	  Allow to use the Milkymist UART driver as system console.
 
 endmenu
 

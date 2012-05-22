@@ -155,5 +155,6 @@ void __init plat_time_init(void)
 
 	clockevents_register_device(&milkymist_clockevent);
 
+	iowrite32be(1, CSR_TIMER0_EV_ENABLE);
 	setup_irq(TIMER0_INTERRUPT, &timer_irqaction);
 }
