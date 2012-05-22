@@ -37,31 +37,9 @@ static void lm32_pic_irq_unmask(struct irq_data *data)
 			     : "=&r"(im) : "r"(mask));
 }
 
-static void lm32_pic_irq_ack(struct irq_data *data)
-{
-	uint32_t mask = lm32_pic_get_irq_mask(data);
-
-	__asm__ __volatile__("wcsr IP, %0" : : "r"(mask));
-}
-
-static void lm32_pic_irq_mask_ack(struct irq_data *data)
-{
-	uint32_t mask = lm32_pic_get_irq_mask(data);
-	uint32_t im;
-
-	__asm__ __volatile__("rcsr %0, IM\n"
-			     "not %0, %0\n"
-			     "nor %0, %0, %1\n"
-			     "wcsr IM, %0\n"
-			     "wcsr IP, %1\n"
-			     : "=&r"(im) : "r"(mask) );
-}
-
 static struct irq_chip lm32_irq_chip = {
 	.name		= "LM32 PIC",
-	.irq_ack	= lm32_pic_irq_ack,
 	.irq_mask	= lm32_pic_irq_mask,
-	.irq_mask_ack	= lm32_pic_irq_mask_ack,
 	.irq_unmask	= lm32_pic_irq_unmask,
 };
 

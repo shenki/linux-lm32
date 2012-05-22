@@ -33,7 +33,6 @@
 #include <linux/console.h>
 #include <linux/init.h>
 #include <linux/string.h>
-#include <asm/irq.h>
 #include <linux/io.h>
 
 #define UART_RXTX		((void *)0xe0000000)

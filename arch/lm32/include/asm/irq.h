@@ -38,10 +38,4 @@ static inline uint32_t lm32_irq_pending(void)
 	return ip;
 }
 
-static inline void lm32_irq_ack(unsigned int irq)
-{
-	uint32_t mask = (1 << irq);
-	__asm__ __volatile__("wcsr IP, %0" : : "r"(mask) );
-}
-
 #endif /* _LM32_ASM_IRQ_H_ */
