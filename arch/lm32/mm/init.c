@@ -110,7 +110,7 @@ void __init mem_init(void)
 {
 	high_memory = (void *)__va(max_low_pfn * PAGE_SIZE);
 
-	max_mapnr = num_physpages = max_low_pfn;
+	max_mapnr = num_physpages = max_low_pfn - min_low_pfn;
 
 	totalram_pages = free_all_bootmem();
 
