@@ -57,13 +57,6 @@
 			interrupts = <0>;
 			interrupt-parent = <&pic>;
 		};
-		
-		timer@1800 {
-			compatible = "milkymist,timer";
-			reg = <0x1800 0x800>;
-			interrupts = <1>;
-			interrupt-parent = <&pic>;
-		};
 
 		ethernet@2000 {
 			#address-cells = <1>;
