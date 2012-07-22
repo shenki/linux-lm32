@@ -58,7 +58,6 @@ void __init bootmem_init(void)
 	init_mm.end_data = (unsigned long)_edata;
 	init_mm.brk = (unsigned long)_end;
 
-	memblock_init();
 	memblock_add(memory_start, memory_end);
 
 	if(((unsigned long)__pa(_end) < memory_start) || ((unsigned long)__pa(_end) > memory_end))
@@ -88,7 +87,7 @@ void __init bootmem_init(void)
 	memory_start += PAGE_OFFSET;
 	memory_end += PAGE_OFFSET;
 
-	memblock_analyze();
+	memblock_allow_resize();
 	memblock_dump_all();
 }
 
