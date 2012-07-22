@@ -127,6 +127,13 @@ static irqreturn_t milkymist_uart_isr(int irq, void *data)
 
 static void milkymist_uart_start_tx(struct uart_port *port)
 {
+	u8 stat;
+	stat = ioread32be(port->membase + UART_STAT) & 0xff;
+
+	/* transmission is still in progress */
+	if (!(stat & UART_STAT_THRE))
+		return;
+
 	milkymist_uart_tx_char(port);
 }
 

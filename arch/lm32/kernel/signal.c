@@ -49,6 +49,7 @@
 #include <linux/personality.h>
 #include <linux/tty.h>
 #include <linux/hardirq.h>
+#include <linux/freezer.h>
 
 #include <asm/uaccess.h>
 #include <asm/ucontext.h>
@@ -75,7 +76,7 @@ static int restore_sigcontext(struct pt_regs *regs,
 
 asmlinkage int _sys_rt_sigreturn(struct pt_regs *regs)
 {
-	struct rt_sigframe __user *frame = (struct rt_sigframe __user *)regs->sp + 4;
+	struct rt_sigframe __user *frame = (struct rt_sigframe __user *)(regs->sp + 4);
 	sigset_t set;
 	stack_t st;
 
@@ -189,7 +190,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 
 #if DEBUG_SIG
 	printk("SIG deliver (%s:%d): frame=%p, sp=%p ra=%08lx ea=%08lx, signal(r1)=%d\n",
-	       current->comm, current->pid, frame, regs->sp, regs->ra, regs->ea, signal);
+	       current->comm, current->pid, frame, regs->sp, regs->ra, regs->ea, sig);
 #endif
 
 	return regs->r1;
@@ -235,6 +236,11 @@ static int do_signal(int retval, struct pt_regs *regs)
 	 * kernel mode. Just return without doing anything
 	 * if so.
 	 */
+	if (!user_mode(regs))
+		return 0;
+
+	if (try_to_freeze()) 
+		goto no_signal;
 
 	if (test_thread_flag(TIF_RESTORE_SIGMASK))
 		oldset = &current->saved_sigmask;
@@ -242,11 +248,16 @@ static int do_signal(int retval, struct pt_regs *regs)
 		oldset = &current->blocked;
 
 	signr = get_signal_to_deliver(&info, &ka, regs, NULL);
+
 	if (signr > 0) {
 		/* Whee!  Actually deliver the signal.  */
 		handle_signal(signr, &info, &ka, oldset, regs);
+		if (test_thread_flag(TIF_RESTORE_SIGMASK))
+			clear_thread_flag(TIF_RESTORE_SIGMASK);
+		return signr;
 	}
 
+no_signal:
 	/* Did we come from a system call? */
 	if (regs->r8) {
 		/* Restart the system call - no handlers present */
@@ -260,6 +271,10 @@ static int do_signal(int retval, struct pt_regs *regs)
 			regs->r8 = __NR_restart_syscall;
 			regs->ea -= 4; /* Size of scall insn.  */
 		}
+	}
+	if (test_thread_flag(TIF_RESTORE_SIGMASK)) {
+		clear_thread_flag(TIF_RESTORE_SIGMASK);
+		sigprocmask(SIG_SETMASK, &current->saved_sigmask, NULL);
 	}
 
 	return retval;
