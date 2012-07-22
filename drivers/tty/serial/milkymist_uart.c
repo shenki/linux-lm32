@@ -32,7 +32,6 @@
 #include <linux/console.h>
 #include <linux/sysrq.h>
 #include <linux/serial.h>
-#include <linux/serialP.h>
 #include <linux/delay.h>
 #include <linux/slab.h>
 #include <linux/serial_core.h>
