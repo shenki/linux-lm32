@@ -17,6 +17,7 @@
  */
 #define THREAD_SIZE_ORDER	1
 #define THREAD_SIZE		8192	/* 2 pages */
+#define PREEMPT_ACTIVE		0x10000000
 
 #ifndef __ASSEMBLY__
 
@@ -50,6 +51,20 @@ extern struct thread_info* lm32_current_thread;
 static inline struct thread_info *current_thread_info(void)
 {
 	return lm32_current_thread;
+}
+
+
+#define INIT_THREAD_INFO(tsk)			\
+{						\
+	.task =		&init_task,		\
+	.exec_domain =	&default_exec_domain,	\
+	.flags =	0,			\
+	.cpu =		0,			\
+	.preempt_count = INIT_PREEMPT_COUNT,	\
+	.addr_limit = KERNEL_DS,		\
+	.restart_block	= {			\
+		.fn = do_no_restart_syscall,	\
+	},					\
 }
 
 #endif /* __ASSEMBLY__ */
