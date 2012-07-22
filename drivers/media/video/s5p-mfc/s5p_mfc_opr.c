@@ -43,7 +43,7 @@ int s5p_mfc_alloc_dec_temp_buffers(struct s5p_mfc_ctx *ctx)
 	ctx->desc_buf = vb2_dma_contig_memops.alloc(
 			dev->alloc_ctx[MFC_BANK1_ALLOC_CTX], DESC_BUF_SIZE);
 	if (IS_ERR_VALUE((int)ctx->desc_buf)) {
-		ctx->desc_buf = 0;
+		ctx->desc_buf = NULL;
 		mfc_err("Allocating DESC buffer failed\n");
 		return -ENOMEM;
 	}
@@ -54,7 +54,7 @@ int s5p_mfc_alloc_dec_temp_buffers(struct s5p_mfc_ctx *ctx)
 	if (desc_virt == NULL) {
 		vb2_dma_contig_memops.put(ctx->desc_buf);
 		ctx->desc_phys = 0;
-		ctx->desc_buf = 0;
+		ctx->desc_buf = NULL;
 		mfc_err("Remapping DESC buffer failed\n");
 		return -ENOMEM;
 	}
@@ -69,7 +69,7 @@ void s5p_mfc_release_dec_desc_buffer(struct s5p_mfc_ctx *ctx)
 	if (ctx->desc_phys) {
 		vb2_dma_contig_memops.put(ctx->desc_buf);
 		ctx->desc_phys = 0;
-		ctx->desc_buf = 0;
+		ctx->desc_buf = NULL;
 	}
 }
 
@@ -186,7 +186,7 @@ int s5p_mfc_alloc_codec_buffers(struct s5p_mfc_ctx *ctx)
 		ctx->bank1_buf = vb2_dma_contig_memops.alloc(
 		dev->alloc_ctx[MFC_BANK1_ALLOC_CTX], ctx->bank1_size);
 		if (IS_ERR(ctx->bank1_buf)) {
-			ctx->bank1_buf = 0;
+			ctx->bank1_buf = NULL;
 			printk(KERN_ERR
 			       "Buf alloc for decoding failed (port A)\n");
 			return -ENOMEM;
@@ -200,7 +200,7 @@ int s5p_mfc_alloc_codec_buffers(struct s5p_mfc_ctx *ctx)
 		ctx->bank2_buf = vb2_dma_contig_memops.alloc(
 		dev->alloc_ctx[MFC_BANK2_ALLOC_CTX], ctx->bank2_size);
 		if (IS_ERR(ctx->bank2_buf)) {
-			ctx->bank2_buf = 0;
+			ctx->bank2_buf = NULL;
 			mfc_err("Buf alloc for decoding failed (port B)\n");
 			return -ENOMEM;
 		}
@@ -216,13 +216,13 @@ void s5p_mfc_release_codec_buffers(struct s5p_mfc_ctx *ctx)
 {
 	if (ctx->bank1_buf) {
 		vb2_dma_contig_memops.put(ctx->bank1_buf);
-		ctx->bank1_buf = 0;
+		ctx->bank1_buf = NULL;
 		ctx->bank1_phys = 0;
 		ctx->bank1_size = 0;
 	}
 	if (ctx->bank2_buf) {
 		vb2_dma_contig_memops.put(ctx->bank2_buf);
-		ctx->bank2_buf = 0;
+		ctx->bank2_buf = NULL;
 		ctx->bank2_phys = 0;
 		ctx->bank2_size = 0;
 	}
@@ -244,7 +244,7 @@ int s5p_mfc_alloc_instance_buffer(struct s5p_mfc_ctx *ctx)
 	if (IS_ERR(ctx->ctx_buf)) {
 		mfc_err("Allocating context buffer failed\n");
 		ctx->ctx_phys = 0;
-		ctx->ctx_buf = 0;
+		ctx->ctx_buf = NULL;
 		return -ENOMEM;
 	}
 	ctx->ctx_phys = s5p_mfc_mem_cookie(
@@ -256,7 +256,7 @@ int s5p_mfc_alloc_instance_buffer(struct s5p_mfc_ctx *ctx)
 		mfc_err("Remapping instance buffer failed\n");
 		vb2_dma_contig_memops.put(ctx->ctx_buf);
 		ctx->ctx_phys = 0;
-		ctx->ctx_buf = 0;
+		ctx->ctx_buf = NULL;
 		return -ENOMEM;
 	}
 	/* Zero content of the allocated memory */
@@ -265,7 +265,7 @@ int s5p_mfc_alloc_instance_buffer(struct s5p_mfc_ctx *ctx)
 	if (s5p_mfc_init_shm(ctx) < 0) {
 		vb2_dma_contig_memops.put(ctx->ctx_buf);
 		ctx->ctx_phys = 0;
-		ctx->ctx_buf = 0;
+		ctx->ctx_buf = NULL;
 		return -ENOMEM;
 	}
 	return 0;
@@ -277,12 +277,12 @@ void s5p_mfc_release_instance_buffer(struct s5p_mfc_ctx *ctx)
 	if (ctx->ctx_buf) {
 		vb2_dma_contig_memops.put(ctx->ctx_buf);
 		ctx->ctx_phys = 0;
-		ctx->ctx_buf = 0;
+		ctx->ctx_buf = NULL;
 	}
 	if (ctx->shm_alloc) {
 		vb2_dma_contig_memops.put(ctx->shm_alloc);
-		ctx->shm_alloc = 0;
-		ctx->shm = 0;
+		ctx->shm_alloc = NULL;
+		ctx->shm = NULL;
 	}
 }
 
@@ -296,7 +296,7 @@ void s5p_mfc_set_dec_desc_buffer(struct s5p_mfc_ctx *ctx)
 }
 
 /* Set registers for shared buffer */
-void s5p_mfc_set_shared_buffer(struct s5p_mfc_ctx *ctx)
+static void s5p_mfc_set_shared_buffer(struct s5p_mfc_ctx *ctx)
 {
 	struct s5p_mfc_dev *dev = ctx->dev;
 	mfc_write(dev, ctx->shm_ofs, S5P_FIMV_SI_CH0_HOST_WR_ADR);
@@ -1135,7 +1135,7 @@ static int s5p_mfc_run_dec_frame(struct s5p_mfc_ctx *ctx, int last_frame)
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	temp_vb->used = 1;
 	s5p_mfc_set_dec_stream_buffer(ctx,
-		vb2_dma_contig_plane_paddr(temp_vb->b, 0), ctx->consumed_stream,
+		vb2_dma_contig_plane_dma_addr(temp_vb->b, 0), ctx->consumed_stream,
 					temp_vb->b->v4l2_planes[0].bytesused);
 	spin_unlock_irqrestore(&dev->irqlock, flags);
 	index = temp_vb->b->v4l2_buf.index;
@@ -1172,12 +1172,12 @@ static int s5p_mfc_run_enc_frame(struct s5p_mfc_ctx *ctx)
 	}
 	src_mb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	src_mb->used = 1;
-	src_y_addr = vb2_dma_contig_plane_paddr(src_mb->b, 0);
-	src_c_addr = vb2_dma_contig_plane_paddr(src_mb->b, 1);
+	src_y_addr = vb2_dma_contig_plane_dma_addr(src_mb->b, 0);
+	src_c_addr = vb2_dma_contig_plane_dma_addr(src_mb->b, 1);
 	s5p_mfc_set_enc_frame_buffer(ctx, src_y_addr, src_c_addr);
 	dst_mb = list_entry(ctx->dst_queue.next, struct s5p_mfc_buf, list);
 	dst_mb->used = 1;
-	dst_addr = vb2_dma_contig_plane_paddr(dst_mb->b, 0);
+	dst_addr = vb2_dma_contig_plane_dma_addr(dst_mb->b, 0);
 	dst_size = vb2_plane_size(dst_mb->b, 0);
 	s5p_mfc_set_enc_stream_buffer(ctx, dst_addr, dst_size);
 	spin_unlock_irqrestore(&dev->irqlock, flags);
@@ -1200,7 +1200,7 @@ static void s5p_mfc_run_init_dec(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_dec_desc_buffer(ctx);
 	mfc_debug(2, "Header size: %d\n", temp_vb->b->v4l2_planes[0].bytesused);
 	s5p_mfc_set_dec_stream_buffer(ctx,
-				vb2_dma_contig_plane_paddr(temp_vb->b, 0),
+				vb2_dma_contig_plane_dma_addr(temp_vb->b, 0),
 				0, temp_vb->b->v4l2_planes[0].bytesused);
 	spin_unlock_irqrestore(&dev->irqlock, flags);
 	dev->curr_ctx = ctx->num;
@@ -1219,7 +1219,7 @@ static void s5p_mfc_run_init_enc(struct s5p_mfc_ctx *ctx)
 	s5p_mfc_set_enc_ref_buffer(ctx);
 	spin_lock_irqsave(&dev->irqlock, flags);
 	dst_mb = list_entry(ctx->dst_queue.next, struct s5p_mfc_buf, list);
-	dst_addr = vb2_dma_contig_plane_paddr(dst_mb->b, 0);
+	dst_addr = vb2_dma_contig_plane_dma_addr(dst_mb->b, 0);
 	dst_size = vb2_plane_size(dst_mb->b, 0);
 	s5p_mfc_set_enc_stream_buffer(ctx, dst_addr, dst_size);
 	spin_unlock_irqrestore(&dev->irqlock, flags);
@@ -1255,7 +1255,7 @@ static int s5p_mfc_run_init_dec_buffers(struct s5p_mfc_ctx *ctx)
 	temp_vb = list_entry(ctx->src_queue.next, struct s5p_mfc_buf, list);
 	mfc_debug(2, "Header size: %d\n", temp_vb->b->v4l2_planes[0].bytesused);
 	s5p_mfc_set_dec_stream_buffer(ctx,
-				vb2_dma_contig_plane_paddr(temp_vb->b, 0),
+				vb2_dma_contig_plane_dma_addr(temp_vb->b, 0),
 				0, temp_vb->b->v4l2_planes[0].bytesused);
 	spin_unlock_irqrestore(&dev->irqlock, flags);
 	dev->curr_ctx = ctx->num;

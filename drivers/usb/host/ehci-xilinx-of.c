@@ -183,7 +183,7 @@ static int __devinit ehci_hcd_xilinx_of_probe(struct platform_device *op)
 	}
 
 	irq = irq_of_parse_and_map(dn, 0);
-	if (irq == NO_IRQ) {
+	if (!irq) {
 		printk(KERN_ERR "%s: irq_of_parse_and_map failed\n", __FILE__);
 		rv = -EBUSY;
 		goto err_irq;
@@ -270,14 +270,12 @@ static int ehci_hcd_xilinx_of_remove(struct platform_device *op)
  *
  * Properly shutdown the hcd, call driver's shutdown routine.
  */
-static int ehci_hcd_xilinx_of_shutdown(struct platform_device *op)
+static void ehci_hcd_xilinx_of_shutdown(struct platform_device *op)
 {
 	struct usb_hcd *hcd = dev_get_drvdata(&op->dev);
 
 	if (hcd->driver->shutdown)
 		hcd->driver->shutdown(hcd);
-
-	return 0;
 }
 
 

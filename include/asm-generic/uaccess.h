@@ -293,12 +293,14 @@ strncpy_from_user(char *dst, const char __user *src, long count)
  * Return 0 on exception, a value greater than N if too long
  */
 #ifndef __strnlen_user
-static inline long __strnlen_user(const char __user *src, long n)
-{
-	return strnlen((void * __force)src, n) + 1;
-}
+#define __strnlen_user(s, n) (strnlen((s), (n)) + 1)
 #endif
 
+/*
+ * Unlike strnlen, strnlen_user includes the nul terminator in
+ * its returned count. Callers should check for a returned value
+ * greater than N as an indication the string is too long.
+ */
 static inline long strnlen_user(const char __user *src, long n)
 {
 	if (!access_ok(VERIFY_READ, src, 1))
