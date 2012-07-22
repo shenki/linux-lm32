@@ -23,6 +23,7 @@
 #include <linux/of_gpio.h>
 #include <linux/of_platform.h>
 #include <linux/slab.h>
+#include <linux/module.h>
 
 #define GPIO_IN     0x00
 #define GPIO_OUT    0x04
