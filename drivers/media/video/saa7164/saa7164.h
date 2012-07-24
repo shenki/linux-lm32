@@ -82,6 +82,8 @@
 #define SAA7164_BOARD_HAUPPAUGE_HVR2200_3	6
 #define SAA7164_BOARD_HAUPPAUGE_HVR2250_2	7
 #define SAA7164_BOARD_HAUPPAUGE_HVR2250_3	8
+#define SAA7164_BOARD_HAUPPAUGE_HVR2200_4	9
+#define SAA7164_BOARD_HAUPPAUGE_HVR2200_5	10
 
 #define SAA7164_MAX_UNITS		8
 #define SAA7164_TS_NUMBER_OF_LINES	312
@@ -607,11 +609,6 @@ extern unsigned int saa_debug;
 #define log_warn(fmt, arg...)\
 	do { \
 		printk(KERN_WARNING "%s: " fmt, dev->name, ## arg);\
-	} while (0)
-
-#define log_err(fmt, arg...)\
-	do { \
-		printk(KERN_ERROR "%s: " fmt, dev->name, ## arg);\
 	} while (0)
 
 #define saa7164_readl(reg) readl(dev->lmmio + ((reg) >> 2))

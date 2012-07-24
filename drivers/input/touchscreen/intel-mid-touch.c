@@ -620,7 +620,7 @@ static int __devinit mrstouch_probe(struct platform_device *pdev)
 			     MRST_PRESSURE_MIN, MRST_PRESSURE_MAX, 0, 0);
 
 	err = request_threaded_irq(tsdev->irq, NULL, mrstouch_pendet_irq,
-				   0, "mrstouch", tsdev);
+				   IRQF_ONESHOT, "mrstouch", tsdev);
 	if (err) {
 		dev_err(tsdev->dev, "unable to allocate irq\n");
 		goto err_free_mem;
@@ -664,18 +664,7 @@ static struct platform_driver mrstouch_driver = {
 	.probe		= mrstouch_probe,
 	.remove		= __devexit_p(mrstouch_remove),
 };
-
-static int __init mrstouch_init(void)
-{
-	return platform_driver_register(&mrstouch_driver);
-}
-module_init(mrstouch_init);
-
-static void __exit mrstouch_exit(void)
-{
-	platform_driver_unregister(&mrstouch_driver);
-}
-module_exit(mrstouch_exit);
+module_platform_driver(mrstouch_driver);
 
 MODULE_AUTHOR("Sreedhara Murthy. D.S, sreedhara.ds@intel.com");
 MODULE_DESCRIPTION("Intel Moorestown Resistive Touch Screen Driver");

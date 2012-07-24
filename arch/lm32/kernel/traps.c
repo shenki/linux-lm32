@@ -34,7 +34,6 @@
 #include <linux/ptrace.h>
 #include <linux/module.h>
 
-#include <asm/system.h>
 #include <asm/sections.h>
 
 void __init trap_init(void)

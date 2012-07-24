@@ -10,6 +10,7 @@
 
 #include <linux/kernel.h>
 #include <linux/kprobes.h>
+#include <linux/module.h>
 
 #include "kprobes.h"
 
@@ -659,7 +660,7 @@ static const union decode_item t32_table_1111_100x[] = {
 	/* LDRSB (literal)	1111 1001 x001 1111 xxxx xxxx xxxx xxxx */
 	/* LDRH (literal)	1111 1000 x011 1111 xxxx xxxx xxxx xxxx */
 	/* LDRSH (literal)	1111 1001 x011 1111 xxxx xxxx xxxx xxxx */
-	DECODE_EMULATEX	(0xfe5f0000, 0xf81f0000, t32_simulate_ldr_literal,
+	DECODE_SIMULATEX(0xfe5f0000, 0xf81f0000, t32_simulate_ldr_literal,
 						 REGS(PC, NOSPPCX, 0, 0, 0)),
 
 	/* STRB (immediate)	1111 1000 0000 xxxx xxxx 1xxx xxxx xxxx */
@@ -943,6 +944,9 @@ const union decode_item kprobe_decode_thumb32_table[] = {
 	 */
 	DECODE_END
 };
+#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
+EXPORT_SYMBOL_GPL(kprobe_decode_thumb32_table);
+#endif
 
 static void __kprobes
 t16_simulate_bxblx(struct kprobe *p, struct pt_regs *regs)
@@ -1423,6 +1427,9 @@ const union decode_item kprobe_decode_thumb16_table[] = {
 
 	DECODE_END
 };
+#ifdef CONFIG_ARM_KPROBES_TEST_MODULE
+EXPORT_SYMBOL_GPL(kprobe_decode_thumb16_table);
+#endif
 
 static unsigned long __kprobes thumb_check_cc(unsigned long cpsr)
 {

@@ -405,20 +405,31 @@ static void magicmouse_setup_input(struct input_dev *input, struct hid_device *h
 			__set_bit(REL_HWHEEL, input->relbit);
 		}
 	} else { /* USB_DEVICE_ID_APPLE_MAGICTRACKPAD */
+		/* input->keybit is initialized with incorrect button info
+		 * for Magic Trackpad. There really is only one physical
+		 * button (BTN_LEFT == BTN_MOUSE). Make sure we don't
+		 * advertise buttons that don't exist...
+		 */
+		__clear_bit(BTN_RIGHT, input->keybit);
+		__clear_bit(BTN_MIDDLE, input->keybit);
 		__set_bit(BTN_MOUSE, input->keybit);
 		__set_bit(BTN_TOOL_FINGER, input->keybit);
 		__set_bit(BTN_TOOL_DOUBLETAP, input->keybit);
 		__set_bit(BTN_TOOL_TRIPLETAP, input->keybit);
 		__set_bit(BTN_TOOL_QUADTAP, input->keybit);
 		__set_bit(BTN_TOUCH, input->keybit);
+		__set_bit(INPUT_PROP_POINTER, input->propbit);
+		__set_bit(INPUT_PROP_BUTTONPAD, input->propbit);
 	}
 
 	if (report_touches) {
 		__set_bit(EV_ABS, input->evbit);
 
 		input_set_abs_params(input, ABS_MT_TRACKING_ID, 0, 15, 0, 0);
-		input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255, 4, 0);
-		input_set_abs_params(input, ABS_MT_TOUCH_MINOR, 0, 255, 4, 0);
+		input_set_abs_params(input, ABS_MT_TOUCH_MAJOR, 0, 255 << 2,
+				     4, 0);
+		input_set_abs_params(input, ABS_MT_TOUCH_MINOR, 0, 255 << 2,
+				     4, 0);
 		input_set_abs_params(input, ABS_MT_ORIENTATION, -31, 32, 1, 0);
 
 		/* Note: Touch Y position from the device is inverted relative
