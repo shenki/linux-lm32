@@ -111,12 +111,15 @@ static irqreturn_t milkymist_uart_isr(int irq, void *data)
 
 	spin_lock(&port->lock);
 
-	/* read and ack events */
+	/* read and ... */
 	stat = ioread32be(port->membase + UART_STAT) & 0xff;
-	iowrite32be(stat, port->membase + UART_STAT);
 
 	if (stat & UART_STAT_RX_EVT)
 		milkymist_uart_rx_char(port);
+
+	/* ... ack events */
+	iowrite32be(stat, port->membase + UART_STAT);
+
 	if (stat & UART_STAT_TX_EVT)
 		milkymist_uart_tx_char(port);
 
