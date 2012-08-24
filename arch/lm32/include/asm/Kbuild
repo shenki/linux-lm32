@@ -35,6 +35,7 @@ generic-y += linkage.h
 generic-y += local.h
 generic-y += mman.h
 generic-y += mmu_context.h
+generic-y += mmu.h
 generic-y += module.h
 generic-y += msgbuf.h
 generic-y += param.h
