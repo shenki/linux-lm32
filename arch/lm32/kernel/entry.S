@@ -112,7 +112,6 @@ ENTRY(system_call)
 	sli r10, r8, 2 /* TODO: only works with shifter enabled */
 	add r9, r9, r10 /* add offset of syscall no to address */
 	lw r9, (r9+0) /* fetch address of syscall function */
-	be r9, r0, .badsyscall
 	call r9 /* execute syscall */
 
 ENTRY(syscall_tail)
