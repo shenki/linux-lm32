@@ -10,4 +10,8 @@
 
 #undef __NR_mmap
 
+#define sys_vfork sys_ni_syscall
+#define sys_mmap sys_ni_syscall
+#define sys_mmap2 sys_mmap_pgoff
+
 #endif /* _ASM_LM32_UNISTD_H */
