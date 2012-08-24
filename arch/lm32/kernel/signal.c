@@ -86,11 +86,7 @@ asmlinkage int _sys_rt_sigreturn(struct pt_regs *regs)
 	if (__copy_from_user(&set, &frame->uc.uc_sigmask, sizeof(set)))
 		goto badframe;
 
-	sigdelsetmask(&set, SIG_KERNEL_ONLY_MASK);
-	spin_lock_irq(&current->sighand->siglock);
-	current->blocked = set;
-	recalc_sigpending();
-	spin_unlock_irq(&current->sighand->siglock);
+	set_current_blocked(&set);
 
 	if (restore_sigcontext(regs, &frame->uc.uc_mcontext))
 		goto badframe;
@@ -128,11 +124,11 @@ static inline void __user *get_sigframe(struct k_sigaction *ka,
 {
 	unsigned long sp = regs->sp;
 
-	if ((ka->sa.sa_flags & SA_ONSTACK) != 0 && !sas_ss_flags(sp))
+	if ((ka->sa.sa_flags & SA_ONSTACK) && !sas_ss_flags(sp))
 		/* use stack set by sigaltstack */
 		sp = current->sas_ss_sp + current->sas_ss_size;
 
-	return (void __user *)((sp - frame_size) & -8UL);
+	return (void __user *)((sp - frame_size) & ~7UL);
 }
 
 static int setup_rt_frame(int sig, struct k_sigaction *ka,
@@ -202,16 +198,12 @@ give_sigsegv:
 }
 
 static void handle_signal(unsigned long sig, siginfo_t *info,
-		struct k_sigaction *ka, sigset_t *oldset, struct pt_regs *regs)
+		struct k_sigaction *ka, struct pt_regs *regs)
 {
-	setup_rt_frame(sig, ka, oldset, regs);
+	sigset_t *oldset = sigmask_to_save();
 
-	spin_lock_irq(&current->sighand->siglock);
-	sigorsets(&current->blocked, &current->blocked, &ka->sa.sa_mask);
-	if (!(ka->sa.sa_flags & SA_NODEFER))
-		sigaddset(&current->blocked, sig);
-	recalc_sigpending();
-	spin_unlock_irq(&current->sighand->siglock);
+	setup_rt_frame(sig, ka, oldset, regs);
+	signal_delivered(sig, info, ka, regs, 0);
 }
 
 /*
@@ -228,7 +220,6 @@ static int do_signal(int retval, struct pt_regs *regs)
 	siginfo_t info;
 	int signr;
 	struct k_sigaction ka;
-	sigset_t *oldset;
 
 	/*
 	 * We want the common case to go fast, which
@@ -239,43 +230,33 @@ static int do_signal(int retval, struct pt_regs *regs)
 	if (!user_mode(regs))
 		return 0;
 
-	if (try_to_freeze()) 
+	if (try_to_freeze())
 		goto no_signal;
-
-	if (test_thread_flag(TIF_RESTORE_SIGMASK))
-		oldset = &current->saved_sigmask;
-	else
-		oldset = &current->blocked;
 
 	signr = get_signal_to_deliver(&info, &ka, regs, NULL);
 
 	if (signr > 0) {
 		/* Whee!  Actually deliver the signal.  */
-		handle_signal(signr, &info, &ka, oldset, regs);
-		if (test_thread_flag(TIF_RESTORE_SIGMASK))
-			clear_thread_flag(TIF_RESTORE_SIGMASK);
+		handle_signal(signr, &info, &ka, regs);
 		return signr;
 	}
 
 no_signal:
 	/* Did we come from a system call? */
 	if (regs->r8) {
-		/* Restart the system call - no handlers present */
-		if (retval == -ERESTARTNOHAND
-		    || retval == -ERESTARTSYS
-		    || retval == -ERESTARTNOINTR)
-		{
-			regs->ea -= 4; /* Size of scall insn.  */
-		}
-		else if (retval == -ERESTART_RESTARTBLOCK) {
+		switch (retval) {
+		case -ERESTART_RESTARTBLOCK:
 			regs->r8 = __NR_restart_syscall;
+		case -ERESTARTNOHAND:
+		case -ERESTARTSYS:
+		case -ERESTARTNOINTR:
 			regs->ea -= 4; /* Size of scall insn.  */
+			break;
+		default:
+			break;
 		}
 	}
-	if (test_thread_flag(TIF_RESTORE_SIGMASK)) {
-		clear_thread_flag(TIF_RESTORE_SIGMASK);
-		sigprocmask(SIG_SETMASK, &current->saved_sigmask, NULL);
-	}
+	restore_saved_sigmask();
 
 	return retval;
 }
