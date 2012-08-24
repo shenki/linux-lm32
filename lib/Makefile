@@ -130,6 +130,8 @@ obj-$(CONFIG_GENERIC_STRNLEN_USER) += strnlen_user.o
 
 obj-$(CONFIG_STMP_DEVICE) += stmp_device.o
 
+obj-$(CONFIG_GENERIC_SYSCALL_TABLE) += sys_call_table.o
+
 hostprogs-y	:= gen_crc32table
 clean-files	:= crc32table.h
 

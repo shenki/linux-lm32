@@ -39,6 +39,9 @@ config GENERIC_IO
 	boolean
 	default n
 
+config GENERIC_SYSCALL_TABLE
+	bool
+
 config STMP_DEVICE
 	bool
 
