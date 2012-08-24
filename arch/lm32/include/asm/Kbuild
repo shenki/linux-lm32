@@ -62,6 +62,7 @@ generic-y += swab.h
 generic-y += syscalls.h
 generic-y += termbits.h
 generic-y += termios.h
+generic-y += tlb.h
 generic-y += tlbflush.h
 generic-y += topology.h
 generic-y += types.h
