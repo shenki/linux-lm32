@@ -45,11 +45,9 @@
 #include <asm/traps.h>
 #include <asm/setup.h>
 #include <asm/pgtable.h>
-#include <asm/hw/milkymist.h>
 
 asmlinkage void ret_from_fork(void);
 asmlinkage void syscall_tail(void);
-
 
 struct thread_info* lm32_current_thread;
 
@@ -90,24 +88,24 @@ void cpu_idle(void)
 	}
 }
 
-void machine_restart(char * __unused)
+void __weak machine_restart(char * __unused)
 {
-	/* Writing to CSR_SYSTEM_ID causes a system reset */
-	iowrite32be(1, CSR_SYSTEM_ID);
-	while(1);
-}
-
-void machine_halt(void)
-{
-	printk("%s:%d: machine_halt() is not possible on lm32\n", __FILE__, __LINE__);
-	for (;;)
+	printk("machine_restart() is not possible on lm32\n");
+	while (1)
 		cpu_relax();
 }
 
-void machine_power_off(void)
+void __weak machine_halt(void)
 {
-	printk("%s:%d: machine_poweroff() is not possible on lm32\n", __FILE__, __LINE__);
-	for (;;)
+	printk("machine_halt() is not possible on lm32\n");
+	while (1)
+		cpu_relax();
+}
+
+void __weak machine_power_off(void)
+{
+	printk("machine_poweroff() is not possible on lm32\n");
+	while (1)
 		cpu_relax();
 }
 
