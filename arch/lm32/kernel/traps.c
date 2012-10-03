@@ -47,8 +47,6 @@ static void show_trace(struct task_struct *tsk, unsigned long *sp)
 {
 	unsigned long addr;
 
-	asm volatile ("break");
-
 	printk("\nCall Trace:");
 #ifdef CONFIG_KALLSYMS
 	printk("\n");
