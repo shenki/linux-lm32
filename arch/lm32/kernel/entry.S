@@ -99,6 +99,10 @@ ENTRY(system_call)
 	sw    (sp + 120), ra
 	calli _save_syscall_frame
 
+	rcsr r11, IE
+	ori r11, r11, 1
+	wcsr IE, r11
+
 	/* r7 always holds the pointer to struct pt_regs */
 	addi  r7, sp, 4
 	#addi  r4, sp, 4
