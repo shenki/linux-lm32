@@ -94,7 +94,7 @@ static int milkymist_gpio_direction_output(struct gpio_chip *gc,
 	return 0;
 }
 
-static int __devinit milkymist_gpio_probe(struct platform_device *ofdev)
+static int milkymist_gpio_probe(struct platform_device *ofdev)
 {
 	struct device_node *np = ofdev->dev.of_node;
 	struct milkymist_gpio_chip *chip;
@@ -148,7 +148,7 @@ err:
 	return ret;
 }
 
-static int __devexit milkymist_gpio_remove(struct platform_device *ofdev)
+static int milkymist_gpio_remove(struct platform_device *ofdev)
 {
 	struct milkymist_gpio_chip *chip = platform_get_drvdata(ofdev);
 
@@ -173,7 +173,7 @@ static struct platform_driver milkymist_gpio_driver = {
 		.of_match_table = milkymist_gpio_match,
 	},
 	.probe		= milkymist_gpio_probe,
-	.remove		= __devexit_p(milkymist_gpio_remove),
+	.remove		= milkymist_gpio_remove,
 };
 
 static int __init milkymist_gpio_init(void)

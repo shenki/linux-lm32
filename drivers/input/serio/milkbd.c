@@ -84,7 +84,7 @@ static void milkbd_close(struct serio *port)
  * Allocate and initialize serio structure for subsequent registration
  * with serio core.
  */
-static int __devinit milkbd_probe(struct platform_device *dev)
+static int milkbd_probe(struct platform_device *dev)
 {
 	struct serio *serio;
 
@@ -105,7 +105,7 @@ static int __devinit milkbd_probe(struct platform_device *dev)
 	return 0;
 }
 
-static int __devexit milkbd_remove(struct platform_device *dev)
+static int milkbd_remove(struct platform_device *dev)
 {
 	struct serio *serio = platform_get_drvdata(dev);
 	serio_unregister_port(serio);
@@ -114,7 +114,7 @@ static int __devexit milkbd_remove(struct platform_device *dev)
 
 static struct platform_driver milkbd_driver = {
 	.probe		= milkbd_probe,
-	.remove		= __devexit_p(milkbd_remove),
+	.remove		= milkbd_remove,
 	.driver		= {
 	.name		= "milkbd",
 	},

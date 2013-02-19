@@ -248,7 +248,7 @@ static struct fb_ops milkymistfb_ops = {
 #endif
 };
 
-static int __devinit milkymistfb_probe(struct platform_device *ofdev)
+static int milkymistfb_probe(struct platform_device *ofdev)
 {
 	struct device_node *np = ofdev->dev.of_node;
 	struct fb_info *info;
@@ -328,7 +328,7 @@ err_framebuffer_release:
 	return ret;
 }
 
-static int __devexit milkymistfb_remove(struct platform_device *ofdev)
+static int milkymistfb_remove(struct platform_device *ofdev)
 {
 	struct milkymistfb *milkymistfb = platform_get_drvdata(ofdev);
 	struct fb_info *info = milkymistfb->fb;
@@ -360,7 +360,7 @@ static struct platform_driver milkymist_vgafb_of_driver = {
 		.of_match_table = milkymist_vgafb_match,
 	},
 	.probe		= milkymistfb_probe,
-	.remove		= __devexit_p(milkymistfb_remove),
+	.remove		= milkymistfb_remove,
 };
 
 #ifndef MODULE

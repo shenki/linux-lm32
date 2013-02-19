@@ -342,7 +342,7 @@ static void milkymist_uart_console_write(struct console *co, const char *s,
 		spin_unlock_irqrestore(&port->lock, flags);
 }
 
-static int __devinit milkymist_uart_console_setup(struct console *co,
+static int milkymist_uart_console_setup(struct console *co,
 		char *options)
 {
 	struct uart_port *port;
@@ -399,7 +399,7 @@ static struct uart_driver milkymist_uart_driver = {
 #endif
 };
 
-static int __devinit milkymist_uart_probe(struct platform_device *op)
+static int milkymist_uart_probe(struct platform_device *op)
 {
 	struct uart_port *port;
 	struct device_node *np = op->dev.of_node;
@@ -482,7 +482,7 @@ static int __devinit milkymist_uart_probe(struct platform_device *op)
 	return 0;
 }
 
-static int __devexit milkymist_uart_remove(struct platform_device *dev)
+static int milkymist_uart_remove(struct platform_device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(&dev->dev);
 
@@ -506,7 +506,7 @@ static struct platform_driver milkymist_uart_of_driver = {
 		.of_match_table = milkymist_uart_match,
 	},
 	.probe		= milkymist_uart_probe,
-	.remove		= __devexit_p(milkymist_uart_remove),
+	.remove		= milkymist_uart_remove,
 };
 
 static int __init milkymist_uart_init(void)

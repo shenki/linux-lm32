@@ -84,7 +84,7 @@ static void milkmouse_close(struct serio *port)
  * Allocate and initialize serio structure for subsequent registration
  * with serio core.
  */
-static int __devinit milkmouse_probe(struct platform_device *dev)
+static int milkmouse_probe(struct platform_device *dev)
 {
 	struct serio *serio;
 
@@ -105,7 +105,7 @@ static int __devinit milkmouse_probe(struct platform_device *dev)
 	return 0;
 }
 
-static int __devexit milkmouse_remove(struct platform_device *dev)
+static int milkmouse_remove(struct platform_device *dev)
 {
 	struct serio *serio = platform_get_drvdata(dev);
 	serio_unregister_port(serio);
@@ -114,7 +114,7 @@ static int __devexit milkmouse_remove(struct platform_device *dev)
 
 static struct platform_driver milkmouse_driver = {
 	.probe		= milkmouse_probe,
-	.remove		= __devexit_p(milkmouse_remove),
+	.remove		= milkmouse_remove,
 	.driver		= {
 	.name		= "milkmouse",
 	},
