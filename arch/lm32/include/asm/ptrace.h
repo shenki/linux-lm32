@@ -70,6 +70,7 @@ struct pt_regs {
 #ifdef __KERNEL__
 #define user_mode(regs) ((regs)->pt_mode == PT_MODE_USER)
 
+#define user_stack_pointer(regs) ((regs)->sp)
 #define instruction_pointer(regs) ((regs)->ea)
 #define profile_pc(regs) instruction_pointer(regs)
 
