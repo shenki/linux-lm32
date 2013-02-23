@@ -167,10 +167,6 @@ ENTRY(ret_from_kernel_thread)
 	ori ra, ra, lo(syscall_tail)
 	b r11
 
-ENTRY(sys_execve)
-	mv r4, r7
-	bi lm32_execve
-
 ENTRY(sys_rt_sigreturn)
 	mv r1, r7
 	bi _sys_rt_sigreturn

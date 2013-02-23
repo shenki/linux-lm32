@@ -39,25 +39,6 @@
 #include <asm/uaccess.h>
 #include <asm/unistd.h>
 
-asmlinkage int lm32_execve(const char __user *ufilename,
-                           const char __user *const __user *uargv,
-                           const char __user *const __user *uenvp,
-                           struct pt_regs *regs)
-{
-	int error;
-	struct filename *filename;
-
-	filename = getname(ufilename);
-	error = PTR_ERR(filename);
-	if (IS_ERR(filename))
-		goto out;
-
-	error = do_execve(filename->name, uargv, uenvp, regs);
-	putname(filename);
-out:
-	return error;
-}
-
 /* the args to sys_lm32_clone try to match the libc call to avoid register
  * reshuffling:
  *   int clone(int (*fn)(void *arg), void *child_stack, int flags, void *arg); */
