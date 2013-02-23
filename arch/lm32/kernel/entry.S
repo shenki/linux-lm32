@@ -62,7 +62,7 @@ ENTRY(interrupt_handler)
 	nop
 	nop
 
-ENTRY(system_call)
+.macro switch_to_kernel_mode
 	/*
 	 * Store away r9,r10 so that we can use it here. The tricky part is that we
 	 * need to do this without clobbering any other registers. The r0 register
@@ -85,7 +85,7 @@ ENTRY(system_call)
 	lw r10, (r9+TI_TASK) /* load pointer to task */
 	lw r9, (r10+TASK_WHICH_STACK)
 
-	mv r11, sp /* remember sp for restoring r9, r10, r11 */
+	mv r11, sp
 
 	be r9, r0, 1f
 
@@ -97,17 +97,62 @@ ENTRY(system_call)
 1:/* already on kernel stack */
 
 	addi sp, sp, -132
-	sw (sp+116), r11
 
-	/* restore r9, r10, r11 */
+	/*
+	 * store the current kernel_mode value to the stack frame and set
+	 * kernel_mode to 1
+	 */
+	mvhi r9, hi(kernel_mode)
+	ori r9, r9, lo(kernel_mode)
+	lw r10, (r9+0)
+	sw (sp+132), r10
+	mvi r10, PT_MODE_KERNEL
+	sw (r9+0), r10
+
+	/* save stack pointer and ra in current stack frame */
+	sw (sp+116), r11
+	sw (sp+120), ra
+
+	/* restore r9,r10,r11 */
 	mvhi r11, hi(saved_state)
 	ori r11, r11, lo(saved_state)
 	lw r9, (r11+0)
 	lw r10, (r11+4)
 	lw r11, (r11+8)
+.endm
 
-  /* save registers */
-	sw    (sp + 120), ra
+.macro switch_to_user_mode
+	rcsr r2, IE
+	andi r3, r2, 0xfffe
+	wcsr IE, r3
+	lw r2, (sp+132)
+	mvhi r1, hi(kernel_mode)
+	ori r1, r1, lo(kernel_mode)
+	sw (r1+0), r2
+	/* prepare switch to user stack but keep kernel stack pointer in r11 */
+	/* r9: scratch register */
+	/* r10: current = current_thread_info()->task */
+	/* r11: ksp backup */
+	/* setup r10 = current */
+	bne r2, r0, 1f
+	mvhi r9, hi(lm32_current_thread);
+	ori r9, r9, lo(lm32_current_thread);
+	lw r9, (r9+0); /* dereference lm32_current_thread */
+	lw r10, (r9+TI_TASK); /* load pointer to task */
+	/* set task->thread.which_stack to 1 (user stack) */
+	mvi r9, TASK_USP - TASK_KSP
+	sw (r10+TASK_WHICH_STACK), r9
+	/* store ksp (after restore of frame) into task->thread.ksp */
+	addi r9, sp, 132
+	sw (r10+TASK_KSP), r9
+	/* save sp into r11 */
+	/* get usp into sp*/
+	1:
+.endm
+
+ENTRY(system_call)
+	switch_to_kernel_mode
+	/* save registers */
 	calli _save_syscall_frame
 
 	rcsr r11, IE
@@ -183,8 +228,7 @@ ENTRY(ret_from_kernel_thread)
 /* we therefore only save and restore the caller saved registers */
 /* (r1-r10, ra, ea because an interrupt could interrupt another one) */
 _long_interrupt_handler:
-	addi    sp, sp, -132
-	sw      (sp+120), ra
+	switch_to_kernel_mode
 	calli   _save_irq_frame
 
 	/* Workaround hardware hazard. Sometimes the interrupt handler is entered
@@ -245,24 +289,11 @@ _save_irq_frame:
 	/* ra (sp + 120) has already been written */
 	sw      (sp+124), ea
 
-	mvhi r1, hi(kernel_mode)
-	ori r1, r1, lo(kernel_mode)
-	lw r2, (r1+0)
-	sw (sp+132), r2
-	mvi r2, PT_MODE_KERNEL
-	sw (r1+0), r2
 ret
 
 /* restore all caller saved registers saved in _save_irq_frame and return from exception */
 _restore_irq_frame_and_return:
-	rcsr r2, IE
-	andi r3, r2, 0xfffe
-	wcsr IE, r3
-	lw r2, (sp+132)
-	mvhi r1, hi(kernel_mode)
-	ori r1, r1, lo(kernel_mode)
-	sw (r1+0), r2
-
+	switch_to_user_mode
 	lw      r1,  (sp+8);
 	lw      r2,  (sp+12);
 	lw      r3,  (sp+16);
@@ -275,7 +306,7 @@ _restore_irq_frame_and_return:
 	lw      r10, (sp+44);
 	lw      ra,  (sp+120)
 	lw      ea,  (sp+124)
-	addi    sp, sp, 132
+	lw      sp,  (sp+116)
 	eret
 
 _save_syscall_frame:
@@ -310,12 +341,6 @@ _save_syscall_frame:
 	sw      (sp+124), ea
 	sw      (sp+128), ba
 
-	mvhi r11, hi(kernel_mode)
-	ori r11, r11, lo(kernel_mode)
-	lw r12, (r11+0)
-	sw (sp+132), r12
-	mvi r12, PT_MODE_KERNEL
-	sw (r11+0), r12
 	ret
 
 /************************/
@@ -329,68 +354,40 @@ _save_syscall_frame:
 
 #define RETURN_FROM_SYSCALL_OR_EXCEPTION(label, addr_register, return_instr) \
 label: \
-	rcsr r2, IE; \
-	andi r3, r2, 0xfffe; \
-	wcsr IE, r3; \
-	lw r2, (sp+132); \
-	mvhi r1, hi(kernel_mode); \
-	ori r1, r1, lo(kernel_mode); \
-	sw (r1+0), r2; \
-	/* prepare switch to user stack but keep kernel stack pointer in r11 */ \
-	/* r9: scratch register */ \
-	/* r10: current = current_thread_info()->task */ \
-	/* r11: ksp backup */ \
-	/* setup r10 = current */ \
-	addi sp, sp, 132; \
-	bne r2, r0, 1f; \
-	mvhi r9, hi(lm32_current_thread); \
-	ori r9, r9, lo(lm32_current_thread); \
-	lw r9, (r9+0); /* dereference lm32_current_thread */ \
-	lw r10, (r9+TI_TASK); /* load pointer to task */ \
-	/* set task->thread.which_stack to 1 (user stack) */ \
-	mvi r9, TASK_USP - TASK_KSP; \
-	sw (r10+TASK_WHICH_STACK), r9; \
-	/* store ksp (after restore of frame) into task->thread.ksp */ \
-	sw (r10+TASK_KSP), sp; \
-	/* save sp into r11 */ \
-	/* get usp into sp*/ \
-	1: \
-	addi r11, sp, -132; \
+	switch_to_user_mode; \
 	/* restore frame from original kernel stack */ \
 	/* restore r1 as the return value is stored onto the stack */ \
-	lw      r1,  (r11+8); \
-	lw      r2,  (r11+12); \
-	lw      r3,  (r11+16); \
-	lw      r4,  (r11+20); \
-	lw      r5,  (r11+24); \
-	lw      r6,  (r11+28); \
-	lw      r7,  (r11+32); \
-	lw      r8,  (r11+36); \
-	lw      r9,  (r11+40); \
-	lw      r10, (r11+44); \
-	/* skip r11 */; \
-	lw      r12, (r11+52); \
-	lw      r13, (r11+56); \
-	lw      r14, (r11+60); \
-	lw      r15, (r11+64); \
-	lw      r16, (r11+68); \
-	lw      r17, (r11+72); \
-	lw      r18, (r11+76); \
-	lw      r19, (r11+80); \
-	lw      r20, (r11+84); \
-	lw      r21, (r11+88); \
-	lw      r22, (r11+92); \
-	lw      r23, (r11+96); \
-	lw      r24, (r11+100); \
-	lw      r25, (r11+104); \
-	lw      r26, (r11+108); \
-	lw      r27, (r11+112); \
-	lw      sp,  (r11+116); \
-	lw      ra,  (r11+120); \
-	lw      ea,  (r11+124); \
-	lw      ba,  (r11+128); \
-	/* r11 must be restored last */ \
-	lw      r11,  (r11+48); \
+	lw      r1,  (sp+8); \
+	lw      r2,  (sp+12); \
+	lw      r3,  (sp+16); \
+	lw      r4,  (sp+20); \
+	lw      r5,  (sp+24); \
+	lw      r6,  (sp+28); \
+	lw      r7,  (sp+32); \
+	lw      r8,  (sp+36); \
+	lw      r9,  (sp+40); \
+	lw      r10, (sp+44); \
+	lw      r11, (sp+48); \
+	lw      r12, (sp+52); \
+	lw      r13, (sp+56); \
+	lw      r14, (sp+60); \
+	lw      r15, (sp+64); \
+	lw      r16, (sp+68); \
+	lw      r17, (sp+72); \
+	lw      r18, (sp+76); \
+	lw      r19, (sp+80); \
+	lw      r20, (sp+84); \
+	lw      r21, (sp+88); \
+	lw      r22, (sp+92); \
+	lw      r23, (sp+96); \
+	lw      r24, (sp+100); \
+	lw      r25, (sp+104); \
+	lw      r26, (sp+108); \
+	lw      r27, (sp+112); \
+	lw      ra,  (sp+120); \
+	lw      ea,  (sp+124); \
+	lw      ba,  (sp+128); \
+	lw      sp,  (sp+116); \
 	/* scall stores pc into ea/ba register, not pc+4, so we have to add 4 */ \
 	addi	addr_register, addr_register, 4; \
 	return_instr
