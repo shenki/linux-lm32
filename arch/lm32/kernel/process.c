@@ -145,7 +145,7 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 
 int copy_thread(unsigned long clone_flags,
 		unsigned long usp_thread_fn, unsigned long thread_fn_arg,
-		struct task_struct *p, struct pt_regs *unused)
+		struct task_struct *p)
 {
 	unsigned long child_tos = KSTK_TOS(p);
 	struct pt_regs *childregs = task_pt_regs(p);
