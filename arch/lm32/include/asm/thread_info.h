@@ -44,13 +44,14 @@ struct thread_info {
 
 
 /* how to get the thread information struct from C */
-static inline struct thread_info *current_thread_info(void) __attribute_const__;
+static inline struct thread_info *current_thread_info(void) __pure;
 
 extern struct thread_info* lm32_current_thread;
 
 static inline struct thread_info *current_thread_info(void)
 {
-	return lm32_current_thread;
+	register unsigned long sp asm ("sp");
+	return (struct thread_info *)(sp & ~(THREAD_SIZE - 1));
 }
 
 
