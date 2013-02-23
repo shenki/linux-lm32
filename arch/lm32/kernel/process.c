@@ -47,6 +47,7 @@
 #include <asm/pgtable.h>
 
 asmlinkage void ret_from_fork(void);
+asmlinkage void ret_from_kernel_thread(void);
 asmlinkage void syscall_tail(void);
 
 struct thread_info* lm32_current_thread;
@@ -127,32 +128,6 @@ void show_regs(struct pt_regs *regs)
 		printk("%3s: 0x%lx\n", lm32_reg_names[i], reg[i]);
 }
 
-static void kernel_thread_helper(int (*fn)(void*), void* arg)
-{
-	do_exit(fn(arg));
-}
-
-/*
- * Create a kernel thread
- */
-int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
-{
-	/* prepare registers from which a child task switch frame will be copied */
-	struct pt_regs regs;
-
-	set_fs(KERNEL_DS);
-
-	memset(&regs, 0, sizeof(regs));
-
-	//printk("kernel_thread fn=%x arg=%x regs=%x\n", fn, arg, &regs);
-
-	regs.r11 = (unsigned long)fn;
-	regs.r12 = (unsigned long)arg;
-	regs.r13 = (unsigned long)kernel_thread_helper;
-	regs.pt_mode = PT_MODE_KERNEL;
-	return do_fork(flags | CLONE_VM | CLONE_UNTRACED, 0, &regs, 0, NULL, NULL);
-}
-
 void flush_thread(void)
 {
 }
@@ -169,24 +144,23 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 }
 
 int copy_thread(unsigned long clone_flags,
-		unsigned long usp, unsigned long stk_size,
-		struct task_struct * p, struct pt_regs * regs)
+		unsigned long usp_thread_fn, unsigned long thread_fn_arg,
+		struct task_struct *p, struct pt_regs *regs)
 {
 	unsigned long child_tos = KSTK_TOS(p);
-	struct pt_regs *childregs;
+	struct pt_regs *childregs = task_pt_regs(p);
 
-	if (!user_mode(regs)) {
+	if (!regs) {
 		/* kernel thread */
 
-		if( usp != 0 )
-			panic("trying to start kernel thread with usp != 0");
-
-		/* childregs = full task switch frame on kernel stack of child */
 		childregs = (struct pt_regs *)(child_tos) - 1;
-		*childregs = *regs;
+		memset(childregs, 0, sizeof(childregs));
+		childregs->r11 = usp_thread_fn;
+		childregs->r12 = thread_fn_arg;
+		/* childregs = full task switch frame on kernel stack of child */
 
 		/* return via ret_from_fork */
-		childregs->ra = (unsigned long)ret_from_fork;
+		childregs->ra = (unsigned long)ret_from_kernel_thread;
 
 		/* setup ksp/usp */
 		p->thread.ksp = (unsigned long)childregs - 4; /* perhaps not necessary */
@@ -211,7 +185,7 @@ int copy_thread(unsigned long clone_flags,
 		memset(childregs, 0, sizeof(childregs));
 
 		/* user stack pointer is shared with the parent per definition of vfork */
-		p->thread.usp = usp;
+		p->thread.usp = usp_thread_fn;
 
 		/* kernel stack pointer is not shared with parent, it is the beginning of
 		 * the just created new task switch segment on the kernel stack */

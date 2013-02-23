@@ -58,26 +58,6 @@ out:
 	return error;
 }
 
-int kernel_execve(const char *filename, const char *const argv[], const char *const envp[])
-{
-    register unsigned long _r8 asm("r8") = __NR_execve; 
-    register unsigned long _r1 asm("r1") = (unsigned long)filename; 
-    register unsigned long _r2 asm("r2") = (unsigned long)argv; 
-    register unsigned long _r3 asm("r3") = (unsigned long)envp; 
-
-	__asm__ __volatile__ ("scall\n"
-			: "=r"(_r1)
-			: "r"(_r8),
-			  "0"(_r1), "r"(_r2), "r"(_r3) );
-
-    if(_r1 >=(unsigned long) -4095) {
-      _r1 = (unsigned long) -1;
-    }
-
-    return (int) _r1;
-}
-EXPORT_SYMBOL(kernel_execve);
-
 /* the args to sys_lm32_clone try to match the libc call to avoid register
  * reshuffling:
  *   int clone(int (*fn)(void *arg), void *child_stack, int flags, void *arg); */

@@ -154,10 +154,18 @@ EXCEPTION_RETURN_PATH(_return_from_exception, _restore_and_return_exception)
 /* returns to continuation(arg1, arg2) */
 ENTRY(ret_from_fork)
 	calli	schedule_tail
-	mv r1, r11
-	mv r2, r12
-	mv ra, r13
-	ret
+	mvi r1, 0
+	bi syscall_tail
+
+/* ret_from_fork(arg1, arg2, continuation) */
+/* calls schedule_tail and then manage_signals */
+/* returns to continuation(arg1, arg2) */
+ENTRY(ret_from_kernel_thread)
+	calli	schedule_tail
+	mv r1, r12
+	mvhi ra, hi(syscall_tail)
+	ori ra, ra, lo(syscall_tail)
+	b r11
 
 ENTRY(sys_execve)
 	mv r4, r7
