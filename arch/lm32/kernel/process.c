@@ -145,12 +145,12 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 
 int copy_thread(unsigned long clone_flags,
 		unsigned long usp_thread_fn, unsigned long thread_fn_arg,
-		struct task_struct *p, struct pt_regs *regs)
+		struct task_struct *p, struct pt_regs *unused)
 {
 	unsigned long child_tos = KSTK_TOS(p);
 	struct pt_regs *childregs = task_pt_regs(p);
 
-	if (!regs) {
+	if (p->flags & PF_KTHREAD) {
 		/* kernel thread */
 
 		childregs = (struct pt_regs *)(child_tos) - 1;
@@ -178,7 +178,7 @@ int copy_thread(unsigned long clone_flags,
 		/* childsyscallregs = full syscall frame on kernel stack of child */
 		childsyscallregs = (struct pt_regs *)(child_tos) - 1; /* 32 = safety */
 		/* child shall have same syscall context to restore as parent has ... */
-		*childsyscallregs = *regs;
+		*childsyscallregs = *current_pt_regs();
 
 		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
 		childregs = childsyscallregs - 1;
