@@ -164,10 +164,6 @@ int copy_thread(unsigned long clone_flags,
 /* start userspace thread */
 void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 {
-	set_fs(USER_DS);
-
-	memset(regs, 0, sizeof(regs));
-
 	/* -4 because we will add 4 later in ret_from_syscall */
 	regs->ea = pc - 4;
 #ifdef CONFIG_BINFMT_ELF_FDPIC
@@ -176,7 +172,4 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 	regs->sp = usp;
 	regs->fp = current->mm->start_data;
 	regs->pt_mode = PT_MODE_USER;
-
-	/*printk("start_thread: current=%lx usp=%lx\n", current, usp);*/
 }
-
