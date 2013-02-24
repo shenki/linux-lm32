@@ -52,12 +52,6 @@ asmlinkage void syscall_tail(void);
 
 struct thread_info* lm32_current_thread;
 
-/*
- * The following aren't currently used.
- */
-void (*pm_idle)(void);
-EXPORT_SYMBOL(pm_idle);
-
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
@@ -70,8 +64,6 @@ static void default_idle(void)
 		__asm__ __volatile__("and r0, r0, r0" ::: "memory");
 }
 
-void (*idle)(void) = default_idle;
-
 /*
  * The idle thread. There's no useful work to be
  * done, so just try to conserve power and have a
@@ -82,7 +74,7 @@ void cpu_idle(void)
 {
 	/* endless idle loop with no priority at all */
 	while (1) {
-		idle();
+		default_idle();
 		preempt_enable_no_resched();
 		schedule();
 		preempt_disable();
