@@ -63,11 +63,20 @@ ENTRY(interrupt_handler)
 	nop
 
 ENTRY(system_call)
-	/* break */
-	/* store away r9,r10 so that we can use it here TODO: use clobbered ones*/
-	sw (sp+0), r9 /* needed for various */
-	sw (sp+-4), r10 /* needed for current = current_thread_info()->task */
-	sw (sp+-8), r11 /* needed for user stack pointer, if switching */
+	/*
+	 * Store away r9,r10 so that we can use it here. The tricky part is that we
+	 * need to do this without clobbering any other registers. The r0 register
+	 * is supposed to be always 0. Since we are running with interrupts we can
+	 * allow ourselves to temporarily change it's value. Note though that r0 is
+	 * also used in pseudo instructions like 'mv', so we need to restore it
+	 * immediately afterwards.
+	 */
+	mvhi r0, hi(saved_state)
+	ori r0, r0, lo(saved_state)
+	sw (r0+0), r9
+	sw (r0+4), r10
+	sw (r0+8), r11
+	xor r0, r0, r0
 
 	/* test if already on kernel stack: test current_thread_info->task->which_stack */
 	mvhi r9, hi(lm32_current_thread)
@@ -91,9 +100,11 @@ ENTRY(system_call)
 	sw (sp+116), r11
 
 	/* restore r9, r10, r11 */
+	mvhi r11, hi(saved_state)
+	ori r11, r11, lo(saved_state)
 	lw r9, (r11+0)
-	lw r10, (r11+-4)
-	lw r11, (r11+-8)
+	lw r10, (r11+4)
+	lw r11, (r11+8)
 
   /* save registers */
 	sw    (sp + 120), ra
@@ -127,6 +138,11 @@ ENTRY(syscall_tail)
 	sw (sp+8), r1 /* store return value into pt_regs */
 
 	bi      _restore_and_return_exception
+
+saved_state:
+	.word 0x00
+	.word 0x00
+	.word 0x00
 
 /**************************/
 /* exception return paths */
