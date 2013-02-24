@@ -32,29 +32,15 @@ void ptrace_disable(struct task_struct *child)
 static int ptrace_getregs(struct task_struct *child, unsigned long __user *data)
 {
 	struct pt_regs *regs = task_pt_regs(child);
-	int ret;
 
-	ret = copy_to_user(data, regs, sizeof(regs));
-	if (!ret) {
-		/* special case: sp: we always want to get the USP! */
-		__put_user (current->thread.usp, data + 28);
-	}
-
-	return ret;
+	return copy_to_user(data, regs, sizeof(regs));
 }
 
 static int ptrace_setregs (struct task_struct *child, unsigned long __user *data)
 {
 	struct pt_regs *regs = task_pt_regs(child);
-	int ret;
 
-	ret = copy_from_user(regs, data, sizeof(regs));
-	if (!ret) {
-		/* special case: sp: we always want to set the USP! */
-		child->thread.usp = regs->sp;
-	}
-
-	return ret;
+	return copy_from_user(regs, data, sizeof(regs));
 }
 
 long arch_ptrace(struct task_struct *child, long request, unsigned long addr,
@@ -68,13 +54,8 @@ long arch_ptrace(struct task_struct *child, long request, unsigned long addr,
 
 
 		switch (addr) {
-		case 0 ... 27:
-		case 29 ... 31:
+		case 0 ... 31:
 			tmp = *(((unsigned long *)task_pt_regs(child)) + addr);
-			break;
-		case 28: /* sp */
-			/* special case: sp: we always want to get the USP! */
-			tmp = child->thread.usp;
 			break;
 		case PT_TEXT_ADDR:
 			tmp = child->mm->start_code;
@@ -93,13 +74,8 @@ long arch_ptrace(struct task_struct *child, long request, unsigned long addr,
 	}
 	case PTRACE_POKEUSR:
 		switch (addr) {
-		case 0 ... 27:
-		case 29 ... 31:
+		case 0 ... 31:
 			*(((unsigned long *)task_pt_regs(child)) + addr) = data;
-			break;
-		case 28: /* sp */
-			/* special case: sp: we always want to set the USP! */
-			child->thread.usp = data;
 			break;
 		default:
 			printk("ptrace attempted to POKEUSR at %lx\n", addr);

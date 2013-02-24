@@ -90,7 +90,6 @@ ENTRY(interrupt_handler)
 	be r9, r0, 1f
 
 	/* we are on user stack, have to switch */
-	sw (r10+TASK_USP), sp /* store usp */
 	lw sp, (r10+TASK_KSP) /* load ksp */
 	sw (r10+TASK_WHICH_STACK), r0 /* set which_stack to 0 */
 
@@ -140,13 +139,11 @@ ENTRY(interrupt_handler)
 	lw r9, (r9+0); /* dereference lm32_current_thread */
 	lw r10, (r9+TI_TASK); /* load pointer to task */
 	/* set task->thread.which_stack to 1 (user stack) */
-	mvi r9, TASK_USP - TASK_KSP
+	mvi r9, 1
 	sw (r10+TASK_WHICH_STACK), r9
 	/* store ksp (after restore of frame) into task->thread.ksp */
 	addi r9, sp, 132
 	sw (r10+TASK_KSP), r9
-	/* save sp into r11 */
-	/* get usp into sp*/
 	1:
 .endm
 

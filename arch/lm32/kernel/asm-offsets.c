@@ -28,7 +28,6 @@ int main(void)
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
 	DEFINE(TASK_KSP, offsetof(struct task_struct, thread.ksp));
-	DEFINE(TASK_USP, offsetof(struct task_struct, thread.usp));
 	DEFINE(TASK_WHICH_STACK, offsetof(struct task_struct, thread.which_stack));
 
 	DEFINE(PT_R0, offsetof(struct pt_regs, r0));
@@ -73,7 +72,6 @@ int main(void)
 	DEFINE(_THREAD_SIZE, THREAD_SIZE);
 
 	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
-	DEFINE(THREAD_USP, offsetof(struct thread_struct, usp));
 	DEFINE(THREAD_WHICH_STACK, offsetof(struct thread_struct, which_stack));
 
 	return 0;

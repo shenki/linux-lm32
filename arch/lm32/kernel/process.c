@@ -157,7 +157,6 @@ int copy_thread(unsigned long clone_flags,
 		/* setup ksp/usp */
 		p->thread.ksp = (unsigned long)childregs - 4; /* perhaps not necessary */
 		childregs->sp = p->thread.ksp;
-		p->thread.usp = 0;
 		p->thread.which_stack = 0; /* kernel stack */
 
 		//printk("copy_thread1: ->pid=%d tsp=%lx r5=%lx p->thread.ksp=%lx p->thread.usp=%lx\n",
@@ -177,9 +176,6 @@ int copy_thread(unsigned long clone_flags,
 		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
 		childregs = childsyscallregs - 1;
 		memset(childregs, 0, sizeof(childregs));
-
-		/* user stack pointer is shared with the parent per definition of vfork */
-		p->thread.usp = usp_thread_fn;
 
 		/* kernel stack pointer is not shared with parent, it is the beginning of
 		 * the just created new task switch segment on the kernel stack */
@@ -218,7 +214,6 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 	regs->r7 = current->mm->context.exec_fdpic_loadmap;
 #endif
 	regs->sp = usp;
-	current->thread.usp = usp;
 	regs->fp = current->mm->start_data;
 	regs->pt_mode = PT_MODE_USER;
 
