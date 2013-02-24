@@ -61,7 +61,6 @@
    
 struct thread_struct {
 	unsigned long ksp;	/* kernel stack pointer */
-	unsigned long which_stack; /* 0 if we are on kernel stack, 1 if we are on user stack */
 };
 
 #define KSTK_TOS(tsk) ((unsigned long)task_stack_page(tsk) + THREAD_SIZE - 32)

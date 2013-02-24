@@ -64,60 +64,48 @@ ENTRY(interrupt_handler)
 
 .macro switch_to_kernel_mode
 	/*
-	 * Store away r9,r10 so that we can use it here. The tricky part is that we
+	 * Store away r9,r10,r11 so that we can use it here. The tricky part is that we
 	 * need to do this without clobbering any other registers. The r0 register
 	 * is supposed to be always 0. Since we are running with interrupts we can
 	 * allow ourselves to temporarily change it's value. Note though that r0 is
 	 * also used in pseudo instructions like 'mv', so we need to restore it
 	 * immediately afterwards.
 	 */
-	mvhi r0, hi(saved_state)
-	ori r0, r0, lo(saved_state)
-	sw (r0+0), r9
-	sw (r0+4), r10
-	sw (r0+8), r11
+	mvhi r0, hi(lm32_state)
+	ori r0, r0, lo(lm32_state)
+	sw (r0+STATE_SAVED_R9), r9
+	sw (r0+STATE_SAVED_R10), r10
+	sw (r0+STATE_SAVED_R11), r11
+	mv r9, r0 /* mv is 'or rX, rY, r0', so this works */
 	xor r0, r0, r0
-
-	/* test if already on kernel stack: test current_thread_info->task->which_stack */
-	mvhi r9, hi(lm32_current_thread)
-	ori r9, r9, lo(lm32_current_thread)
-	lw r9, (r9+0) /* dereference lm32_current_thread */
-	lw r10, (r9+TI_TASK) /* load pointer to task */
-	lw r9, (r10+TASK_WHICH_STACK)
-
-	mv r11, sp
-
-	be r9, r0, 1f
-
-	/* we are on user stack, have to switch */
-	lw sp, (r10+TASK_KSP) /* load ksp */
-	sw (r10+TASK_WHICH_STACK), r0 /* set which_stack to 0 */
-
-1:/* already on kernel stack */
-
-	addi sp, sp, -132
 
 	/*
 	 * store the current kernel_mode value to the stack frame and set
 	 * kernel_mode to 1
 	 */
-	mvhi r9, hi(kernel_mode)
-	ori r9, r9, lo(kernel_mode)
-	lw r10, (r9+0)
-	sw (sp+132), r10
-	mvi r10, PT_MODE_KERNEL
-	sw (r9+0), r10
+	lw r10, (r9+STATE_KERNEL_MODE)
 
-	/* save stack pointer and ra in current stack frame */
+	mv r11, sp
+
+	bne r10, r0, 1f
+
+	lw sp, (r9+STATE_CURRENT_THREAD)
+	addi sp, sp, THREAD_SIZE - 36
+1:/* already on kernel stack */
+
+	addi sp, sp, -132
+
+	/* save pt_mode, stack pointer and ra in current stack frame */
+	sw (sp+132), r10
 	sw (sp+116), r11
 	sw (sp+120), ra
 
-	/* restore r9,r10,r11 */
-	mvhi r11, hi(saved_state)
-	ori r11, r11, lo(saved_state)
-	lw r9, (r11+0)
-	lw r10, (r11+4)
-	lw r11, (r11+8)
+	mvi r10, PT_MODE_KERNEL
+	sw (r9+STATE_KERNEL_MODE), r10
+
+	lw r11, (r9+STATE_SAVED_R11)
+	lw r10, (r9+STATE_SAVED_R10)
+	lw r9, (r9+STATE_SAVED_R9)
 .endm
 
 .macro switch_to_user_mode
@@ -125,26 +113,9 @@ ENTRY(interrupt_handler)
 	andi r3, r2, 0xfffe
 	wcsr IE, r3
 	lw r2, (sp+132)
-	mvhi r1, hi(kernel_mode)
-	ori r1, r1, lo(kernel_mode)
-	sw (r1+0), r2
-	/* prepare switch to user stack but keep kernel stack pointer in r11 */
-	/* r9: scratch register */
-	/* r10: current = current_thread_info()->task */
-	/* r11: ksp backup */
-	/* setup r10 = current */
-	bne r2, r0, 1f
-	mvhi r9, hi(lm32_current_thread);
-	ori r9, r9, lo(lm32_current_thread);
-	lw r9, (r9+0); /* dereference lm32_current_thread */
-	lw r10, (r9+TI_TASK); /* load pointer to task */
-	/* set task->thread.which_stack to 1 (user stack) */
-	mvi r9, 1
-	sw (r10+TASK_WHICH_STACK), r9
-	/* store ksp (after restore of frame) into task->thread.ksp */
-	addi r9, sp, 132
-	sw (r10+TASK_KSP), r9
-	1:
+	mvhi r1, hi(lm32_state)
+	ori r1, r1, lo(lm32_state)
+	sw (r1+STATE_KERNEL_MODE), r2
 .endm
 
 ENTRY(system_call)
@@ -180,11 +151,6 @@ ENTRY(syscall_tail)
 	sw (sp+8), r1 /* store return value into pt_regs */
 
 	bi      _restore_and_return_exception
-
-saved_state:
-	.word 0x00
-	.word 0x00
-	.word 0x00
 
 /**************************/
 /* exception return paths */

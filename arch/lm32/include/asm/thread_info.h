@@ -46,7 +46,15 @@ struct thread_info {
 /* how to get the thread information struct from C */
 static inline struct thread_info *current_thread_info(void) __pure;
 
-extern struct thread_info* lm32_current_thread;
+struct lm32_state {
+	struct thread_info *current_thread;
+	unsigned long kernel_mode;
+	unsigned long saved_r9;
+	unsigned long saved_r10;
+	unsigned long saved_r11;
+};
+
+extern struct lm32_state lm32_state;
 
 static inline struct thread_info *current_thread_info(void)
 {

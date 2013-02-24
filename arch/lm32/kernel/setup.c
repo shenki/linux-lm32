@@ -50,7 +50,10 @@
 #include <asm/page.h>
 #include <asm/setup.h>
 
-unsigned int kernel_mode = PT_MODE_KERNEL;
+struct lm32_state lm32_state = {
+	.current_thread = (struct thread_info*)&init_thread_union,
+	.kernel_mode = PT_MODE_KERNEL,
+};
 
 char __initdata cmd_line[COMMAND_LINE_SIZE];
 
@@ -66,11 +69,6 @@ void __init __weak plat_setup_arch(void)
 
 void __init setup_arch(char **cmdline_p)
 {
-	/*
-	 * init "current thread structure" pointer
-	 */
-	lm32_current_thread = (struct thread_info*)&init_thread_union;
-
 	/* populate memory_start and memory_end, needed for bootmem_init() */
 	early_init_devtree(__dtb_start);
 

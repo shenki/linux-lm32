@@ -28,7 +28,6 @@ int main(void)
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
 	DEFINE(TASK_KSP, offsetof(struct task_struct, thread.ksp));
-	DEFINE(TASK_WHICH_STACK, offsetof(struct task_struct, thread.which_stack));
 
 	DEFINE(PT_R0, offsetof(struct pt_regs, r0));
 	DEFINE(PT_R1, offsetof(struct pt_regs, r1));
@@ -72,7 +71,12 @@ int main(void)
 	DEFINE(_THREAD_SIZE, THREAD_SIZE);
 
 	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
-	DEFINE(THREAD_WHICH_STACK, offsetof(struct thread_struct, which_stack));
+
+	DEFINE(STATE_CURRENT_THREAD, offsetof(struct lm32_state, current_thread));
+	DEFINE(STATE_KERNEL_MODE, offsetof(struct lm32_state, kernel_mode));
+	DEFINE(STATE_SAVED_R9, offsetof(struct lm32_state, saved_r9));
+	DEFINE(STATE_SAVED_R10, offsetof(struct lm32_state, saved_r10));
+	DEFINE(STATE_SAVED_R11, offsetof(struct lm32_state, saved_r11));
 
 	return 0;
 }

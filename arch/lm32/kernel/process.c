@@ -50,8 +50,6 @@ asmlinkage void ret_from_fork(void);
 asmlinkage void ret_from_kernel_thread(void);
 asmlinkage void syscall_tail(void);
 
-struct thread_info* lm32_current_thread;
-
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
@@ -157,7 +155,6 @@ int copy_thread(unsigned long clone_flags,
 		/* setup ksp/usp */
 		p->thread.ksp = (unsigned long)childregs - 4; /* perhaps not necessary */
 		childregs->sp = p->thread.ksp;
-		p->thread.which_stack = 0; /* kernel stack */
 
 		//printk("copy_thread1: ->pid=%d tsp=%lx r5=%lx p->thread.ksp=%lx p->thread.usp=%lx\n",
 		//		p->pid, task_stack_page(p), childregs->r5, p->thread.ksp, p->thread.usp);
@@ -180,7 +177,6 @@ int copy_thread(unsigned long clone_flags,
 		/* kernel stack pointer is not shared with parent, it is the beginning of
 		 * the just created new task switch segment on the kernel stack */
 		p->thread.ksp = (unsigned long)childregs - 4;
-		p->thread.which_stack = 0; /* resume from ksp */
 
 		/* child returns via ret_from_fork */
 		childregs->ra = (unsigned long)ret_from_fork;
