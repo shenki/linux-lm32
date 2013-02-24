@@ -171,6 +171,8 @@ int copy_thread(unsigned long clone_flags,
 		childsyscallregs = (struct pt_regs *)(child_tos) - 1; /* 32 = safety */
 		/* child shall have same syscall context to restore as parent has ... */
 		*childsyscallregs = *current_pt_regs();
+		if (usp_thread_fn)
+			childsyscallregs->sp = usp_thread_fn;
 
 		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
 		childregs = childsyscallregs - 1;
