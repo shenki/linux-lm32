@@ -224,12 +224,44 @@ ENTRY(ret_from_kernel_thread)
 	ori ra, ra, lo(syscall_tail)
 	b r11
 
+.macro save_irq_frame
+	sw      (sp+8),   r1
+	sw      (sp+12),  r2
+	sw      (sp+16),  r3
+	sw      (sp+20),  r4
+	sw      (sp+24),  r5
+	sw      (sp+28),  r6
+	sw      (sp+32),  r7
+	sw      (sp+36),  r8
+	sw      (sp+40),  r9
+	sw      (sp+44),  r10
+	/* ra (sp + 120) has already been written */
+	sw      (sp+124), ea
+.endm
+
+/* restore all caller saved registers saved in save_irq_frame */
+.macro restore_irq_frame
+	lw      r1,  (sp+8);
+	lw      r2,  (sp+12);
+	lw      r3,  (sp+16);
+	lw      r4,  (sp+20);
+	lw      r5,  (sp+24);
+	lw      r6,  (sp+28);
+	lw      r7,  (sp+32);
+	lw      r8,  (sp+36);
+	lw      r9,  (sp+40);
+	lw      r10, (sp+44);
+	lw      ra,  (sp+120)
+	lw      ea,  (sp+124)
+	lw      sp,  (sp+116)
+.endm
+
 /* in IRQ we call a function between save and restore */
 /* we therefore only save and restore the caller saved registers */
 /* (r1-r10, ra, ea because an interrupt could interrupt another one) */
 _long_interrupt_handler:
 	switch_to_kernel_mode
-	calli   _save_irq_frame
+	save_irq_frame
 
 	/* Workaround hardware hazard. Sometimes the interrupt handler is entered
 	 * although interrupts are disabled */
@@ -273,53 +305,12 @@ _long_interrupt_handler:
 	addi    r1, sp, 4
 	calli   manage_signals_irq
 6:
-	bi      _restore_irq_frame_and_return
-
-_save_irq_frame:
-	sw      (sp+8),   r1
-	sw      (sp+12),  r2
-	sw      (sp+16),  r3
-	sw      (sp+20),  r4
-	sw      (sp+24),  r5
-	sw      (sp+28),  r6
-	sw      (sp+32),  r7
-	sw      (sp+36),  r8
-	sw      (sp+40),  r9
-	sw      (sp+44),  r10
-	/* ra (sp + 120) has already been written */
-	sw      (sp+124), ea
-
-ret
-
-/* restore all caller saved registers saved in _save_irq_frame and return from exception */
-_restore_irq_frame_and_return:
 	switch_to_user_mode
-	lw      r1,  (sp+8);
-	lw      r2,  (sp+12);
-	lw      r3,  (sp+16);
-	lw      r4,  (sp+20);
-	lw      r5,  (sp+24);
-	lw      r6,  (sp+28);
-	lw      r7,  (sp+32);
-	lw      r8,  (sp+36);
-	lw      r9,  (sp+40);
-	lw      r10, (sp+44);
-	lw      ra,  (sp+120)
-	lw      ea,  (sp+124)
-	lw      sp,  (sp+116)
+	restore_irq_frame
 	eret
 
 _save_syscall_frame:
-	sw      (sp+8),   r1
-	sw      (sp+12),  r2
-	sw      (sp+16),  r3
-	sw      (sp+20),  r4
-	sw      (sp+24),  r5
-	sw      (sp+28),  r6
-	sw      (sp+32),  r7
-	sw      (sp+36),  r8
-	sw      (sp+40),  r9
-	sw      (sp+44),  r10
+	save_irq_frame
 	sw      (sp+48),  r11
 	sw      (sp+52),  r12
 	sw      (sp+56),  r13
@@ -338,7 +329,6 @@ _save_syscall_frame:
 	sw      (sp+108), r26
 	sw      (sp+112), r27
 	/* ra (sp + 120) has already been written */
-	sw      (sp+124), ea
 	sw      (sp+128), ba
 
 	ret
@@ -357,16 +347,6 @@ label: \
 	switch_to_user_mode; \
 	/* restore frame from original kernel stack */ \
 	/* restore r1 as the return value is stored onto the stack */ \
-	lw      r1,  (sp+8); \
-	lw      r2,  (sp+12); \
-	lw      r3,  (sp+16); \
-	lw      r4,  (sp+20); \
-	lw      r5,  (sp+24); \
-	lw      r6,  (sp+28); \
-	lw      r7,  (sp+32); \
-	lw      r8,  (sp+36); \
-	lw      r9,  (sp+40); \
-	lw      r10, (sp+44); \
 	lw      r11, (sp+48); \
 	lw      r12, (sp+52); \
 	lw      r13, (sp+56); \
@@ -385,9 +365,8 @@ label: \
 	lw      r26, (sp+108); \
 	lw      r27, (sp+112); \
 	lw      ra,  (sp+120); \
-	lw      ea,  (sp+124); \
 	lw      ba,  (sp+128); \
-	lw      sp,  (sp+116); \
+	restore_irq_frame; \
 	/* scall stores pc into ea/ba register, not pc+4, so we have to add 4 */ \
 	addi	addr_register, addr_register, 4; \
 	return_instr
