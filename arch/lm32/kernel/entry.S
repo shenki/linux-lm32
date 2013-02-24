@@ -433,19 +433,11 @@ ENTRY(resume)
 	sw  (sp+128), ba */
 
 
-	/* TODO: Aren't we always on kernel stack at this point? */
-
-	/* find out whether we are on kernel or user stack */
-	lw  r3, (r1 + TASK_WHICH_STACK)
-	add r3, r3, r1
-	sw  (r3 + TASK_KSP), sp
+	sw  (r1 + TASK_KSP), sp
 
 	/* restore next */
 
-	/* find out whether we will be on kernel or user stack */
-	lw  r3, (r2 + TASK_WHICH_STACK)
-	add r3, r3, r2
-	lw  sp, (r3 + TASK_KSP)
+	lw  sp, (r2 + TASK_KSP)
 
 	lw  r3,  (sp+16)
 	lw  r4,  (sp+20)
