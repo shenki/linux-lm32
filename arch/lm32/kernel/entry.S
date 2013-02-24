@@ -103,10 +103,6 @@ ENTRY(system_call)
 	ori r11, r11, 1
 	wcsr IE, r11
 
-	/* r7 always holds the pointer to struct pt_regs */
-	addi  r7, sp, 4
-	#addi  r4, sp, 4
-
 	/* r8 always holds the syscall number */
 	/* check if syscall number is valid */
 	mvi r9, __NR_syscalls
@@ -166,10 +162,6 @@ ENTRY(ret_from_kernel_thread)
 	mvhi ra, hi(syscall_tail)
 	ori ra, ra, lo(syscall_tail)
 	b r11
-
-ENTRY(sys_rt_sigreturn)
-	mv r1, r7
-	bi _sys_rt_sigreturn
 
 /* in IRQ we call a function between save and restore */
 /* we therefore only save and restore the caller saved registers */
