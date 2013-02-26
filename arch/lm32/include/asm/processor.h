@@ -71,25 +71,18 @@ extern void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long 
 /* Forward declaration, a strange C thing */
 struct task_struct;
 
-/* Free all resources held by a thread. */
-static inline void release_thread(struct task_struct *dead_task)
+static inline void release_thread(struct task_struct *dead_task) { }
+static inline void exit_thread(void) { }
+
+static inline unsigned long thread_saved_pc(struct task_struct *tsk)
 {
+	return 0;
 }
 
-/* Prepare to copy thread state - unlazy all lazy status */
-#define prepare_to_copy(tsk)	do { } while (0)
-
-extern int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags);
-
-/*
- * Free current thread data structures etc..
- */
-static inline void exit_thread(void)
+static inline unsigned long get_wchan(struct task_struct *p)
 {
+	return 0;
 }
-
-unsigned long thread_saved_pc(struct task_struct *tsk);
-unsigned long get_wchan(struct task_struct *p);
 
 #define cpu_relax()    barrier()
 

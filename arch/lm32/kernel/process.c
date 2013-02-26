@@ -122,20 +122,8 @@ void flush_thread(void)
 {
 }
 
-/* no stack unwinding */
-unsigned long get_wchan(struct task_struct *p)
-{
-	return 0;
-}
-
-unsigned long thread_saved_pc(struct task_struct *tsk)
-{
-	return 0;
-}
-
-int copy_thread(unsigned long clone_flags,
-		unsigned long usp_thread_fn, unsigned long thread_fn_arg,
-		struct task_struct *p)
+int copy_thread(unsigned long clone_flags, unsigned long usp_thread_fn,
+	unsigned long thread_fn_arg, struct task_struct *p)
 {
 	struct pt_regs *childregs = task_pt_regs(p);
 	struct cpu_context_save *cc = &task_thread_info(p)->cpu_context;
