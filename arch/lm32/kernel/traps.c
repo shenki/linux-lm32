@@ -83,7 +83,7 @@ void show_stack(struct task_struct *task, unsigned long *stack)
 
 	if (!stack) {
 		if (task)
-			stack = (unsigned long *)task->thread.ksp;
+			stack = (unsigned long *)task_thread_info(task)->cpu_context.sp;
 		else
 			stack = (unsigned long *)&stack;
 	}

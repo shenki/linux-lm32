@@ -137,61 +137,25 @@ int copy_thread(unsigned long clone_flags,
 		unsigned long usp_thread_fn, unsigned long thread_fn_arg,
 		struct task_struct *p)
 {
-	unsigned long child_tos = KSTK_TOS(p);
 	struct pt_regs *childregs = task_pt_regs(p);
+	struct cpu_context_save *cc = &task_thread_info(p)->cpu_context;
+
+	memset(cc, 0, sizeof(*cc));
+	cc->sp = (unsigned long)childregs - 4;
 
 	if (p->flags & PF_KTHREAD) {
-		/* kernel thread */
+		memset(childregs, 0, sizeof(*childregs));
+		childregs->pt_mode = PT_MODE_KERNEL;
 
-		childregs = (struct pt_regs *)(child_tos) - 1;
-		memset(childregs, 0, sizeof(childregs));
-		childregs->r11 = usp_thread_fn;
-		childregs->r12 = thread_fn_arg;
-		/* childregs = full task switch frame on kernel stack of child */
-
-		/* return via ret_from_fork */
-		childregs->ra = (unsigned long)ret_from_kernel_thread;
-
-		/* setup ksp/usp */
-		p->thread.ksp = (unsigned long)childregs - 4; /* perhaps not necessary */
-		childregs->sp = p->thread.ksp;
-
-		//printk("copy_thread1: ->pid=%d tsp=%lx r5=%lx p->thread.ksp=%lx p->thread.usp=%lx\n",
-		//		p->pid, task_stack_page(p), childregs->r5, p->thread.ksp, p->thread.usp);
+		cc->r11 = usp_thread_fn;
+		cc->r12 = thread_fn_arg;
+		cc->ra = (unsigned long)ret_from_kernel_thread;
 	} else {
-		/* userspace thread (vfork, clone) */
-
-		struct pt_regs* childsyscallregs;
-
-		/* childsyscallregs = full syscall frame on kernel stack of child */
-		childsyscallregs = (struct pt_regs *)(child_tos) - 1; /* 32 = safety */
-		/* child shall have same syscall context to restore as parent has ... */
-		*childsyscallregs = *current_pt_regs();
+		*childregs = *current_pt_regs();
 		if (usp_thread_fn)
-			childsyscallregs->sp = usp_thread_fn;
+			childregs->sp = usp_thread_fn;
 
-		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
-		childregs = childsyscallregs - 1;
-		memset(childregs, 0, sizeof(childregs));
-
-		/* kernel stack pointer is not shared with parent, it is the beginning of
-		 * the just created new task switch segment on the kernel stack */
-		p->thread.ksp = (unsigned long)childregs - 4;
-
-		/* child returns via ret_from_fork */
-		childregs->ra = (unsigned long)ret_from_fork;
-		/* child shall return to where sys_vfork_wrapper has been called */
-		childregs->r13 = (unsigned long)syscall_tail;
-		/* child gets zero as return value from syscall */
-		childregs->r11 = 0;
-		/* after task switch segment return the stack pointer shall point to the
-		 * syscall frame */
-		childregs->sp = (unsigned long)childsyscallregs - 4;
-
-		/*printk("copy_thread2: ->pid=%d p=%lx regs=%lx childregs=%lx r5=%lx ra=%lx "
-				"dsf=%lx p->thread.ksp=%lx p->thread.usp=%lx\n",
-				p->pid, p, regs, childregs, childregs->r5, childregs->ra,
-				dup_syscallframe, p->thread.ksp, p->thread.usp);*/
+		cc->ra = (unsigned long)ret_from_fork;
 	}
 
 	return 0;

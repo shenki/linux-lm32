@@ -337,80 +337,61 @@ label: \
 RETURN_FROM_SYSCALL_OR_EXCEPTION(_restore_and_return_exception,ea,eret)
 
 /*
- * struct task_struct* resume(struct task_struct* prev, struct task_struct* next)
+ * struct task_struct* switch_to(struct task_struct* prev,
+ *		struct thread_info *prev_ti, struct thread_info *next_ti)
  * Returns the previous task
  */
-ENTRY(resume)
-	/* store whole state to current stack (may be usp or ksp) */
-	addi sp, sp, -132
-	sw  (sp+16),  r3
-	sw  (sp+20),  r4
-	sw  (sp+24),  r5
-	sw  (sp+28),  r6
-	sw  (sp+32),  r7
-	sw  (sp+36),  r8
-	sw  (sp+40),  r9
-	sw  (sp+44),  r10
-	sw  (sp+48),  r11
-	sw  (sp+52),  r12
-	sw  (sp+56),  r13
-	sw  (sp+60),  r14
-	sw  (sp+64),  r15
-	sw  (sp+68),  r16
-	sw  (sp+72),  r17
-	sw  (sp+76),  r18
-	sw  (sp+80),  r19
-	sw  (sp+84),  r20
-	sw  (sp+88),  r21
-	sw  (sp+92),  r22
-	sw  (sp+96),  r23
-	sw  (sp+100), r24
-	sw  (sp+104), r25
-	sw  (sp+108), r26
-	sw  (sp+112), r27
-	addi r3, sp, 132 /* special case for stack pointer */
-	sw  (sp+116), r3 /* special case for stack pointer */
-	sw	(sp+120), ra
-/*	sw  (sp+124), ea
-	sw  (sp+128), ba */
+ENTRY(_switch_to)
 
+	/* r1 gets passed through unmodified */
 
-	sw  (r1 + TASK_KSP), sp
+	sw  (r2+TI_CC_R11), r11
+	sw  (r2+TI_CC_R12), r12
+	sw  (r2+TI_CC_R13), r13
+	sw  (r2+TI_CC_R14), r14
+	sw  (r2+TI_CC_R15), r15
+	sw  (r2+TI_CC_R16), r16
+	sw  (r2+TI_CC_R17), r17
+	sw  (r2+TI_CC_R18), r18
+	sw  (r2+TI_CC_R19), r19
+	sw  (r2+TI_CC_R20), r20
+	sw  (r2+TI_CC_R21), r21
+	sw  (r2+TI_CC_R22), r22
+	sw  (r2+TI_CC_R23), r23
+	sw  (r2+TI_CC_R24), r24
+	sw  (r2+TI_CC_R25), r25
+	sw  (r2+TI_CC_GP), r26
+	sw  (r2+TI_CC_FP), r27
+	sw  (r2+TI_CC_SP), sp
+	sw  (r2+TI_CC_RA), ra
+	sw  (r2+TI_CC_EA), ea
+	sw  (r2+TI_CC_BA), ba
+
+	mvhi r4, hi(lm32_state)
+	ori r4, r4, lo(lm32_state)
+	sw (r4+STATE_CURRENT_THREAD), r3
 
 	/* restore next */
-
-	lw  sp, (r2 + TASK_KSP)
-
-	lw  r3,  (sp+16)
-	lw  r4,  (sp+20)
-	lw  r5,  (sp+24)
-	lw  r6,  (sp+28)
-	lw  r7,  (sp+32)
-	lw  r8,  (sp+36)
-	lw  r9,  (sp+40)
-	lw  r10, (sp+44)
-	lw  r11, (sp+48)
-	lw  r12, (sp+52)
-	lw  r13, (sp+56)
-	lw  r14, (sp+60)
-	lw  r15, (sp+64)
-	lw  r16, (sp+68)
-	lw  r17, (sp+72)
-	lw  r18, (sp+76)
-	lw  r19, (sp+80)
-	lw  r20, (sp+84)
-	lw  r21, (sp+88)
-	lw  r22, (sp+92)
-	lw  r23, (sp+96)
-	lw  r24, (sp+100)
-	lw  r25, (sp+104)
-	lw  r26, (sp+108)
-	lw  r27, (sp+112)
-	/* skip sp for now */
-	lw  ra,  (sp+120)
-/*	lw  ea,  (sp+124)
-	lw  ba,  (sp+128) */
-	/* Stack pointer must be restored last --- it will be updated */
-	lw  sp,  (sp+116)
+	lw  r11, (r3+TI_CC_R11)
+	lw  r12, (r3+TI_CC_R12)
+	lw  r13, (r3+TI_CC_R13)
+	lw  r14, (r3+TI_CC_R14)
+	lw  r15, (r3+TI_CC_R15)
+	lw  r16, (r3+TI_CC_R16)
+	lw  r17, (r3+TI_CC_R17)
+	lw  r18, (r3+TI_CC_R18)
+	lw  r19, (r3+TI_CC_R19)
+	lw  r20, (r3+TI_CC_R20)
+	lw  r21, (r3+TI_CC_R21)
+	lw  r22, (r3+TI_CC_R22)
+	lw  r23, (r3+TI_CC_R23)
+	lw  r24, (r3+TI_CC_R24)
+	lw  r25, (r3+TI_CC_R25)
+	lw  r26, (r3+TI_CC_GP)
+	lw  r27, (r3+TI_CC_FP)
+	lw  sp,  (r3+TI_CC_SP)
+	lw  ra,  (r3+TI_CC_RA)
+	lw  ea,  (r3+TI_CC_EA)
+	lw  ba,  (r3+TI_CC_BA)
 
 	ret

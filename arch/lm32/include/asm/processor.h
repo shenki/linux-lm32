@@ -54,27 +54,14 @@
  */
 #define TASK_UNMAPPED_BASE	0
 
-/* 
- * if you change this structure, you must change the code and offsets
- * in asm-offsets.c
- */
-   
-struct thread_struct {
-	unsigned long ksp;	/* kernel stack pointer */
-};
+struct thread_struct {};
+#define INIT_THREAD   {}
 
 #define KSTK_TOS(tsk) ((unsigned long)task_stack_page(tsk) + THREAD_SIZE - 32)
 #define task_pt_regs(tsk) ((struct pt_regs *)KSTK_TOS(tsk) - 1)
 #define KSTK_EIP(tsk) 0
 #define KSTK_ESP(tsk) 0
 
-#define INIT_THREAD  { \
-	sizeof(init_stack) + (unsigned long) init_stack, 0, \
-	0, \
-	0 \
-}
-
-#define	reformat(_regs)		do { } while (0)
 
 /*
  * Do necessary setup to start up a newly executed thread.

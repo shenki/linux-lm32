@@ -25,6 +25,30 @@ typedef struct {
 	unsigned long seg;
 } mm_segment_t;
 
+struct cpu_context_save {
+	unsigned long r11;
+	unsigned long r12;
+	unsigned long r13;
+	unsigned long r14;
+	unsigned long r15;
+	unsigned long r16;
+	unsigned long r17;
+	unsigned long r18;
+	unsigned long r19;
+	unsigned long r20;
+	unsigned long r21;
+	unsigned long r22;
+	unsigned long r23;
+	unsigned long r24;
+	unsigned long r25;
+	unsigned long gp;
+	unsigned long fp;
+	unsigned long sp;
+	unsigned long ra;
+	unsigned long ea;
+	unsigned long ba;
+};
+
 /*
  * low level task data.
  * If you change this, change the TI_* offsets below to match.
@@ -37,6 +61,7 @@ struct thread_info {
 	int			preempt_count;	/* 0 => preemptable, <0 => BUG */
 	struct restart_block	restart_block;
 	mm_segment_t		addr_limit;
+	struct cpu_context_save	cpu_context;
 };
 
 #define init_thread_info	(init_thread_union.thread_info)

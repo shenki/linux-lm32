@@ -27,8 +27,6 @@ int main(void)
 	DEFINE(TASK_MM, offsetof(struct task_struct, mm));
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
-	DEFINE(TASK_KSP, offsetof(struct task_struct, thread.ksp));
-
 	DEFINE(PT_R0, offsetof(struct pt_regs, r0));
 	DEFINE(PT_R1, offsetof(struct pt_regs, r1));
 	DEFINE(PT_R2, offsetof(struct pt_regs, r2));
@@ -70,7 +68,27 @@ int main(void)
 	DEFINE(TI_ADDR_LIMIT, offsetof(struct thread_info, addr_limit));
 	DEFINE(_THREAD_SIZE, THREAD_SIZE);
 
-	DEFINE(THREAD_KSP, offsetof(struct thread_struct, ksp));
+	DEFINE(TI_CC_R11, offsetof(struct thread_info, cpu_context.r11));
+	DEFINE(TI_CC_R12, offsetof(struct thread_info, cpu_context.r12));
+	DEFINE(TI_CC_R13, offsetof(struct thread_info, cpu_context.r13));
+	DEFINE(TI_CC_R14, offsetof(struct thread_info, cpu_context.r14));
+	DEFINE(TI_CC_R15, offsetof(struct thread_info, cpu_context.r15));
+	DEFINE(TI_CC_R16, offsetof(struct thread_info, cpu_context.r16));
+	DEFINE(TI_CC_R17, offsetof(struct thread_info, cpu_context.r17));
+	DEFINE(TI_CC_R18, offsetof(struct thread_info, cpu_context.r18));
+	DEFINE(TI_CC_R19, offsetof(struct thread_info, cpu_context.r19));
+	DEFINE(TI_CC_R20, offsetof(struct thread_info, cpu_context.r20));
+	DEFINE(TI_CC_R21, offsetof(struct thread_info, cpu_context.r21));
+	DEFINE(TI_CC_R22, offsetof(struct thread_info, cpu_context.r22));
+	DEFINE(TI_CC_R23, offsetof(struct thread_info, cpu_context.r23));
+	DEFINE(TI_CC_R24, offsetof(struct thread_info, cpu_context.r24));
+	DEFINE(TI_CC_R25, offsetof(struct thread_info, cpu_context.r25));
+	DEFINE(TI_CC_GP, offsetof(struct thread_info, cpu_context.gp));
+	DEFINE(TI_CC_FP, offsetof(struct thread_info, cpu_context.fp));
+	DEFINE(TI_CC_SP, offsetof(struct thread_info, cpu_context.sp));
+	DEFINE(TI_CC_RA, offsetof(struct thread_info, cpu_context.ra));
+	DEFINE(TI_CC_EA, offsetof(struct thread_info, cpu_context.ea));
+	DEFINE(TI_CC_BA, offsetof(struct thread_info, cpu_context.ba));
 
 	DEFINE(STATE_CURRENT_THREAD, offsetof(struct lm32_state, current_thread));
 	DEFINE(STATE_KERNEL_MODE, offsetof(struct lm32_state, kernel_mode));
