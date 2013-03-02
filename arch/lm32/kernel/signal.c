@@ -49,7 +49,6 @@
 #include <linux/personality.h>
 #include <linux/tty.h>
 #include <linux/hardirq.h>
-#include <linux/freezer.h>
 
 #include <asm/uaccess.h>
 #include <asm/ucontext.h>
@@ -120,28 +119,23 @@ static int setup_sigcontext(struct sigcontext __user *sc, struct pt_regs *regs,
 /*
  * Determine which stack to use..
  */
-static inline void __user *get_sigframe(struct k_sigaction *ka,
+static inline void __user *get_sigframe(struct ksignal *ksig,
 		struct pt_regs *regs, size_t frame_size)
 {
-	unsigned long sp = regs->sp;
-
-	if ((ka->sa.sa_flags & SA_ONSTACK) && !sas_ss_flags(sp))
-		/* use stack set by sigaltstack */
-		sp = current->sas_ss_sp + current->sas_ss_size;
+	unsigned long sp = sigsp(regs->sp, ksig);
 
 	return (void __user *)((sp - frame_size) & ~7UL);
 }
 
-static int setup_rt_frame(int sig, struct k_sigaction *ka,
-			sigset_t *set, struct pt_regs *regs)
+static int setup_rt_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *regs)
 {
 	struct rt_sigframe __user *frame;
 	int err = 0;
 
-	frame = get_sigframe(ka, regs, sizeof(*frame));
+	frame = get_sigframe(ksig, regs, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
-		goto give_sigsegv;
+		return 1;
 
 	err |= __clear_user(&frame->uc, sizeof(frame->uc));
 	err |= __save_altstack(&frame->uc.uc_stack, regs->sp);
@@ -157,7 +151,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 	err |= __put_user(0xac000007, &frame->tramp[1]);
 
 	if (err)
-		goto give_sigsegv;
+		return err;
 
 	flush_icache_range(&frame->tramp, &frame->tramp + 2);
 
@@ -166,11 +160,11 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 
 	/* Set up registers for returning to signal handler */
 	/* entry point */
-	regs->ea = (unsigned long)ka->sa.sa_handler - 4;
+	regs->ea = (unsigned long)ksig->ka.sa.sa_handler - 4;
 	/* stack pointer */
 	regs->sp = (unsigned long)frame - 4;
 	/* Signal handler arguments */
-	regs->r1 = sig;     /* first argument = signum */
+	regs->r1 = ksig->sig;     /* first argument = signum */
 	regs->r2 = (unsigned long)&frame->info;
 	regs->r3 = (unsigned long)&frame->uc;
 
@@ -179,21 +173,16 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 	       current->comm, current->pid, frame, regs->sp, regs->ra, regs->ea, sig);
 #endif
 
-	return regs->r1;
-
-give_sigsegv:
-	force_sigsegv(sig, current);
-
-	return -1;
+	return 0;
 }
 
-static void handle_signal(unsigned long sig, siginfo_t *info,
-		struct k_sigaction *ka, struct pt_regs *regs)
+static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
 {
 	sigset_t *oldset = sigmask_to_save();
+	int ret;
 
-	setup_rt_frame(sig, ka, oldset, regs);
-	signal_delivered(sig, info, ka, regs, 0);
+	ret = setup_rt_frame(ksig, oldset, regs);
+	signal_setup_done(ret, ksig, 0);
 }
 
 /*
@@ -207,9 +196,7 @@ static void handle_signal(unsigned long sig, siginfo_t *info,
  */
 static int do_signal(int retval, struct pt_regs *regs)
 {
-	siginfo_t info;
-	int signr;
-	struct k_sigaction ka;
+	struct ksignal ksig;
 
 	/*
 	 * We want the common case to go fast, which
@@ -220,33 +207,27 @@ static int do_signal(int retval, struct pt_regs *regs)
 	if (!user_mode(regs))
 		return 0;
 
-	if (try_to_freeze())
-		goto no_signal;
-
-	signr = get_signal_to_deliver(&info, &ka, regs, NULL);
-
-	if (signr > 0) {
+	if (get_signal(&ksig)) {
 		/* Whee!  Actually deliver the signal.  */
-		handle_signal(signr, &info, &ka, regs);
-		return signr;
-	}
-
-no_signal:
-	/* Did we come from a system call? */
-	if (regs->r8) {
-		switch (retval) {
-		case -ERESTART_RESTARTBLOCK:
-			regs->r8 = __NR_restart_syscall;
-		case -ERESTARTNOHAND:
-		case -ERESTARTSYS:
-		case -ERESTARTNOINTR:
-			regs->ea -= 4; /* Size of scall insn.  */
-			break;
-		default:
-			break;
+		handle_signal(&ksig, regs);
+		retval = ksig.sig;
+	} else {
+		/* Did we come from a system call? */
+		if (regs->r8) {
+			switch (retval) {
+			case -ERESTART_RESTARTBLOCK:
+				regs->r8 = __NR_restart_syscall;
+			case -ERESTARTNOHAND:
+			case -ERESTARTSYS:
+			case -ERESTARTNOINTR:
+				regs->ea -= 4; /* Size of scall insn.  */
+				break;
+			default:
+				break;
+			}
 		}
+		restore_saved_sigmask();
 	}
-	restore_saved_sigmask();
 
 	return retval;
 }
