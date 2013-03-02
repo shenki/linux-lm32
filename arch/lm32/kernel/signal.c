@@ -80,6 +80,8 @@ asmlinkage int sys_rt_sigreturn(void)
 	struct rt_sigframe __user *frame = (struct rt_sigframe __user *)(regs->sp + 4);
 	sigset_t set;
 
+	current_thread_info()->restart_block.fn = do_no_restart_syscall;
+
 	if (!access_ok(VERIFY_READ, frame, sizeof(*frame)))
 		goto badframe;
 
