@@ -40,6 +40,7 @@
 #include <linux/reboot.h>
 #include <linux/fs.h>
 #include <linux/io.h>
+#include <linux/pm.h>
 
 #include <asm/uaccess.h>
 #include <asm/traps.h>
