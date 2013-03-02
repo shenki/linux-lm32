@@ -157,16 +157,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 	if (err)
 		goto give_sigsegv;
 
-	/* flush instruction cache */
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("wcsr ICC, r0");
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
-	asm volatile("nop");
+	flush_icache_range(&frame->tramp, &frame->tramp + 2);
 
 	/* set return address for signal handler to trampoline */
 	regs->ra = (unsigned long)(&frame->tramp[0]);
