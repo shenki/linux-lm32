@@ -49,6 +49,7 @@
 #include <linux/personality.h>
 #include <linux/tty.h>
 #include <linux/hardirq.h>
+#include <linux/tracehook.h>
 
 #include <asm/uaccess.h>
 #include <asm/ucontext.h>
@@ -58,8 +59,6 @@
 #include <asm/cacheflush.h>
 
 #define DEBUG_SIG 0
-
-asmlinkage int manage_signals(int retval, struct pt_regs* regs);
 
 struct rt_sigframe {
 	struct siginfo info;
@@ -194,33 +193,46 @@ static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
  * the kernel can handle, and then we build all the user-level signal handling
  * stack-frames in one go after that.
  */
-static int do_signal(int retval, struct pt_regs *regs)
+static void do_signal(struct pt_regs *regs, unsigned int in_syscall)
 {
 	struct ksignal ksig;
 
-	/*
-	 * We want the common case to go fast, which
-	 * is why we may in certain cases get here from
-	 * kernel mode. Just return without doing anything
-	 * if so.
-	 */
-	if (!user_mode(regs))
-		return 0;
+	/* Did we come from a system call? */
 
 	if (get_signal(&ksig)) {
-		/* Whee!  Actually deliver the signal.  */
+		if (in_syscall) {
+			switch (regs->r1) {
+			case -ERESTART_RESTARTBLOCK:
+			case -ERESTARTNOHAND:
+				regs->r1 = -EINTR;
+				break;
+			case -ERESTARTSYS:
+				if (!(ksig.ka.sa.sa_flags & SA_RESTART)) {
+					regs->r1 = -EINTR;
+					break;
+				}
+				/* fallthrough */
+			case -ERESTARTNOINTR:
+				regs->ea -= 4; /* Size of scall insn.  */
+				regs->r1 = regs->orig_r1;
+				break;
+			default:
+				break;
+			}
+		}
 		handle_signal(&ksig, regs);
-		retval = ksig.sig;
 	} else {
-		/* Did we come from a system call? */
-		if (regs->r8) {
-			switch (retval) {
+		/* If there is no handler always restart */
+		if (in_syscall) {
+			switch (regs->r1) {
 			case -ERESTART_RESTARTBLOCK:
 				regs->r8 = __NR_restart_syscall;
+				/* fallthrough */
 			case -ERESTARTNOHAND:
 			case -ERESTARTSYS:
 			case -ERESTARTNOINTR:
 				regs->ea -= 4; /* Size of scall insn.  */
+				regs->r1 = regs->orig_r1;
 				break;
 			default:
 				break;
@@ -228,72 +240,17 @@ static int do_signal(int retval, struct pt_regs *regs)
 		}
 		restore_saved_sigmask();
 	}
-
-	return retval;
 }
 
-asmlinkage int manage_signals(int retval, struct pt_regs *regs)
+asmlinkage void do_notify_resume(struct pt_regs *regs, unsigned int in_syscall,
+	unsigned int thread_flags)
 {
-	unsigned long flags;
+	local_irq_enable();
 
-	if (!user_mode(regs))
-		return retval;
-
-	/* disable interrupts for sampling current_thread_info()->flags */
-	local_irq_save(flags);
-	while (current_thread_info()->flags & (_TIF_NEED_RESCHED | _TIF_SIGPENDING)) {
-		if (current_thread_info()->flags & _TIF_NEED_RESCHED) {
-			/* schedule -> enables interrupts */
-			schedule();
-
-			/* disable interrupts for sampling current_thread_info()->flags */
-			local_irq_disable();
-		}
-
-		if (current_thread_info()->flags & _TIF_SIGPENDING) {
-#if DEBUG_SIG
-			/* debugging code */
-			{
-				register unsigned long sp asm("sp");
-				printk("WILL process signal for %s with regs=%lx, ea=%lx, ba=%lx ra=%lx\n",
-						current->comm, regs, regs->ea, regs->ba, *((unsigned long*)(sp+4)));
-			}
-#endif
-			retval = do_signal(retval, regs);
-
-			/* signal handling enables interrupts */
-
-			/* disable irqs for sampling current_thread_info()->flags */
-			local_irq_disable();
-#if DEBUG_SIG
-			/* debugging code */
-			{
-				register unsigned long sp asm("sp");
-				printk("Processed Signal for %s with regs=%lx, ea=%lx, ba=%lx ra=%lx\n",
-						current->comm, regs, regs->ea, regs->ba, *((unsigned long*)(sp+4)));
-			}
-#endif
-		}
+	if (thread_flags & _TIF_SIGPENDING) {
+		do_signal(regs, in_syscall);
+	} else {
+		clear_thread_flag(TIF_NOTIFY_RESUME);
+		tracehook_notify_resume(regs);
 	}
-	local_irq_restore(flags);
-
-	return retval;
-}
-
-asmlinkage void manage_signals_irq(struct pt_regs *regs)
-{
-	unsigned long flags;
-
-	if (!user_mode(regs))
-		return;
-
-	/* disable interrupts for sampling current_thread_info()->flags */
-	local_irq_save(flags);
-
-	if( current_thread_info()->flags & _TIF_NEED_RESCHED ) {
-		/* schedule -> enables interrupts */
-		schedule();
-	}
-
-	local_irq_restore(flags);
 }

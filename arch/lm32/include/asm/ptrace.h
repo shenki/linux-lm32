@@ -65,6 +65,7 @@ struct pt_regs {
 	lm32_reg_t ea;
 	lm32_reg_t ba;
 	unsigned int pt_mode;
+	lm32_reg_t orig_r1;
 };
 
 #ifdef __KERNEL__

@@ -15,7 +15,7 @@
 
 /* exception vector for os-aware gdb and kernel signals */
 #define KERNEL_EXCEPTION_VECTOR(offset) \
-	addi	sp,sp,-132; \
+	addi	sp,sp,-PT_SIZE; \
 	sw		(sp+120), ra; \
 	calli	_save_syscall_frame; \
 	mvi		r1, offset; \
@@ -93,7 +93,7 @@ ENTRY(interrupt_handler)
 	addi sp, sp, THREAD_SIZE - 36
 1:/* already on kernel stack */
 
-	addi sp, sp, -132
+	addi sp, sp, -PT_SIZE
 
 	/* save pt_mode, stack pointer and ra in current stack frame */
 	sw (sp+132), r10
@@ -109,9 +109,33 @@ ENTRY(interrupt_handler)
 .endm
 
 .macro switch_to_user_mode
-	rcsr r2, IE
-	andi r3, r2, 0xfffe
-	wcsr IE, r3
+	rcsr r5, IE
+	andi r6, r5, 0xfffe
+	wcsr IE, r6
+
+	lw r5, (sp+132)
+	bne r5, r0, 3f
+1:
+	xnori r3, r0, (THREAD_SIZE - 1)
+	and r3, sp, r3 /* current_thread_info() */
+	lw r3, (r3+TI_FLAGS)
+
+	andi r4, r3, _TIF_WORK_MASK
+	be r4, r0, 3f
+
+	andi r4, r3, _TIF_NEED_RESCHED
+	be r4, r0, 2f
+	calli schedule
+	bi 1b
+2:
+	addi r1, sp, 4
+	calli do_notify_resume
+	bi 1b
+3:
+	rcsr r5, IE
+	andi r6, r5, 0xfffe
+	wcsr IE, r6
+
 	lw r2, (sp+132)
 	mvhi r1, hi(lm32_state)
 	ori r1, r1, lo(lm32_state)
@@ -139,18 +163,13 @@ ENTRY(system_call)
 	call r9 /* execute syscall */
 
 ENTRY(syscall_tail)
-	/* store pt_regs* in r2 */
-	addi      r2,  sp, 4
-	calli manage_signals
 	sw (sp+8), r1 /* store return value into pt_regs */
-
+	mvi r2, 1 /* In syscall */
 	bi      _restore_and_return_exception
 
 .badsyscall:
 	mvi r1, -ENOSYS
-	sw (sp+8), r1 /* store return value into pt_regs */
-
-	bi      _restore_and_return_exception
+	bi syscall_tail
 
 /**************************/
 /* exception return paths */
@@ -163,8 +182,8 @@ label: \
 	addi      r2,  sp, 4; \
 	/* store 0 into r8 (syscall no) in pt_regs */ \
 	sw (sp+36), r0; \
-	calli manage_signals; \
 	sw (sp+8), r1; /* store return value into pt_regs */ \
+	mvi r2, 0; /* Not in syscall */ \
 	bi branch_to
 
 EXCEPTION_RETURN_PATH(_return_from_exception, _restore_and_return_exception)
@@ -265,15 +284,15 @@ _long_interrupt_handler:
 
 	addi    r2, sp, 4
 	calli   asm_do_IRQ
-	addi    r1, sp, 4
-	calli   manage_signals_irq
 6:
+	mvi r2, 0 /* Not in syscall */
 	switch_to_user_mode
 	restore_irq_frame
 	eret
 
 _save_syscall_frame:
 	save_irq_frame
+/*	sw      (sp+136),  r1*/
 	sw      (sp+48),  r11
 	sw      (sp+52),  r12
 	sw      (sp+56),  r13

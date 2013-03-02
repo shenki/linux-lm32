@@ -60,6 +60,8 @@ int main(void)
 	DEFINE(PT_EA, offsetof(struct pt_regs, ea));
 	DEFINE(PT_BA, offsetof(struct pt_regs, ba));
 	DEFINE(PT_MODE, offsetof(struct pt_regs, pt_mode));
+	DEFINE(PT_ORIG_R1, offsetof(struct pt_regs, orig_r1));
+	DEFINE(PT_SIZE, sizeof(struct pt_regs));
 
 	DEFINE(TI_TASK, offsetof(struct thread_info, task));
 	DEFINE(TI_EXECDOMAIN, offsetof(struct thread_info, exec_domain));
