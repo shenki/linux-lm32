@@ -106,7 +106,7 @@ badframe:
 /*
  * Set up a signal frame.
  */
-static int setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
+static int setup_sigcontext(struct sigcontext __user *sc, struct pt_regs *regs,
 		 unsigned long mask)
 {
 	int err;
