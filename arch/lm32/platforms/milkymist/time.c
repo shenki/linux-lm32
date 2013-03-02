@@ -144,17 +144,13 @@ void __init plat_time_init(void)
 
 	milkymist_ticks_per_jiffy = DIV_ROUND_CLOSEST(CONFIG_CPU_CLOCK, HZ);
 
-	clockevents_calc_mult_shift(&milkymist_clockevent, CONFIG_CPU_CLOCK, 5);
-	milkymist_clockevent.min_delta_ns = clockevent_delta2ns(100, &milkymist_clockevent);
-	milkymist_clockevent.max_delta_ns = clockevent_delta2ns(0xffff, &milkymist_clockevent);
-	milkymist_clockevent.cpumask = cpumask_of(0);
-
 	milkymist_timer_disable(TIMER_CLOCKSOURCE);
 	milkymist_timer_set_compare(TIMER_CLOCKSOURCE, 0xffffffff);
 	milkymist_timer_set_counter(TIMER_CLOCKSOURCE, 0);
 	milkymist_timer_enable(TIMER_CLOCKSOURCE, true);
 
-	clockevents_register_device(&milkymist_clockevent);
+	clockevents_config_and_register(&milkymist_clockevent, CONFIG_CPU_CLOCK,
+			100, 0xffff);
 
 	ret = clocksource_register_hz(&milkymist_clocksource, CONFIG_CPU_CLOCK);
 
