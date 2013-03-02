@@ -81,6 +81,12 @@
 			interrupt-parent = <&pic>;
 		};
 
+		timer@1000 {
+			compatible = "milkymist,timer";
+			reg = <0x1000 0x1000>;
+			interrupts = <1 2 3>;
+		};
+
 		sysctl: sysctl@1000 {
 			compatible = "milkymist,sysctl";
 			reg = <0x1000 0x1000>;

@@ -1,7 +1,7 @@
 #include <linux/kernel.h>
-#include <asm/time.h>
+#include <linux/clocksource.h>
 
 void __init time_init(void)
 {
-	plat_time_init();
+	clocksource_of_init();
 }

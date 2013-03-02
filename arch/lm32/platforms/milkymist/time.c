@@ -20,6 +20,7 @@
 #include <linux/clocksource.h>
 #include <linux/timex.h>
 #include <linux/io.h>
+#include <linux/of.h>
 
 #include <asm/hw/interrupts.h>
 #include <asm/hw/sysctl.h>
@@ -138,7 +139,7 @@ static struct irqaction timer_irqaction = {
 	.dev_id		= &milkymist_clockevent,
 };
 
-void __init plat_time_init(void)
+void __init milkymist_timer_init(void)
 {
 	int ret;
 
@@ -159,3 +160,5 @@ void __init plat_time_init(void)
 
 	setup_irq(IRQ_TIMER0, &timer_irqaction);
 }
+CLOCKSOURCE_OF_DECLARE(milkymist, "milkymist,timer",
+                       milkymist_timer_init);
