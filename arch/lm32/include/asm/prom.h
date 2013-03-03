@@ -9,9 +9,7 @@
 #ifndef __ASM_LM32_PROM_H
 #define __ASM_LM32_PROM_H
 
-#ifdef CONFIG_OF
 void device_tree_init(void);
-#endif /* CONFIG_OF */
 
 #endif /* __ASM_LM32_PROM_H */
 
