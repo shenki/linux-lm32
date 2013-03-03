@@ -16,7 +16,7 @@
 /* exception vector for os-aware gdb and kernel signals */
 #define KERNEL_EXCEPTION_VECTOR(offset) \
 	addi	sp,sp,-PT_SIZE; \
-	sw		(sp+120), ra; \
+	sw		(sp+PT_RA), ra; \
 	calli	_save_syscall_frame; \
 	mvi		r1, offset; \
 	addi	r2, sp, 4; \
@@ -62,6 +62,11 @@ ENTRY(interrupt_handler)
 	nop
 	nop
 
+.macro current_thread_info reg
+	xnori \reg, r0, (THREAD_SIZE - 1)
+	and \reg, sp, \reg
+.endm
+
 .macro switch_to_kernel_mode
 	/*
 	 * Store away r9,r10,r11 so that we can use it here. The tricky part is that we
@@ -90,15 +95,15 @@ ENTRY(interrupt_handler)
 	bne r10, r0, 1f
 
 	lw sp, (r9+STATE_CURRENT_THREAD)
-	addi sp, sp, THREAD_SIZE - 36
+	addi sp, sp, THREAD_SIZE - 4
 1:/* already on kernel stack */
 
 	addi sp, sp, -PT_SIZE
 
 	/* save pt_mode, stack pointer and ra in current stack frame */
-	sw (sp+132), r10
-	sw (sp+116), r11
-	sw (sp+120), ra
+	sw (sp+PT_MODE), r10
+	sw (sp+PT_SP), r11
+	sw (sp+PT_RA), ra
 
 	mvi r10, PT_MODE_KERNEL
 	sw (r9+STATE_KERNEL_MODE), r10
@@ -113,11 +118,10 @@ ENTRY(interrupt_handler)
 	andi r6, r5, 0xfffe
 	wcsr IE, r6
 
-	lw r5, (sp+132)
+	lw r5, (sp+PT_MODE)
 	bne r5, r0, 3f
 1:
-	xnori r3, r0, (THREAD_SIZE - 1)
-	and r3, sp, r3 /* current_thread_info() */
+	current_thread_info r3
 	lw r3, (r3+TI_FLAGS)
 
 	andi r4, r3, _TIF_WORK_MASK
@@ -136,7 +140,7 @@ ENTRY(interrupt_handler)
 	andi r6, r5, 0xfffe
 	wcsr IE, r6
 
-	lw r2, (sp+132)
+	lw r2, (sp+PT_MODE)
 	mvhi r1, hi(lm32_state)
 	ori r1, r1, lo(lm32_state)
 	sw (r1+STATE_KERNEL_MODE), r2
@@ -163,7 +167,7 @@ ENTRY(system_call)
 	call r9 /* execute syscall */
 
 ENTRY(syscall_tail)
-	sw (sp+8), r1 /* store return value into pt_regs */
+	sw (sp+PT_R1), r1 /* store return value into pt_regs */
 	mvi r2, 1 /* In syscall */
 	bi      _restore_and_return_exception
 
@@ -181,8 +185,8 @@ label: \
 	/* store pt_regs* in r2 */ \
 	addi      r2,  sp, 4; \
 	/* store 0 into r8 (syscall no) in pt_regs */ \
-	sw (sp+36), r0; \
-	sw (sp+8), r1; /* store return value into pt_regs */ \
+	sw (sp+PT_R8), r0; \
+	sw (sp+PT_R1), r1; /* store return value into pt_regs */ \
 	mvi r2, 0; /* Not in syscall */ \
 	bi branch_to
 
@@ -207,35 +211,35 @@ ENTRY(ret_from_kernel_thread)
 	b r11
 
 .macro save_irq_frame
-	sw      (sp+8),   r1
-	sw      (sp+12),  r2
-	sw      (sp+16),  r3
-	sw      (sp+20),  r4
-	sw      (sp+24),  r5
-	sw      (sp+28),  r6
-	sw      (sp+32),  r7
-	sw      (sp+36),  r8
-	sw      (sp+40),  r9
-	sw      (sp+44),  r10
-	/* ra (sp + 120) has already been written */
-	sw      (sp+124), ea
+	sw      (sp+PT_R1),  r1
+	sw      (sp+PT_R2),  r2
+	sw      (sp+PT_R3),  r3
+	sw      (sp+PT_R4),  r4
+	sw      (sp+PT_R5),  r5
+	sw      (sp+PT_R6),  r6
+	sw      (sp+PT_R7),  r7
+	sw      (sp+PT_R8),  r8
+	sw      (sp+PT_R9),  r9
+	sw      (sp+PT_R10), r10
+	/* ra (sp + PT_RA) has already been written */
+	sw      (sp+PT_EA),  ea
 .endm
 
 /* restore all caller saved registers saved in save_irq_frame */
 .macro restore_irq_frame
-	lw      r1,  (sp+8);
-	lw      r2,  (sp+12);
-	lw      r3,  (sp+16);
-	lw      r4,  (sp+20);
-	lw      r5,  (sp+24);
-	lw      r6,  (sp+28);
-	lw      r7,  (sp+32);
-	lw      r8,  (sp+36);
-	lw      r9,  (sp+40);
-	lw      r10, (sp+44);
-	lw      ra,  (sp+120)
-	lw      ea,  (sp+124)
-	lw      sp,  (sp+116)
+	lw      r1,  (sp+PT_R1);
+	lw      r2,  (sp+PT_R2);
+	lw      r3,  (sp+PT_R3);
+	lw      r4,  (sp+PT_R4);
+	lw      r5,  (sp+PT_R5);
+	lw      r6,  (sp+PT_R6);
+	lw      r7,  (sp+PT_R7);
+	lw      r8,  (sp+PT_R8);
+	lw      r9,  (sp+PT_R9);
+	lw      r10, (sp+PT_R10);
+	lw      ra,  (sp+PT_RA)
+	lw      ea,  (sp+PT_EA)
+	lw      sp,  (sp+PT_SP)
 .endm
 
 /* in IRQ we call a function between save and restore */
@@ -292,26 +296,26 @@ _long_interrupt_handler:
 
 _save_syscall_frame:
 	save_irq_frame
-/*	sw      (sp+136),  r1*/
-	sw      (sp+48),  r11
-	sw      (sp+52),  r12
-	sw      (sp+56),  r13
-	sw      (sp+60),  r14
-	sw      (sp+64),  r15
-	sw      (sp+68),  r16
-	sw      (sp+72),  r17
-	sw      (sp+76),  r18
-	sw      (sp+80),  r19
-	sw      (sp+84),  r20
-	sw      (sp+88),  r21
-	sw      (sp+92),  r22
-	sw      (sp+96),  r23
-	sw      (sp+100), r24
-	sw      (sp+104), r25
-	sw      (sp+108), r26
-	sw      (sp+112), r27
-	/* ra (sp + 120) has already been written */
-	sw      (sp+128), ba
+	sw      (sp+PT_R11), r11
+	sw      (sp+PT_R12), r12
+	sw      (sp+PT_R13), r13
+	sw      (sp+PT_R14), r14
+	sw      (sp+PT_R15), r15
+	sw      (sp+PT_R16), r16
+	sw      (sp+PT_R17), r17
+	sw      (sp+PT_R18), r18
+	sw      (sp+PT_R19), r19
+	sw      (sp+PT_R20), r20
+	sw      (sp+PT_R21), r21
+	sw      (sp+PT_R22), r22
+	sw      (sp+PT_R23), r23
+	sw      (sp+PT_R24), r24
+	sw      (sp+PT_R25), r25
+	sw      (sp+PT_GP), r26
+	sw      (sp+PT_FP), r27
+	/* ra (sp + PT_RA) has already been written */
+	sw      (sp+PT_BA), ba
+	sw      (sp+PT_ORIG_R1),  r1
 
 	ret
 
@@ -329,25 +333,25 @@ label: \
 	switch_to_user_mode; \
 	/* restore frame from original kernel stack */ \
 	/* restore r1 as the return value is stored onto the stack */ \
-	lw      r11, (sp+48); \
-	lw      r12, (sp+52); \
-	lw      r13, (sp+56); \
-	lw      r14, (sp+60); \
-	lw      r15, (sp+64); \
-	lw      r16, (sp+68); \
-	lw      r17, (sp+72); \
-	lw      r18, (sp+76); \
-	lw      r19, (sp+80); \
-	lw      r20, (sp+84); \
-	lw      r21, (sp+88); \
-	lw      r22, (sp+92); \
-	lw      r23, (sp+96); \
-	lw      r24, (sp+100); \
-	lw      r25, (sp+104); \
-	lw      r26, (sp+108); \
-	lw      r27, (sp+112); \
-	lw      ra,  (sp+120); \
-	lw      ba,  (sp+128); \
+	lw      r11, (sp+PT_R11); \
+	lw      r12, (sp+PT_R12); \
+	lw      r13, (sp+PT_R13); \
+	lw      r14, (sp+PT_R14); \
+	lw      r15, (sp+PT_R15); \
+	lw      r16, (sp+PT_R16); \
+	lw      r17, (sp+PT_R17); \
+	lw      r18, (sp+PT_R18); \
+	lw      r19, (sp+PT_R19); \
+	lw      r20, (sp+PT_R20); \
+	lw      r21, (sp+PT_R21); \
+	lw      r22, (sp+PT_R22); \
+	lw      r23, (sp+PT_R23); \
+	lw      r24, (sp+PT_R24); \
+	lw      r25, (sp+PT_R25); \
+	lw      r26, (sp+PT_GP); \
+	lw      r27, (sp+PT_FP); \
+	lw      ra,  (sp+PT_RA); \
+	lw      ba,  (sp+PT_BA); \
 	restore_irq_frame; \
 	/* scall stores pc into ea/ba register, not pc+4, so we have to add 4 */ \
 	addi	addr_register, addr_register, 4; \
