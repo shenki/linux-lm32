@@ -28,7 +28,6 @@ int main(void)
 	DEFINE(TASK_ACTIVE_MM, offsetof(struct task_struct, active_mm));
 
 	/* These are used with sp as the base address, hence the 4 byte offset */
-	DEFINE(PT_R0, offsetof(struct pt_regs, r0) + 4);
 	DEFINE(PT_R1, offsetof(struct pt_regs, r1) + 4);
 	DEFINE(PT_R2, offsetof(struct pt_regs, r2) + 4);
 	DEFINE(PT_R3, offsetof(struct pt_regs, r3) + 4);

@@ -32,7 +32,6 @@
 typedef unsigned long lm32_reg_t;
 
 struct pt_regs {
-	lm32_reg_t r0;
 	lm32_reg_t r1;
 	lm32_reg_t r2;
 	lm32_reg_t r3;
