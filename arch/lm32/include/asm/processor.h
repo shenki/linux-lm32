@@ -42,6 +42,8 @@
 #include <asm/ptrace.h>
 #include <asm/current.h>
 
+struct task_struct;
+
 /*
  * User space process size: 3.75GB. This is hardcoded into a few places,
  * so don't change it unless you know what you are doing.
@@ -57,19 +59,16 @@
 struct thread_struct {};
 #define INIT_THREAD   {}
 
-#define KSTK_TOS(tsk) ((unsigned long)task_stack_page(tsk) + THREAD_SIZE - 32)
-#define task_pt_regs(tsk) ((struct pt_regs *)KSTK_TOS(tsk) - 1)
-#define KSTK_EIP(tsk) 0
-#define KSTK_ESP(tsk) 0
+#define task_pt_regs(tsk) \
+	((struct pt_regs *)(task_stack_page(tsk) + THREAD_SIZE) - 1)
 
+#define KSTK_EIP(tsk) (task_pt_regs(tsk)->ea)
+#define KSTK_ESP(tsk) (task_pt_regs(tsk)->sp)
 
 /*
  * Do necessary setup to start up a newly executed thread.
  */
 extern void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long sp);
-
-/* Forward declaration, a strange C thing */
-struct task_struct;
 
 static inline void release_thread(struct task_struct *dead_task) { }
 static inline void exit_thread(void) { }
