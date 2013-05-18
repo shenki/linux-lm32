@@ -22,6 +22,7 @@
  */
 
 #include <linux/ptrace.h>
+#include <linux/mm.h>
 #include <asm/uaccess.h>
 
 void ptrace_disable(struct task_struct *child)

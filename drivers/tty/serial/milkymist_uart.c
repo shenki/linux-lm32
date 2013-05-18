@@ -27,6 +27,7 @@
 
 #include <linux/module.h>
 #include <linux/tty.h>
+#include <linux/tty_flip.h>
 #include <linux/ioport.h>
 #include <linux/init.h>
 #include <linux/console.h>
@@ -89,7 +90,7 @@ static void milkymist_uart_tx_char(struct uart_port *port)
 
 static void milkymist_uart_rx_char(struct uart_port *port)
 {
-	struct tty_struct *tty = port->state->port.tty;
+	struct tty_port *tport = &port->state->port;
 	unsigned char ch;
 
 	ch = ioread32be(port->membase + UART_RXTX) & 0xff;
@@ -101,7 +102,7 @@ static void milkymist_uart_rx_char(struct uart_port *port)
 	uart_insert_char(port, 0, 0, ch, TTY_NORMAL);
 
 ignore_char:
-	tty_flip_buffer_push(tty);
+	tty_flip_buffer_push(tport);
 }
 
 static irqreturn_t milkymist_uart_isr(int irq, void *data)

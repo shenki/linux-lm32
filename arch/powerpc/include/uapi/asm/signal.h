@@ -90,6 +90,7 @@ typedef struct {
 
 #include <asm-generic/signal-defs.h>
 
+#ifndef __KERNEL__
 struct old_sigaction {
 	__sighandler_t sa_handler;
 	old_sigset_t sa_mask;
