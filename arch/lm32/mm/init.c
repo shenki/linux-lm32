@@ -121,29 +121,16 @@ void __init mem_init(void)
 	       );
 }
 
-static void free_init_pages(const char *what, unsigned long start, unsigned long end)
-{
-	unsigned long addr;
-
-	for (addr = start; addr < end; addr += PAGE_SIZE) {
-		struct page* page = virt_to_page(addr);
-
-		ClearPageReserved(page);
-		init_page_count(page);
-		__free_page(page);
-		totalram_pages++;
-	}
-
-	printk("Freeing %s mem: %ldk freed\n", what, (end-start) >> 10);
-}
-
 void free_initmem(void)
 {
-	free_init_pages("unused kernel", (unsigned long)&__init_begin, (unsigned long)&__init_end);
+	free_initmem_default(0);
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
-void __init free_initrd_mem(unsigned long start, unsigned long end) {
-	free_init_pages("initrd", start, end);
+
+void __init free_initrd_mem(unsigned long start, unsigned long end)
+{
+	free_reserved_area(start, end, 0, "initrd");
 }
+
 #endif
