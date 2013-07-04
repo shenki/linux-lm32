@@ -60,10 +60,11 @@
 
 #define DEBUG_SIG 0
 
+extern unsigned long sigreturn_tramp;
+
 struct rt_sigframe {
 	struct siginfo info;
 	struct ucontext uc;
-	unsigned long tramp[2]; /* signal trampoline */
 };
 
 static int restore_sigcontext(struct pt_regs *regs,
@@ -142,20 +143,8 @@ static int setup_rt_frame(struct ksignal *ksig, sigset_t *set, struct pt_regs *r
 
 	err |= __copy_to_user(&frame->uc.uc_sigmask, set, sizeof(*set));
 
-	/* Set up to return from userspace. */
-	/* mvi  r8, __NR_rt_sigreturn = addi  r8, r0, __NR_sigreturn */
-	err |= __put_user(0x34080000 | __NR_rt_sigreturn, &frame->tramp[0]);
-
-	/* scall */
-	err |= __put_user(0xac000007, &frame->tramp[1]);
-
-	if (err)
-		return err;
-
-	flush_icache_range(&frame->tramp, &frame->tramp + 2);
-
 	/* set return address for signal handler to trampoline */
-	regs->ra = (unsigned long)(&frame->tramp[0]);
+	regs->ra = sigreturn_tramp;
 
 	/* Set up registers for returning to signal handler */
 	/* entry point */

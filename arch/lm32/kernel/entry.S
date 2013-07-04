@@ -418,3 +418,7 @@ ENTRY(_switch_to)
 	lw  ba,  (r3+TI_CC_BA)
 
 	ret
+
+ENTRY(sigreturn_tramp)
+	mvi r8, __NR_rt_sigreturn
+	scall
