@@ -22,6 +22,8 @@
 # MA 02111-1307 USA
 #
 
+LIBGCC 		:= $(shell $(CC) $(KBUILD_CFLAGS) -print-libgcc-file-name)
+
 board-$(CONFIG_BOARD_MILKYMIST_ONE)	:= milkymist-one
 board-$(CONFIG_BOARD_MILKYMIST_SOC)	:= milkymist-soc
 BOARD := $(board-y)
@@ -41,6 +43,7 @@ head-y := arch/lm32/kernel/head.o
 core-y	+= arch/lm32/
 core-y	+= arch/lm32/platforms/
 libs-y	+= arch/lm32/lib/
+libs-y	+= $(LIBGCC)
 
 boot := arch/lm32/boot
 
