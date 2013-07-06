@@ -54,30 +54,10 @@ asmlinkage void syscall_tail(void);
 void (*pm_power_off)(void);
 EXPORT_SYMBOL(pm_power_off);
 
-/*
- * The idle loop on an LM32
- */
-static void default_idle(void)
+void arch_cpu_idle(void)
 {
- 	while(!need_resched())
-		__asm__ __volatile__("and r0, r0, r0" ::: "memory");
-}
-
-/*
- * The idle thread. There's no useful work to be
- * done, so just try to conserve power and have a
- * low exit latency (ie sit in a loop waiting for
- * somebody to say that they'd like to reschedule)
- */
-void cpu_idle(void)
-{
-	/* endless idle loop with no priority at all */
-	while (1) {
-		default_idle();
-		preempt_enable_no_resched();
-		schedule();
-		preempt_disable();
-	}
+	__asm__ __volatile__("and r0, r0, r0" ::: "memory");
+	local_irq_enable();
 }
 
 void __weak machine_restart(char * __unused)
