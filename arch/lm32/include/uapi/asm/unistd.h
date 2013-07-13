@@ -1,0 +1,13 @@
+#define __ARCH_WANT_SYSCALL_NO_AT
+#define __ARCH_WANT_SYSCALL_NO_FLAGS
+#define __ARCH_WANT_SYSCALL_OFF_T
+#define __ARCH_WANT_SYSCALL_DEPRECATED
+#define __ARCH_WANT_SYS_CLONE
+
+#include <asm-generic/unistd.h>
+
+#undef __NR_mmap
+
+#define sys_vfork sys_ni_syscall
+#define sys_mmap sys_ni_syscall
+#define sys_mmap2 sys_mmap_pgoff
