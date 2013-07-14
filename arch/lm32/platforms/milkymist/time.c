@@ -139,7 +139,7 @@ static struct irqaction timer_irqaction = {
 	.dev_id		= &milkymist_clockevent,
 };
 
-void __init milkymist_timer_init(void)
+void __init milkymist_timer_init(struct device_node *np)
 {
 	int ret;
 
