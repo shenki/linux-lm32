@@ -805,8 +805,13 @@ asmlinkage long sys_clone(unsigned long, unsigned long, int __user *, int,
 asmlinkage long sys_clone(unsigned int, unsigned long, unsigned long, int __user *,
 	       int __user *, int);
 #else
+#ifdef CONFIG_CLONE_BACKWARDS3
+asmlinkage long sys_clone(unsigned long, unsigned long, int, int __user *,
+			  int __user *, int);
+#else
 asmlinkage long sys_clone(unsigned long, unsigned long, int __user *,
 	       int __user *, int);
+#endif
 #endif
 
 asmlinkage long sys_execve(const char __user *filename,

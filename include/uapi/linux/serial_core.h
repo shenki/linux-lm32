@@ -226,7 +226,13 @@
 /* Rocketport EXPRESS/INFINITY */
 #define PORT_RP2	102
 
+/* Freescale lpuart */
+#define PORT_LPUART	103
+
+/* SH-SCI */
+#define PORT_HSCIF	104
+
 /* Milkymist UART */
-#define PORT_MILKYMIST_UART	103
+#define PORT_MILKYMIST_UART	105
 
 #endif /* _UAPILINUX_SERIAL_CORE_H */
