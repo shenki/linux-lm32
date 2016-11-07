@@ -55,7 +55,7 @@ static void __init early_console_write(struct console *con, const char *s,
 	}
 }
 
-static struct console early_console __initdata = {
+static struct console milkymist_early_console __initdata = {
 	.name	= "early",
 	.write	= early_console_write,
 	.flags	= CON_PRINTBUFFER | CON_BOOT,
@@ -70,5 +70,5 @@ void __init milkymist_setup_early_printk(void)
 		return;
 	early_console_initialized = true;
 
-	register_console(&early_console);
+	register_console(&milkymist_early_console);
 }
