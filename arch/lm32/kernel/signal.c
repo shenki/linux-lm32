@@ -47,11 +47,8 @@
 #include <linux/unistd.h>
 #include <linux/stddef.h>
 #include <linux/personality.h>
-#include <linux/tty.h>
-#include <linux/hardirq.h>
-#include <linux/freezer.h>
+#include <linux/uaccess.h>
 
-#include <asm/uaccess.h>
 #include <asm/ucontext.h>
 #include <asm/pgtable.h>
 #include <asm/pgalloc.h>
@@ -117,28 +114,25 @@ static int setup_sigcontext(struct sigcontext *sc, struct pt_regs *regs,
 /*
  * Determine which stack to use..
  */
-static inline void __user *get_sigframe(struct k_sigaction *ka,
-		struct pt_regs *regs, size_t frame_size)
+static inline void __user *get_sigframe(struct ksignal *ksig,
+					struct pt_regs *regs,
+					size_t frame_size)
 {
-	unsigned long sp = regs->sp;
-
-	if ((ka->sa.sa_flags & SA_ONSTACK) != 0 && !sas_ss_flags(sp))
-		/* use stack set by sigaltstack */
-		sp = current->sas_ss_sp + current->sas_ss_size;
+	unsigned long sp = sigsp(regs->sp, ksig);
 
 	return (void __user *)((sp - frame_size) & -8UL);
 }
 
-static int setup_rt_frame(int sig, struct k_sigaction *ka,
-			sigset_t *set, struct pt_regs *regs)
+static int setup_rt_frame(struct ksignal *ksig, sigset_t *set,
+			  struct pt_regs *regs)
 {
 	struct rt_sigframe __user *frame;
 	int err = 0;
 
-	frame = get_sigframe(ka, regs, sizeof(*frame));
+	frame = get_sigframe(ksig, regs, sizeof(*frame));
 
 	if (!access_ok(VERIFY_WRITE, frame, sizeof(*frame)))
-		goto give_sigsegv;
+		return -EFAULT;
 
 	err |= __clear_user(&frame->uc, sizeof(frame->uc));
 	err |= __put_user((void *)current->sas_ss_sp, &frame->uc.uc_stack.ss_sp);
@@ -156,7 +150,7 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 	err |= __put_user(0xac000007, &frame->tramp[1]);
 
 	if (err)
-		goto give_sigsegv;
+		return -EFAULT;
 
 	/* flush instruction cache */
 	asm volatile("nop");
@@ -174,11 +168,11 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 
 	/* Set up registers for returning to signal handler */
 	/* entry point */
-	regs->ea = (unsigned long)ka->sa.sa_handler - 4;
+	regs->ea = (unsigned long)ksig->ka.sa.sa_handler - 4;
 	/* stack pointer */
 	regs->sp = (unsigned long)frame - 4;
 	/* Signal handler arguments */
-	regs->r1 = sig;     /* first argument = signum */
+	regs->r1 = ksig->sig;     /* first argument = signum */
 	regs->r2 = (unsigned long)&frame->info;
 	regs->r3 = (unsigned long)&frame->uc;
 
@@ -187,25 +181,37 @@ static int setup_rt_frame(int sig, struct k_sigaction *ka,
 	       current->comm, current->pid, frame, regs->sp, regs->ra, regs->ea, sig);
 #endif
 
-	return regs->r1;
-
-give_sigsegv:
-	force_sigsegv(sig, current);
-
-	return -1;
+	return 0;
 }
 
-static void handle_signal(unsigned long sig, siginfo_t *info,
-		struct k_sigaction *ka, sigset_t *oldset, struct pt_regs *regs)
+static inline void handle_restart(struct pt_regs *regs, struct k_sigaction *ka,
+				  int retval)
 {
-	setup_rt_frame(sig, ka, oldset, regs);
+	/* Restart the system call - no handlers present */
+	if (retval == -ERESTARTNOHAND
+	     || retval == -ERESTARTSYS
+	     || retval == -ERESTARTNOINTR)
+	{
+		regs->ea -= 4; /* Size of scall insn.  */
+	}
+	else if (retval == -ERESTART_RESTARTBLOCK) {
+		regs->r8 = __NR_restart_syscall;
+		regs->ea -= 4; /* Size of scall insn.  */
+	}
+	if (test_thread_flag(TIF_RESTORE_SIGMASK)) {
+		clear_thread_flag(TIF_RESTORE_SIGMASK);
+		sigprocmask(SIG_SETMASK, &current->saved_sigmask, NULL);
+	}
+}
 
-	spin_lock_irq(&current->sighand->siglock);
-	sigorsets(&current->blocked, &current->blocked, &ka->sa.sa_mask);
-	if (!(ka->sa.sa_flags & SA_NODEFER))
-		sigaddset(&current->blocked, sig);
-	recalc_sigpending();
-	spin_unlock_irq(&current->sighand->siglock);
+static void handle_signal(struct ksignal *ksig, struct pt_regs *regs)
+{
+	sigset_t *oldset = sigmask_to_save();
+	int ret;
+
+	ret = setup_rt_frame(ksig, oldset, regs);
+
+	signal_setup_done(ret, ksig, 0);
 }
 
 /*
@@ -217,12 +223,10 @@ static void handle_signal(unsigned long sig, siginfo_t *info,
  * the kernel can handle, and then we build all the user-level signal handling
  * stack-frames in one go after that.
  */
-static int do_signal(int retval, struct pt_regs *regs)
+static void do_signal(int retval, struct pt_regs *regs)
 {
-	siginfo_t info;
-	int signr;
-	struct k_sigaction ka;
-	sigset_t *oldset;
+	struct ksignal ksig;
+	bool in_syscall;
 
 	/*
 	 * We want the common case to go fast, which
@@ -231,47 +235,22 @@ static int do_signal(int retval, struct pt_regs *regs)
 	 * if so.
 	 */
 	if (!user_mode(regs))
-		return 0;
+		return;
 
-	if (try_to_freeze()) 
-		goto no_signal;
+	in_syscall = regs->r8;
 
-	if (test_thread_flag(TIF_RESTORE_SIGMASK))
-		oldset = &current->saved_sigmask;
-	else
-		oldset = &current->blocked;
-
-	signr = get_signal_to_deliver(&info, &ka, regs, NULL);
-
-	if (signr > 0) {
+	if (get_signal(&ksig)) {
 		/* Whee!  Actually deliver the signal.  */
-		handle_signal(signr, &info, &ka, oldset, regs);
-		if (test_thread_flag(TIF_RESTORE_SIGMASK))
-			clear_thread_flag(TIF_RESTORE_SIGMASK);
-		return signr;
+		if (in_syscall)
+			handle_restart(regs, &ksig.ka, retval);
+		handle_signal(&ksig, regs);
+		return;
 	}
 
-no_signal:
-	/* Did we come from a system call? */
-	if (regs->r8) {
-		/* Restart the system call - no handlers present */
-		if (retval == -ERESTARTNOHAND
-		    || retval == -ERESTARTSYS
-		    || retval == -ERESTARTNOINTR)
-		{
-			regs->ea -= 4; /* Size of scall insn.  */
-		}
-		else if (retval == -ERESTART_RESTARTBLOCK) {
-			regs->r8 = __NR_restart_syscall;
-			regs->ea -= 4; /* Size of scall insn.  */
-		}
-	}
-	if (test_thread_flag(TIF_RESTORE_SIGMASK)) {
-		clear_thread_flag(TIF_RESTORE_SIGMASK);
-		sigprocmask(SIG_SETMASK, &current->saved_sigmask, NULL);
-	}
+	if (in_syscall)
+		handle_restart(regs, &ksig.ka, retval);
 
-	return retval;
+	restore_saved_sigmask();
 }
 
 asmlinkage int manage_signals(int retval, struct pt_regs *regs)
@@ -301,7 +280,7 @@ asmlinkage int manage_signals(int retval, struct pt_regs *regs)
 						current->comm, regs, regs->ea, regs->ba, *((unsigned long*)(sp+4)));
 			}
 #endif
-			retval = do_signal(retval, regs);
+			do_signal(retval, regs);
 
 			/* signal handling enables interrupts */
 
