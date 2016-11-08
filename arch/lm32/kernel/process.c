@@ -209,7 +209,7 @@ int copy_thread(unsigned long clone_flags,
 
 		/* childregs = full task switch frame on kernel stack of child below * childsyscallregs */
 		childregs = childsyscallregs - 1;
-		memset(childregs, 0, sizeof(childregs));
+		memset(childregs, 0, sizeof(*childregs));
 
 		/* user stack pointer is shared with the parent per definition of vfork */
 		p->thread.usp = usp;
@@ -243,7 +243,7 @@ void start_thread(struct pt_regs * regs, unsigned long pc, unsigned long usp)
 {
 	set_fs(USER_DS);
 
-	memset(regs, 0, sizeof(regs));
+	memset(regs, 0, sizeof(*regs));
 
 	/* -4 because we will add 4 later in ret_from_syscall */
 	regs->ea = pc - 4;
