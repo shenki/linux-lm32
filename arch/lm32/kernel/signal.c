@@ -78,7 +78,6 @@ asmlinkage int _sys_rt_sigreturn(struct pt_regs *regs)
 {
 	struct rt_sigframe __user *frame = (struct rt_sigframe __user *)(regs->sp + 4);
 	sigset_t set;
-	stack_t st;
 
 	if (!access_ok(VERIFY_READ, frame, sizeof(*frame)))
 		goto badframe;
@@ -86,18 +85,13 @@ asmlinkage int _sys_rt_sigreturn(struct pt_regs *regs)
 	if (__copy_from_user(&set, &frame->uc.uc_sigmask, sizeof(set)))
 		goto badframe;
 
-	sigdelsetmask(&set, SIG_KERNEL_ONLY_MASK);
-	spin_lock_irq(&current->sighand->siglock);
-	current->blocked = set;
-	recalc_sigpending();
-	spin_unlock_irq(&current->sighand->siglock);
+	set_current_blocked(&set);
 
 	if (restore_sigcontext(regs, &frame->uc.uc_mcontext))
 		goto badframe;
 
-	if (__copy_from_user(&st, &frame->uc.uc_stack, sizeof(st)))
+	if (restore_altstack(&frame->uc.uc_stack))
 		goto badframe;
-	do_sigaltstack(&st, NULL, regs->sp);
 
 	return regs->r1;
 
