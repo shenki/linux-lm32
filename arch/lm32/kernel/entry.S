@@ -156,18 +156,6 @@ ENTRY(ret_from_fork)
 	mv ra, r13
 	ret
 
-ENTRY(sys_execve)
-	mv r4, r7
-	bi lm32_execve
-
-ENTRY(sys_rt_sigreturn)
-	mv r1, r7
-	bi _sys_rt_sigreturn
-
-ENTRY(sys_sigaltstack)
-	lw r3, (r7+112)
-	bi do_sigaltstack
-
 /* in IRQ we call a function between save and restore */
 /* we therefore only save and restore the caller saved registers */
 /* (r1-r10, ra, ea because an interrupt could interrupt another one) */
