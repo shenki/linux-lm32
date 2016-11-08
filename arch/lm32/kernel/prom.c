@@ -11,6 +11,8 @@
 #include <linux/bootmem.h>
 #include <linux/initrd.h>
 #include <linux/memblock.h>
+#include <linux/libfdt.h>
+
 #include <asm/page.h>
 
 void __init early_init_dt_add_memory_arch(u64 base, u64 size)
@@ -65,7 +67,7 @@ void __init device_tree_init(void)
 		return;
 
 	base = __pa(initial_boot_params);
-	size = be32_to_cpu(initial_boot_params->totalsize);
+	size = fdt_totalsize(initial_boot_params);
 
 	/* Before we do anything, lets reserve the dt blob */
 	memblock_reserve(base, size);
