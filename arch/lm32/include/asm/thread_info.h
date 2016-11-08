@@ -57,7 +57,6 @@ static inline struct thread_info *current_thread_info(void)
 #define INIT_THREAD_INFO(tsk)			\
 {						\
 	.task =		&init_task,		\
-	.exec_domain =	&default_exec_domain,	\
 	.flags =	0,			\
 	.cpu =		0,			\
 	.preempt_count = INIT_PREEMPT_COUNT,	\
