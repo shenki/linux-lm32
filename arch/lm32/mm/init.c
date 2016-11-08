@@ -109,16 +109,9 @@ void __init mem_init(void)
 {
 	high_memory = (void *)__va(max_low_pfn * PAGE_SIZE);
 
-	max_mapnr = num_physpages = max_low_pfn - min_low_pfn;
+	free_all_bootmem();
 
-	totalram_pages = free_all_bootmem();
-
-	printk(KERN_INFO "Memory available: %luk/%luk RAM, (%dk kernel code, %dk data)\n",
-	       nr_free_pages() << (PAGE_SHIFT - 10),
-	       max_mapnr << (PAGE_SHIFT - 10),
-	       (_etext - _stext) >> 10,
-	       (_edata - _etext) >> 10
-	       );
+	mem_init_print_info(NULL);
 }
 
 static void free_init_pages(const char *what, unsigned long start, unsigned long end)
@@ -139,7 +132,7 @@ static void free_init_pages(const char *what, unsigned long start, unsigned long
 
 void free_initmem(void)
 {
-	free_init_pages("unused kernel", (unsigned long)&__init_begin, (unsigned long)&__init_end);
+	free_initmem_default(-1);
 }
 
 #ifdef CONFIG_BLK_DEV_INITRD
