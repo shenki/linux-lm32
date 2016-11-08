@@ -49,6 +49,7 @@
 #include <asm/pgtable.h>
 #include <asm/page.h>
 #include <asm/setup.h>
+#include <asm/prom.h>
 
 unsigned int kernel_mode = PT_MODE_KERNEL;
 
