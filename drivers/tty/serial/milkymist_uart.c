@@ -41,6 +41,7 @@
 #include <linux/of_device.h>
 #include <linux/of_address.h>
 #include <linux/of_irq.h>
+#include <linux/tty_flip.h>
 
 #define MILKYMIST_UART_MAJOR TTY_MAJOR
 #define MILKYMIST_UART_MINOR 64
@@ -57,7 +58,6 @@
 
 #define UART_EV_TX		0x1
 #define UART_EV_RX		0x2
-
 
 static struct uart_port milkymist_uart_ports[MILKYMIST_NR_UARTS];
 
@@ -85,7 +85,6 @@ static void milkymist_uart_tx_char(struct uart_port *port)
 
 static void milkymist_uart_rx_char(struct uart_port *port)
 {
-	struct tty_struct *tty = port->state->port.tty;
 	unsigned char ch;
 
 	ch = ioread32be(port->membase + CSR_UART_RXTX) & 0xff;
@@ -97,7 +96,7 @@ static void milkymist_uart_rx_char(struct uart_port *port)
 	uart_insert_char(port, 0, 0, ch, TTY_NORMAL);
 
 ignore_char:
-	tty_flip_buffer_push(tty);
+	tty_flip_buffer_push(&port->state->port);
 }
 
 static irqreturn_t milkymist_uart_isr(int irq, void *data)
@@ -107,16 +106,14 @@ static irqreturn_t milkymist_uart_isr(int irq, void *data)
 
 	spin_lock(&port->lock);
 
-	/* read and ... */
-	stat = ioread32be(port->membase + UART_STAT) & 0xff;
+	/* read and ack events */
+	stat = ioread32be(port->membase + CSR_UART_EV_PENDING);
+	iowrite32be(stat, port->membase + CSR_UART_EV_PENDING);
 
-	if (stat & UART_STAT_RX_EVT)
+	if (stat & UART_EV_RX)
 		milkymist_uart_rx_char(port);
 
-	/* ... ack events */
-	iowrite32be(stat, port->membase + UART_STAT);
-
-	if (stat & UART_STAT_TX_EVT)
+	if (stat & UART_EV_TX)
 		milkymist_uart_tx_char(port);
 
 	spin_unlock(&port->lock);
@@ -171,8 +168,8 @@ static int milkymist_uart_startup(struct uart_port *port)
 {
 	int ret;
 
-	ret = request_irq(port->irq, milkymist_uart_isr,
-			IRQF_DISABLED, "milkymist_uart", port);
+	ret = request_irq(port->irq, milkymist_uart_isr, 0, "milkymist_uart",
+			  port);
 
 	iowrite32be(UART_EV_TX | UART_EV_RX,
 			port->membase + CSR_UART_EV_PENDING);
@@ -329,7 +326,7 @@ static void milkymist_uart_console_write(struct console *co, const char *s,
 		spin_unlock_irqrestore(&port->lock, flags);
 }
 
-static int __devinit milkymist_uart_console_setup(struct console *co,
+static int __init milkymist_uart_console_setup(struct console *co,
 		char *options)
 {
 	struct uart_port *port;
@@ -386,7 +383,7 @@ static struct uart_driver milkymist_uart_driver = {
 #endif
 };
 
-static int __devinit milkymist_uart_probe(struct platform_device *op)
+static int milkymist_uart_probe(struct platform_device *op)
 {
 	struct uart_port *port;
 	struct device_node *np = op->dev.of_node;
@@ -469,7 +466,7 @@ static int __devinit milkymist_uart_probe(struct platform_device *op)
 	return 0;
 }
 
-static int __devexit milkymist_uart_remove(struct platform_device *dev)
+static int milkymist_uart_remove(struct platform_device *dev)
 {
 	struct uart_port *port = dev_get_drvdata(&dev->dev);
 
@@ -493,7 +490,7 @@ static struct platform_driver milkymist_uart_of_driver = {
 		.of_match_table = milkymist_uart_match,
 	},
 	.probe		= milkymist_uart_probe,
-	.remove		= __devexit_p(milkymist_uart_remove),
+	.remove		= milkymist_uart_remove,
 };
 
 static int __init milkymist_uart_init(void)
