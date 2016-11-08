@@ -63,14 +63,18 @@ static inline void milkymist_timer_set_reload(uint32_t value)
 	iowrite32be(value & 0x000000ff, CSR_TIMER0_RELOAD0);
 }
 
-static inline void milkymist_timer_disable(void)
+static inline int milkymist_timer_disable(struct clock_event_device *evt)
 {
 	iowrite32be(0, CSR_TIMER0_EN);
+
+	return 0;
 }
 
-static inline void milkymist_timer_enable(void)
+static inline int milkymist_timer_enable(struct clock_event_device *evt)
 {
 	iowrite32be(1, CSR_TIMER0_EN);
+
+	return 0;
 }
 
 cycles_t get_cycles(void)
@@ -82,57 +86,50 @@ static irqreturn_t milkymist_clockevent_irq(int irq, void *devid)
 {
 	struct clock_event_device *cd = devid;
 
-	if (cd->mode != CLOCK_EVT_MODE_PERIODIC)
-		milkymist_timer_disable();
-
 	cd->event_handler(cd);
-	
+
 	iowrite32be(1, CSR_TIMER0_EV_PENDING);
 	return IRQ_HANDLED;
 }
 
-static void milkymist_clockevent_set_mode(enum clock_event_mode mode,
-	struct clock_event_device *cd)
+static int milkymist_set_oneshot(struct clock_event_device *evt)
 {
-	switch (mode) {
-	case CLOCK_EVT_MODE_PERIODIC:
-		milkymist_timer_disable();
-		milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
-		milkymist_timer_set_reload(milkymist_ticks_per_jiffy);
-		milkymist_timer_enable();
-		break;
-	case CLOCK_EVT_MODE_RESUME:
-		milkymist_timer_enable();
-		break;
-	case CLOCK_EVT_MODE_ONESHOT:
-		milkymist_timer_disable();
-		milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
-		milkymist_timer_set_reload(0);
-		milkymist_timer_enable();
-		break;
-	case CLOCK_EVT_MODE_SHUTDOWN:
-		milkymist_timer_disable();
-		break;
-	default:
-		break;
-	}
+	milkymist_timer_disable(evt);
+	milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
+	milkymist_timer_set_reload(0);
+	milkymist_timer_enable(evt);
+
+	return 0;
 }
 
-static int milkymist_clockevent_set_next(unsigned long evt,
-	struct clock_event_device *cd)
+static int milkymist_set_periodic(struct clock_event_device *evt)
 {
-	milkymist_timer_disable();
-	milkymist_timer_set_counter(evt);
-	milkymist_timer_enable();
+	milkymist_timer_disable(evt);
+	milkymist_timer_set_counter(milkymist_ticks_per_jiffy);
+	milkymist_timer_set_reload(milkymist_ticks_per_jiffy);
+	milkymist_timer_enable(evt);
+
+	return 0;
+}
+
+static int milkymist_clockevent_set_next(unsigned long cycles,
+	struct clock_event_device *evt)
+{
+	milkymist_timer_disable(evt);
+	milkymist_timer_set_counter(cycles);
+	milkymist_timer_enable(evt);
 
 	return 0;
 }
 
 static struct clock_event_device milkymist_clockevent = {
 	.name = "milkymist-timer",
-	.features = CLOCK_EVT_FEAT_PERIODIC,
+	.features = CLOCK_EVT_FEAT_PERIODIC | CLOCK_EVT_FEAT_ONESHOT,
 	.set_next_event = milkymist_clockevent_set_next,
-	.set_mode = milkymist_clockevent_set_mode,
+	.set_state_shutdown = milkymist_timer_disable,
+	.tick_resume = milkymist_timer_enable,
+	.set_state_periodic = milkymist_set_periodic,
+	.set_state_oneshot = milkymist_set_oneshot,
 	.rating = 200,
 	.irq = TIMER0_INTERRUPT,
 };
