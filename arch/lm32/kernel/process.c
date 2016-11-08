@@ -128,32 +128,6 @@ void show_regs(struct pt_regs *regs)
 		printk("%3s: 0x%lx\n", lm32_reg_names[i], reg[i]);
 }
 
-static void kernel_thread_helper(int (*fn)(void*), void* arg)
-{
-	do_exit(fn(arg));
-}
-
-/*
- * Create a kernel thread
- */
-int kernel_thread(int (*fn)(void *), void * arg, unsigned long flags)
-{
-	/* prepare registers from which a child task switch frame will be copied */
-	struct pt_regs regs;
-
-	set_fs(KERNEL_DS);
-
-	memset(&regs, 0, sizeof(regs));
-
-	//printk("kernel_thread fn=%x arg=%x regs=%x\n", fn, arg, &regs);
-
-	regs.r11 = (unsigned long)fn;
-	regs.r12 = (unsigned long)arg;
-	regs.r13 = (unsigned long)kernel_thread_helper;
-	regs.pt_mode = PT_MODE_KERNEL;
-	return do_fork(flags | CLONE_VM | CLONE_UNTRACED, 0, &regs, 0, NULL, NULL);
-}
-
 void flush_thread(void)
 {
 }
