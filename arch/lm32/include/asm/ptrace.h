@@ -29,6 +29,8 @@
 
 #ifndef __ASSEMBLY__
 
+#define user_stack_pointer(regs)       ((regs)->sp)
+
 typedef unsigned long lm32_reg_t;
 
 struct pt_regs {
