@@ -169,18 +169,15 @@ unsigned long thread_saved_pc(struct task_struct *tsk)
 	return 0;
 }
 
-int copy_thread(unsigned long clone_flags,
-		unsigned long usp, unsigned long stk_size,
-		struct task_struct * p, struct pt_regs * regs)
+
+int copy_thread(unsigned long clone_flags, unsigned long usp,
+		unsigned long arg, struct task_struct *p)
 {
 	unsigned long child_tos = KSTK_TOS(p);
-	struct pt_regs *childregs;
+	struct pt_regs *childregs, *regs = current_pt_regs();
 
-	if (!user_mode(regs)) {
+	if (unlikely(p->flags & PF_KTHREAD)) {
 		/* kernel thread */
-
-		if( usp != 0 )
-			panic("trying to start kernel thread with usp != 0");
 
 		/* childregs = full task switch frame on kernel stack of child */
 		childregs = (struct pt_regs *)(child_tos) - 1;
